@@ -1,0 +1,599 @@
+import Util
+import pyodbc
+import time
+import logging
+import json
+
+globLog = logging.getLogger("SQLDatabase")
+
+# keep track of the number of DB connections we make
+DB_COUNT = 0
+# cannot create more than one DB connection at a time
+DB_MAX_COUNT = 1
+
+class SQLDataBase:
+    DB_COUNT += 1
+    if DB_COUNT > DB_MAX_COUNT:
+        raise ValueError("Cannot create more than one DB connection at a time!")
+    # connection parameters
+    enabled = True
+    server = 'spade-11.fulton.asu.edu'
+    database = "dash"
+    username = "SA"
+    password = "dash!sTraces"
+    cnxn = None
+    cursor = None
+
+    @classmethod
+    def __enabled__(cls, flag):
+        """
+        """
+        cls.enabled = flag
+
+    @classmethod
+    def __server__(cls, name):
+        """
+        @param[in]  server      Address of the server hosting the database.
+        """
+        cls.server = name
+
+    @classmethod
+    def __database__(cls, name):
+        """
+        @param[in]  database    Literal name of the database.
+        """
+        cls.database = name
+
+    @classmethod
+    def __username__(cls, name):
+        """
+        @param[in]  username    Username for logging into the database.
+        """
+        cls.username = name
+
+    @classmethod
+    def __password__(cls, word):
+        """
+        @param[in]  password    Password for the username.
+        """
+        cls.password = word
+
+    @classmethod
+    def connect(cls):
+        """
+        @brief      Creates an active connection to the target SQL database.
+        """
+        if cls.enabled:
+            if (cls.cnxn == None):
+                cls.cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};SERVER='+cls.server+';DATABASE='+cls.database+';UID='+cls.username+';PWD='+cls.password)
+            else:
+                raise ValueError("Cannot connect to another database while a connection is still active!")
+            cls.cursor = cls.cnxn.cursor()
+
+    @classmethod
+    def disconnect(cls):
+        """
+        @brief      Explicitly closes the connection between the self object and its SQL database. Called at the end of pushToSQL in dashAutomate
+                    class.
+        """
+        if cls.enabled:
+            cls.cursor.close()
+            cls.cnxn.close()
+            cls.cursor = None
+            cls.cnxn = None
+
+    @classmethod
+    def command(cls, command, ret=False):
+        """
+        @brief      Allows the user to insert a raw sql command into the valid dashDatabase object.
+        @param[in]  command     Raw string that will be inserted into the valid SQL command line of this object.
+        @param[in]  ret         Returns result of a query, if desired
+        """
+        if cls.enabled:
+            globLog.debug(command)
+            if cls.cnxn == None:
+                raise ValueError("Cannot submit a command when there is no DB connection!")
+
+            try:
+                cls.cursor.execute(command)
+            except Exception as e:
+                globLog.critical("Exception thrown when pushing SQL command: \n\t"+str(e))
+                return 
+
+            if ret:
+                try:
+                    row = cls.cursor.fetchall()
+                except Exception as e:
+                    globLog.critical("Exception thrown when requesting SQL return data:\n\t"+str(e))
+                    row = []
+                return row
+            else:
+                return
+        else:
+            if ret:
+                return []
+
+    @classmethod
+    def getLastID(cls):
+        """
+        @brief      Retrieves the ID of the last entry put into the database by the object self.
+                    This will only return the last ID generated for this SQL connection
+        """
+        if cls.enabled:
+            if cls.cnxn == None:
+                raise ValueError("Cannot retrieve an ID from the DB when there is no DB connection!")
+            returnlist = []
+
+            try:
+                cls.cursor.execute("select SCOPE_IDENTITY()")
+            except Exception as e:
+                globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
+                return 
+            try:
+                row = cls.cursor.fetchall()
+            except Exception as e:
+                globLog.error("When getting last ID of SQL push: "+str(e))
+                return -1
+            
+            globLog.debug("ID -> "+str(row[0][0]))
+            return row[0][0] # ID should just be the first entry
+
+    @classmethod
+    def commit(cls):
+        """
+        @brief      Equivalent to 'GO' in a SQL terminal. By default changes are not made to the database, this function must be called to do so. 
+                    Note that even when this isn't called, the UIDs of each pending row are still valid, and will not reappear in the database.
+        """
+        if cls.enabled:
+            if cls.cnxn == None:
+                raise ValueError("Cannot commit changes when there is no DB connection!")
+            try:
+                cls.cursor.commit()
+            except Exception as e:
+                globLog.critical("Exception thrown when running cursor.commit()':\n\t"+str(e))
+                return 
+            
+            globLog.debug("Committed changes")
+
+class DashAutomateSQL(SQLDataBase):
+    def __init__(self, path, previous):
+        """
+        @brief Pushes RunID
+        @param[in] path     Absolute path to the directory in which the Dash-Automate tool was called
+        @param[in] previous Previous RunID that should be referenced when creating the project list for a nightly build.
+        """
+        self.path = path
+        GitIDs = Util.getGitRepoIDs(path)
+        self.corpusGitId = GitIDs[0]
+        self.radioCorpusGitId = GitIDs[1]
+        self.SDHGitId = GitIDs[2]
+        self.KSSId = GitIDs[3]
+        self.KCId  = GitIDs[4]
+        self.oldID = previous
+        # maps a project's relative path to its project to run
+        self.pathProject = dict()
+        self.ID = -1
+        self.runtime = "'"+time.strftime('%Y-%m-%d %H:%M:%S')+"'"
+        self.logger = logging.getLogger("DashAutomate SQL")
+
+    def pushRunID(self):
+        """
+        @brief Pushes an entry into the RunID table for a Dash-Corpus build
+        @param[in]  path        Path to the relative directory of this tool.
+        @param[in]  argDict     Dictionary containing all runtime args of this tool.
+        @param[in]  dashDB      Optional flag containing either an active dashDatabase object with a valid connection, or nothing. 
+                                Useful for when the tool is not recursing on subdirectories and already has a valid dashDB object.
+        @param[in]  first       Indicates whether or not this is a subdirectory call. If this flag is true, the dashDB object created
+                                immediately disconnects after pushing to RunId.
+        @retval     ID          New UID of this RunId entry
+                    runtime     String representation of the time of this run.
+        """
+        pushCom = "INSERT INTO RunIds (TimeExecuted,CorpusID,RadioID) VALUES ("+self.runtime+",'"+self.corpusGitId+"','"+self.radioCorpusGitId+"');"
+        super().command(pushCom)
+        self.ID = super().getLastID()
+
+    def NightlyBuildList(self):
+        """
+        @brief Creates a minimum set of programs that cover all project directories with maximum kernel-time density projects
+        """
+        selCom = "SELECT Root.Path, Kernels.Binary, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, FlowMetrics.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.previous)+" AND Kernels.[Index] = 0 INNER JOIN Root ON Kernels.Parent = Root.UID;"
+        rows = super().command(selCom, ret=True)
+        traceList = []
+        for row in rows:
+            # use the FlowMetrics ID to grab all kernels for a given trace
+            kernCom = "SELECT Kernels.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = "+str(row[4])+" ;"
+            kernels = super().command(kernCom, ret=True)
+            kernels = len(kernels)
+            relPath = ""
+            if "build" in row[0].split("/")[-1]:
+                relPath = row[0].split("/")[:-1]
+            else:
+                relPath = row[0]
+            trcName = row[1]
+            bcName = trcName.split("_")[0]
+            ntvName = "_".join(x for x in trcName.split("_")[:2])
+            trcTime = row[2] if row[3] > 0 else 0
+            carTime = row[3] if row[3] > 0 else 0
+            traceList.append( (relPath, bcName, ntvName, trcName, ((trcTime+carTime)/kernels if kernels > 0 else 0)) )
+
+        # now find the traces with greatest density from each project
+        for entry in traceList:
+            if self.pathProject.get(entry[0], None) is not None:
+                # resolve clash
+                existing = self.pathProject[entry[0]]
+                if existing[4] < entry[4]:
+                    self.pathProject[entry[0]] = entry
+            else:
+                self.pathProject[entry[0]] = entry
+        exit(self.pathProject)
+
+class ProjectSQL(SQLDataBase):
+    def __init__(self, rootpath, abspath, inputdict):
+        """
+        @brief Facilitates pushing to the Root table in Dash-Ontology database
+        @param[in] rootpath     Absolute path to the root directory of the corpus being built. Should be the Dash-Corpus install prefix.
+        @param[in] abspath      Absolute path to the specific directory within the corpus.
+        @param[in] inputdict    Input JSON file containing User information
+        """
+        self.relPath = Util.getPathDiff(rootpath, abspath, build=False)
+        self.author = Util.getAuthor(inputdict)
+        self.libraries = Util.getLibraries(inputdict)
+        self.ID = -1
+        self.logger = logging.getLogger("Project: "+self.relPath)
+        self.newEntry = False
+
+    def getOldPost(self):
+        """
+        @brief Retrieve an entry from the database that may already represent the current object in the database
+        """
+        dataList = super().command("SELECT * FROM Root WHERE Path = '"+self.relPath+"';", ret=True)
+        if len(dataList) == 0:
+            self.logger.debug("No prior Root entry found")
+            return None
+        else:
+            self.logger.debug("Prior Root entry found.")
+            return dataList
+
+    def push(self):
+        """
+        @brief      Pushes root entry for the given project path
+        @retval     RootID      Entry ID for the root table entry
+        """
+        oldPost = self.getOldPost()
+        if oldPost is not None:
+            oldPost = list(oldPost[0]) # arrives as a list of tuples, just take the first entry. TODO: to handle multiple results, we need to match authors and libraries too
+            self.ID = oldPost[0] # format: [UID, Path, Author, Libraries]
+            if self.author != oldPost[2] or self.libraries != oldPost[3]:
+                self.newEntry = True
+                self.logger.debug("Updating Libraries and Author from "+oldPost[2]+","+oldPost[3]+" to "+libraries+","+author)
+                super().command("UPDATE Root SET Libraries = '"+self.libraries+"', Author = '"+self.author+"' WHERE Uid = "+str(self.ID)+";")
+            return self.ID
+        else:
+            self.newEntry = True
+            super().command("INSERT INTO Root (Path,Author,Libraries) VALUES ('"+self.relPath+"','"+self.author+"','"+self.libraries+"');")
+            self.ID = super().getLastID()
+
+class BitcodeSQL(SQLDataBase):
+    """
+    @brief Pushes FlowMetrics, DAG, tik and tikswap information 
+    """
+    def __init__(self, BC, run, parent, BCDict, rtargs):
+        """
+        @param[in] BC       String of the BC file whose trace data will be pushed
+        @param[in] run      Integer representing the UID of the RunId table entry this push belongs to
+        @param[in] parent   Integer representing the UID of the Root table entry this bitcode belongs to
+        @param[in] BCDict   Dictionary of file information for this bitcode file
+        @param[in] rtargs   Runtime args object
+        """
+        self.BCD = BCDict
+        self.RunID = run
+        self.parentID = parent
+        self.DAGID = -1
+        self.FlowID = -1
+        self.tikID = -1
+        self.tikswapID = -1
+        self.args = rtargs
+        self.logger = logging.getLogger("BCSQL: "+BC)
+
+    def push(self):
+        self.pushTRC()
+        self.pushKernel()
+
+    def pushTRC(self):
+        for BC in self.BCD:
+            for NTV in self.BCD[BC]:
+                if NTV.endswith("native"):
+                    for TRC in self.BCD[BC][NTV]:
+                        if TRC.startswith("TRC"):
+                            # FlowMetrics data
+                            FlowMetricsColumns = ["Parent","Version","Zlib","Size","TraceTime","KernelDetectTime","KernelExtractTime","LFLAG","RARG","BINARY"]
+                            zlibVersion = -1
+                            compressionLevel = self.args.trace_compression
+                            traceSize = self.BCD[BC][NTV][TRC]["size"]
+                            traceTime = self.BCD[BC][NTV][TRC]["time"]
+                            cartTime  = self.BCD[BC][NTV][TRC]["CAR"]["time"]
+                            LFLAG     = self.BCD[BC][NTV]["LFLAG"]
+                            RARG      = self.BCD[BC][NTV][TRC]["RARG"]
+                            ELFName   = self.BCD[BC][NTV]["Name"]
+                            FlowMetricsData = [self.parentID, "'"+str(zlibVersion)+"'", compressionLevel, traceSize, traceTime, cartTime, -1, "'"+LFLAG+"'", "'"+RARG+"'", "'"+ELFName+"'"]
+                            pushCommand = "INSERT INTO FlowMetrics ("+",".join(str(x) for x in FlowMetricsColumns)+") VALUES ("+",".join(str(x) for x in FlowMetricsData)+");"
+                            super().command(pushCommand)
+                            self.FlowID = super().getLastID()
+                            self.logger.debug("Flow ID: "+str(self.FlowID))
+
+                            # DAG data
+                            DAGdata = "''"
+                            try:
+                                DAGfile = open(self.BCD[BC][NTV][TRC]["DE"]["buildPath"], "r")
+                            except FileNotFoundError:
+                                self.logger.warn("Could not find DAG file: "+self.BCD[BC][NTV][TRC]["DE"]["buildPath"])
+                                DAGfile = None
+                            if DAGfile is not None:
+                                DAGdata = "'"+DAGfile.read()+"'"
+                            super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
+                            self.DAGID = super().getLastID()
+                            self.logger.debug("DAG ID: "+str(self.DAGID))
+
+                            # tik data
+                            try:
+                                tikFile = open(self.BCD[BC][NTV][TRC]["tik"]["buildPath"], "rb")
+                            except FileNotFoundError:
+                                self.logger.warn("Could not find tik file: "+self.BCD[BC][NTV][TRC]["tik"]["buildPath"])
+                                tikFile = None
+                                self.tikID = -1
+                            if tikFile is not None:
+                                tikBin = tikFile.read()
+                                if super().enabled:
+                                    super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
+                                    IDtuple = super().command("SELECT UID from tik;", ret=True)
+                                    self.tikID = IDtuple[-1][0]
+                                    self.logger.debug("tik ID: "+str(self.tikID))
+                            # tikswap data
+                            # nothing for now
+
+    def pushKernel(self):
+        """
+        """
+        for BC in self.BCD:
+            for NTV in self.BCD[BC]:
+                if NTV.endswith("native"):
+                    for TRC in self.BCD[BC][NTV]:
+                        if TRC.startswith("TRC"):
+                            ## open per-trace files
+                            # kernel file
+                            try:
+                                KD = json.load( open (self.BCD[BC][NTV][TRC]["CAR"]["buildPath"],"r") )
+                            except FileNotFoundError:
+                                self.logger.warn("Could not find kernel file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPath"])
+                                KD = None
+                                continue
+                            # kernel hash file
+                            try:
+                                KHD = json.load( open( self.BCD[BC][NTV][TRC]["KH"]["buildPath"],"r" ) )
+                            except:
+                                self.logger.warn("Could not find kernel hash file: "+self.BCD[BC][NTV][TRC]["KH"]["buildPath"])
+                                KHD = None
+                            # function file
+                            try:
+                                FD = json.load( open( self.BCD[BC][NTV][TRC]["function"]["buildPath"],"r" ) )
+                            except:
+                                self.logger.warn("Could not find function annotation file: "+self.BCD[BC][NTV][TRC]["function"]["buildPath"])
+                                FD = None
+                            # pig file
+                            try:
+                                PD = json.load( open( self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"],"r" ) )
+                            except:
+                                self.logger.warn("Could not find pig file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"])
+                                PD = None
+
+                            # push per-kernel data
+                            KernelColumns = ["Parent","[Index]","Binary","LFLAG","RARG","RunID","Libraries","FlowID","BowId","DagId","Hash","TikId","PigId","CpigId","Labels","EPigId","ECPigId"]
+                            if isinstance(KD, dict):
+                                if KD.get("Kernels", None) is not None:
+                                    for index in KD["Kernels"]:
+                                        parent = self.parentID
+                                        ind = index
+                                        binary = self.BCD[BC][NTV]["Name"]
+                                        LFLAG  = self.BCD[BC][NTV]["LFLAG"]
+                                        RARG   = self.BCD[BC][NTV][TRC]["RARG"]
+                                        RunID  = self.RunID
+                                        Libraries = Util.getKernelLibraries(FD, str(index))
+                                        FlowId = self.FlowID
+                                        BowId = -1
+                                        DagId = self.DAGID
+                                        Hash = Util.getKernelHash(KHD, str(index))
+                                        TikId = self.tikID
+                                        pigIDs = self.pushPigData(PD, str(index))
+                                        PigId = pigIDs[0]
+                                        CpigId = pigIDs[1]
+                                        Labels = Util.getKernelLabels(KD, str(index))                                            
+                                        EPigId = pigIDs[2]
+                                        ECPigId = pigIDs[3]
+
+                                        # figure out which values will be made NULL in the push
+                                        if len(LFLAG) == 0:
+                                            LFLAG = None
+                                        if len(RARG) == 0:
+                                            RARG = None
+                                        if len(Libraries) == 0:
+                                            Libraries = None
+                                        if len(Labels) == 0:
+                                            Labels = None
+                                        # to keep the parsing uniform, EPig and ECpig will never be made null
+                                        
+                                        # construct columns and data that will be pushed
+                                        finalColumns = ["Parent","[Index]","Binary"]
+                                        finalData = [parent, ind, "'"+binary+"'"]
+                                        if LFLAG is not None:
+                                            finalColumns += ["LFLAG"]
+                                            finalData += ["'"+LFLAG+"'"]
+                                        if RARG is not None:
+                                            finalColumns += ["RARG"]
+                                            finalData += ["'"+RARG+"'"]
+                                        finalColumns += ["RunID"]
+                                        finalData    += [RunID]
+                                        if Libraries is not None:
+                                            finalColumns += ["Libraries"]
+                                            finalData    += ["'"+Libraries+"'"]
+                                        finalColumns += ["FlowID","BowId","DagId","Hash","TikId","PigId","CpigId"]
+                                        finalData    += [FlowId, BowId, DagId, Hash, TikId, PigId, CpigId]
+                                        if Labels is not None:
+                                            finalColumns += ["Labels"]
+                                            finalData    += ["'"+Labels+"'"]
+                                        finalColumns += ["EPigId","ECPigId"]
+                                        finalData    += [EPigId, ECPigId]
+                                        
+                                        super().command("INSERT INTO Kernels ("+",".join(x for x in finalColumns)+") VALUES ("+",".join(str(x) for x in finalData)+");")
+                                        kernelID = super().getLastID()
+                                        self.logger.debug("Kernel ID: "+str(kernelID))
+
+                                        # finally, BBH table entry
+                                        BBHList = Util.getBBHList(KHD, str(index))
+                                        if BBHList is not None:
+                                            super().command("INSERT INTO BasicBlockHash (Parent,HashList) VALUES ("+str(kernelID)+",'"+",".join(str(x) for x in BBHList)+"');")
+
+                                else:
+                                    self.logger.warn("Kernel file did not have kernels in it.")
+                            else:
+                                self.logger.warn("Kernel file was not a dictionary.")
+
+    def pushPigData(self, PD, index):
+        """
+        @brief      Pushes Performance Intrinsics Data: static (pig), dynamic(cpig), cross-product static(epig), cross-product dynamic(ecpig)
+        @param[in]  PD     Dictionary of PIG data
+        @param[in]  index  Kernel index to push. Needs to be a sting.
+        @retval     IDs    List of 4 push IDs [pigID, cpigID, epigID, ecpigID]
+        """
+        IDs = [-1,-1,-1,-1]
+        # read in file
+        if PD is None:
+            return IDs
+        
+        # dictionaries hold all columns of each respective SQL table
+        pigD = dict.fromkeys(["typeVoid", "typeFloat", "typeInt", "typeArray", "typeVector", "typePointer", "instructionCount", "addCount",
+                                "subCount", "mulCount", "udivCount", "sdivCount", "uremCount", "sremCount", "shlCount", "lshrCount", "ashrCount", "andCount", "orCount",
+                                "xorCount", "faddCount", "fsubCount", "fmulCount", "fdivCount", "fremCount", "extractelementCount", "insertelementCount",
+                                "shufflevectorCount", "extractvalueCount", "insertvalueCount", "allocaCount", "loadCount", "storeCount", "fenceCount", "cmpxchgCount",
+                                "atomicrmwCount", "getelementptrCount", "truncCount", "zextCount", "sextCount", "fptruncCount", "fpextCount", "fptouiCount", "fptosiCount",
+                                "uitofpCount", "sitofpCount", "ptrtointCount", "inttoptrCount", "bitcastCount", "addrspacecastCount", "icmpCount", "fcmpCount", "phiCount",
+                                "selectCount", "freezeCount", "callCount", "va_argCount", "landingpadCount", "catchpadCount", "cleanuppadCount", "retCount", "brCount",
+                                "switchCount", "indirectbrCount", "invokeCount", "callbrCount", "resumeCount", "catchswitchCount", "cleanupretCount", "unreachableCount",
+                                "fnegCount"], 0)
+        cpigD = pigD
+
+        # pig push
+        if PD.get("Pig", None) is not None:
+            if PD["Pig"].get(index, None) is not None:
+                push = True
+                for inst in PD["Pig"][index].keys():
+                    found = False
+                    for column in pigD.keys():
+                        if inst == column:
+                            found = True
+                            pigD[column] = PD["Pig"][index][inst]
+                    if not found:
+                        self.logger.critical("Found this field: {}, in the pig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                        push = False
+                if push:
+                    super().command("INSERT INTO pig ("+",".join(x for x in list(pigD.keys()))+") VALUES ("+",".join(str(x) for x in list(pigD.values()))+");")
+                    IDs[0] = super().getLastID()
+
+        # cpig push
+        if PD.get("CPig", None) is not None:
+            if PD["CPig"].get(index, None) is not None:
+                push = True
+                for inst in PD["CPig"][index].keys():
+                    found = False
+                    for column in cpigD.keys():
+                        if inst == column:
+                            found = True
+                            cpigD[column] = PD["CPig"][index][inst]
+                    if not found:
+                        self.logger.critical("Found this field: {}, in the cpig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                        push = False
+                if push:
+                    super().command("INSERT INTO cpig ("+",".join(x for x in list(cpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(cpigD.values()))+");")
+                    IDs[1] = super().getLastID()
+
+        epigD = dict.fromkeys(["instructionCount", "fnegtypeInt", "fnegtypeFloat", "fnegtypeVoid", "fnegtypeArray", "fnegtypeVector", "fnegtypePointer", "addtypeInt",
+                                "addtypeFloat", "addtypeVoid", "addtypeArray", "addtypeVector", "addtypePointer", "faddtypeInt", "faddtypeFloat", "faddtypeVoid", "faddtypeArray",
+                                "faddtypeVector", "faddtypePointer", "subtypeInt", "subtypeFloat", "subtypeVoid", "subtypeArray", "subtypeVector", "subtypePointer", "fsubtypeInt",
+                                "fsubtypeFloat", "fsubtypeVoid", "fsubtypeArray", "fsubtypeVector", "fsubtypePointer", "multypeInt", "multypeFloat", "multypeVoid", "multypeArray",
+                                "multypeVector", "multypePointer", "fmultypeInt", "fmultypeFloat", "fmultypeVoid", "fmultypeArray", "fmultypeVector", "fmultypePointer", "udivtypeInt",
+                                "udivtypeFloat", "udivtypeVoid", "udivtypeArray", "udivtypeVector", "udivtypePointer", "sdivtypeInt", "sdivtypeFloat", "sdivtypeVoid", "sdivtypeArray",
+                                "sdivtypeVector", "sdivtypePointer", "fdivtypeInt", "fdivtypeFloat", "fdivtypeVoid", "fdivtypeArray", "fdivtypeVector", "fdivtypePointer", "uremtypeInt",
+                                "uremtypeFloat", "uremtypeVoid", "uremtypeArray", "uremtypeVector", "uremtypePointer", "sremtypeInt", "sremtypeFloat", "sremtypeVoid", "sremtypeArray",
+                                "sremtypeVector", "sremtypePointer", "fremtypeInt", "fremtypeFloat", "fremtypeVoid", "fremtypeArray", "fremtypeVector", "fremtypePointer", "shltypeInt",
+                                "shltypeFloat", "shltypeVoid", "shltypeArray", "shltypeVector", "shltypePointer", "lshrtypeInt", "lshrtypeFloat", "lshrtypeVoid", "lshrtypeArray", "lshrtypeVector",
+                                "lshrtypePointer", "ashrtypeInt", "ashrtypeFloat", "ashrtypeVoid", "ashrtypeArray", "ashrtypeVector", "ashrtypePointer", "andtypeInt", "andtypeFloat", "andtypeVoid",
+                                "andtypeArray", "andtypeVector", "andtypePointer", "ortypeInt", "ortypeFloat", "ortypeVoid", "ortypeArray", "ortypeVector", "ortypePointer", "xortypeInt", "xortypeFloat",
+                                "xortypeVoid", "xortypeArray", "xortypeVector", "xortypePointer", "insertelementtypeInt", "insertelementtypeFloat", "insertelementtypeVoid", "insertelementtypeArray",
+                                "insertelementtypeVector", "insertelementtypePointer", "shufflevectortypeInt", "shufflevectortypeFloat", "shufflevectortypeVoid", "shufflevectortypeArray", "shufflevectortypeVector",
+                                "shufflevectortypePointer", "storetypeInt", "storetypeFloat", "storetypeVoid", "storetypeArray", "storetypeVector", "storetypePointer", "fencetypeInt", "fencetypeFloat", "fencetypeVoid",
+                                "fencetypeArray", "fencetypeVector", "fencetypePointer", "cmpxchgtypeInt", "cmpxchgtypeFloat", "cmpxchgtypeVoid", "cmpxchgtypeArray", "cmpxchgtypeVector", "cmpxchgtypePointer",
+                                "allocatypeInt", "allocatypeFloat", "allocatypeVoid", "allocatypeArray", "allocatypeVector", "allocatypePointer", "atomicrmwtypeInt", "atomicrmwtypeFloat", "atomicrmwtypeVoid",
+                                "atomicrmwtypeArray", "atomicrmwtypeVector", "atomicrmwtypePointer", "getelementptrtypeInt", "getelementptrtypeFloat", "getelementptrtypeVoid", "getelementptrtypeArray",
+                                "getelementptrtypeVector", "getelementptrtypePointer", "trunctypeInt", "trunctypeFloat", "trunctypeVoid", "trunctypeArray", "trunctypeVector", "trunctypePointer", "zexttypeInt",
+                                "zexttypeFloat", "zexttypeVoid", "zexttypeArray", "zexttypeVector", "zexttypePointer", "sexttypeInt", "sexttypeFloat", "sexttypeVoid", "sexttypeArray", "sexttypeVector",
+                                "sexttypePointer", "fptrunctypeInt", "fptrunctypeFloat", "fptrunctypeVoid", "fptrunctypeArray", "fptrunctypeVector", "fptrunctypePointer", "fpexttypeInt", "fpexttypeFloat",
+                                "fpexttypeVoid", "fpexttypeArray", "fpexttypeVector", "fpexttypePointer", "fptouitypeInt", "fptouitypeFloat", "fptouitypeVoid", "fptouitypeArray", "fptouitypeVector",
+                                "fptouitypePointer", "fptositypeInt", "fptositypeFloat", "fptositypeVoid", "fptositypeArray", "fptositypeVector", "fptositypePointer", "uitofptypeInt", "uitofptypeFloat",
+                                "uitofptypeVoid", "uitofptypeArray", "uitofptypeVector", "uitofptypePointer", "sitofptypeInt", "sitofptypeFloat", "sitofptypeVoid", "sitofptypeArray", "sitofptypeVector",
+                                "sitofptypePointer", "ptrtointtypeInt", "ptrtointtypeFloat", "ptrtointtypeVoid", "ptrtointtypeArray", "ptrtointtypeVector", "ptrtointtypePointer", "inttoptrtypeInt", "inttoptrtypeFloat",
+                                "inttoptrtypeVoid", "inttoptrtypeArray", "inttoptrtypeVector", "inttoptrtypePointer", "bitcasttypeInt", "bitcasttypeFloat", "bitcasttypeVoid", "bitcasttypeArray", "bitcasttypeVector",
+                                "bitcasttypePointer", "addrspacecasttypeInt", "addrspacecasttypeFloat", "addrspacecasttypeVoid", "addrspacecasttypeArray", "addrspacecasttypeVector", "addrspacecasttypePointer",
+                                "icmptypeInt", "icmptypeFloat", "icmptypeVoid", "icmptypeArray", "icmptypeVector", "icmptypePointer", "fcmptypeInt", "fcmptypeFloat", "fcmptypeVoid", "fcmptypeArray", "fcmptypeVector",
+                                "fcmptypePointer", "rettypeInt", "rettypeFloat", "rettypeVoid", "rettypeArray", "rettypeVector", "rettypePointer", "brtypeInt", "brtypeFloat", "brtypeVoid", "brtypeArray",
+                                "brtypeVector", "brtypePointer", "indirectbrtypeInt", "indirectbrtypeFloat", "indirectbrtypeVoid", "indirectbrtypeArray", "indirectbrtypeVector", "indirectbrtypePointer", "switchtypeInt",
+                                "switchtypeFloat", "switchtypeVoid", "switchtypeArray", "switchtypeVector", "switchtypePointer", "invoketypeInt", "invoketypeFloat", "invoketypeVoid", "invoketypeArray", "invoketypeVector",
+                                "invoketypePointer", "callbrtypeInt", "callbrtypeFloat", "callbrtypeVoid", "callbrtypeArray", "callbrtypeVector", "callbrtypePointer", "resumetypeInt", "resumetypeFloat", "resumetypeVoid",
+                                "resumetypeArray", "resumetypeVector", "resumetypePointer", "catchrettypeInt", "catchrettypeFloat", "catchrettypeVoid", "catchrettypeArray", "catchrettypeVector",
+                                "catchrettypePointer", "cleanuprettypeInt", "cleanuprettypeFloat", "cleanuprettypeVoid", "cleanuprettypeArray", "cleanuprettypeVector", "cleanuprettypePointer",
+                                "unreachabletypeInt", "unreachabletypeFloat", "unreachabletypeVoid", "unreachabletypeArray", "unreachabletypeVector", "unreachabletypePointer", "extractelementtypeInt",
+                                "extractelementtypeFloat", "extractelementtypeVoid", "extractelementtypeArray", "extractelementtypeVector", "extractelementtypePointer", "extractvaluetypeInt",
+                                "extractvaluetypeFloat", "extractvaluetypeVoid", "extractvaluetypeArray", "extractvaluetypeVector", "extractvaluetypePointer", "insertvaluetypeInt", "insertvaluetypeFloat",
+                                "insertvaluetypeVoid", "insertvaluetypeArray", "insertvaluetypeVector", "insertvaluetypePointer", "selecttypeInt", "selecttypeFloat", "selecttypeVoid", "selecttypeArray",
+                                "selecttypeVector", "selecttypePointer", "loadtypeInt", "loadtypeFloat", "loadtypeVoid", "loadtypeArray", "loadtypeVector", "loadtypePointer", "phitypeInt", "phitypeFloat",
+                                "phitypeVoid", "phitypeArray", "phitypeVector", "phitypePointer", "freezetypeInt", "freezetypeFloat", "freezetypeVoid", "freezetypeArray", "freezetypeVector", "freezetypePointer",
+                                "calltypeInt", "calltypeFloat", "calltypeVoid", "calltypeArray", "calltypeVector", "calltypePointer", "va_argtypeInt", "va_argtypeFloat", "va_argtypeVoid", "va_argtypeArray",
+                                "va_argtypeVector", "va_argtypePointer", "landingpadtypeInt", "landingpadtypeFloat", "landingpadtypeVoid", "landingpadtypeArray", "landingpadtypeVector", "landingpadtypePointer",
+                                "catchpadtypeInt", "catchpadtypeFloat", "catchpadtypeVoid", "catchpadtypeArray", "catchpadtypeVector", "catchpadtypePointer", "cleanuppadtypeInt", "cleanuppadtypeFloat",
+                                "cleanuppadtypeVoid", "cleanuppadtypeArray", "cleanuppadtypeVector", "cleanuppadtypePointer", "catchswitchtypeVector", "catchswitchtypePointer","catchswitchtypeInt","catchswitchtypeFloat",
+                                "catchswitchtypeVoid","catchswitchtypeArray"], 0)
+        ecpigD = epigD
+
+        # epig push
+        if PD.get("EPig", None) is not None:
+            if PD["EPig"].get(index, None) is not None:
+                push = True
+                for inst in PD["EPig"][index].keys():
+                    found = False
+                    for column in epigD.keys():
+                        if inst == column:
+                            found = True
+                            epigD[column] = PD["EPig"][index][inst]
+                    if not found:
+                        self.logger.critical("Found this field: {}, in the EPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                        push = False
+                if push:
+                    super().command("INSERT INTO epig ("+",".join(x for x in list(epigD.keys()))+") VALUES ("+",".join(str(x) for x in list(epigD.values()))+");")
+                    IDs[2] = super().getLastID()
+
+        # ecpig push
+        if PD.get("ECPig", None) is not None:
+            if PD["ECPig"].get(index, None) is not None:
+                push = True
+                for inst in PD["ECPig"][index].keys():
+                    found = False
+                    for column in ecpigD.keys():
+                        if inst == column:
+                            found = True
+                            ecpigD[column] = PD["ECPig"][index][inst]
+                    if not found:
+                        self.logger.critical("Found this field: {}, in the ECPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                        push = False
+                if push:
+                    super().command("INSERT INTO ecpig ("+",".join(x for x in list(ecpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(ecpigD.values()))+");")
+                    IDs[3] = super().getLastID()
+
+        return IDs

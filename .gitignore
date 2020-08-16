@@ -1,0 +1,13 @@
+build*
+testing/
+testingRebuild/
+debug_case/
+*.pyc
+__pycache__/
+strtest*
+*_test
+*.swp
+launch.json
+*.bak
+tmp*
+tools/
