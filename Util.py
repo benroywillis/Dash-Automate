@@ -150,7 +150,7 @@ def argumentParse():
     arg_parser.add_argument("-on", "--only-new", action="store_true", help="Only build projects not present in the SQL database under RunID --previous-id.")
     # logging
     arg_parser.add_argument("-ll", "--log-level", default="30", help="Set log level. Valid settings are 0 (Everything), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), and 50 (CRITICAL).")
-    arg_parser.add_argument("-lf", "--log-file", default="DashAutomate.log", help="Set output log file name.")
+    arg_parser.add_argument("-lf", "--log-file", default=os.getcwd()+"/DashAutomate.log", help="Set output log file name.")
 
     args = arg_parser.parse_args()
     args.log_level = int(args.log_level)

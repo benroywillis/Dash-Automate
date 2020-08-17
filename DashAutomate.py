@@ -42,6 +42,8 @@ class DashAutomate:
         self.thread2 = threading.Thread(target=self.ThreadTwo)
         # lock on each thread to protect the buildingBitcodes set
         self.threadlock = threading.Condition()
+        # report file path
+        self.reportFile = self.args.project_prefix+"FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json"
         # full report dictionary
         self.FULLREPORT = dict()
         self.FULLREPORT["Full Report"] = dict()
@@ -123,7 +125,7 @@ class DashAutomate:
         if project.errors:
             self.FULLREPORT["Full Report"]["Bad Projects"].append(project.projectPath)
 
-        with open("FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json", "w+") as report:
+        with open(self.reportFile, "w+") as report:
             json.dump(self.FULLREPORT, report, indent=4)
 
     def addBitcodeReport(self, bitcode):
@@ -160,7 +162,7 @@ class DashAutomate:
         if len(self.FULLREPORT[relPath][bitcode.BC]["Errors"]) > 0:
             self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = self.FULLREPORT[relPath][bitcode.BC]["Errors"]
 
-        with open("FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json", "w+") as report:
+        with open(self.reportFile, "w+") as report:
             json.dump(self.FULLREPORT, report, indent=4)
         
     def getProjects(self):

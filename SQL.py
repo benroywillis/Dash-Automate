@@ -172,7 +172,7 @@ class DashAutomateSQL(SQLDataBase):
         self.oldID = previous
         # maps a project's relative path to its project to run
         self.pathProject = dict()
-        self.ID = -1
+        self.ID = None
         self.runtime = "'"+time.strftime('%Y-%m-%d %H:%M:%S')+"'"
         self.logger = logging.getLogger("DashAutomate SQL")
 
