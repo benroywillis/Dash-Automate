@@ -412,6 +412,44 @@ def getRARGS(commandList, jsonDict):
     return Rcommands
 
 ### Bitcode helpers
+def waitOnFile(file, path, appear=True, directory=True, N=3, message=None, level=0):
+    """
+    @brief Creates a bash script command that will wait for a file or directory to be created
+    @param[in] appear       Wait for a file to appear. If set to false, the logic will wait for the file to disappear
+    @param[in] directory    Type of file to look at. If set to false, will look for a file.
+    @param[in] N            Integer exponent to count up to. Base 2
+    @param[in] message      Message to echo if the intial if condition evaluates to true
+    @param[in] level        Basic logic level. If this condition will be wrapped in another condition, the level should be set to 1 for indents to line up
+    """
+    l0 = "\n"
+    for i in range(level):
+        l0 += "\t"
+    l1 = l0+"\t"
+    l2 = l1+"\t"
+    l3 = l2+"\t"
+    if directory:
+        obj = "-d"
+    else:
+        obj = "-f"
+    if appear:
+        condition = " ! "
+        failmessage = "\"Failed to generate target "+file+". Exiting.\""
+    else:
+        condition = " "
+        failmessage = "\"Failed to remove target "+file+". Exiting.\""
+    if message is not None:
+        message = l1+"echo \""+message+"\""
+    else:
+        message = ""
+    # create initial condition
+    command = l0+"if ["+condition+obj+" \""+file+"\" ]; then"+message+l1
+    # for loop for waiting
+    command += "for i in 1:"+str(N)+l1+"do"+l2+"if ["+condition+obj+" \""+file+"\" ]; then"+l3+"break"+l2+"fi"+l2+"sleep 2**i"+l1+"done"+l1
+    # exit command if the target did not turn up during wait period
+    command += "if ["+condition+obj+" \""+file+"\" ]; then"+l2+"echo "+failmessage+l2+"rm -rf "+path+l2+"exit"+l1+"fi"+l0+"fi\n ; "
+
+    return command
+
 def getSubDs(absolutePath, args):
     """
     Description

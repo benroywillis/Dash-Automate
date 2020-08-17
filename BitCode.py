@@ -229,30 +229,31 @@ class BitCode:
         @param[in] suffixFiles  List of files that need to be copied out of the tmp filder after the script commands are done. Entries should point to the files where they stand in the tmp folder.
         """
         prefix = "hostname ; sleep 1 ; cd /tmp/ ; "
-        prefix += "if [ -d \""+tmpFolder+"\" ]; then\n\techo \"Removing old folder!\"\n\trm -rf "+tmpFolder+"\n\twhile [ -d \""+tmpFolder+"\" ]\n\tdo\n\t\techo \"Waiting for old folder to disappear!\"\n\t\tsleep 1\n\techo \"Old folder removed!\"\n\tdone\n"
-        prefix += "else\n\techo \"No old folder found!\"\nfi ; " # check if the old one is there and get rid of it if is it
+        prefix += "if [ -d \""+tmpFolder+"\" ]; then\n\techo \"Removing old folder!\"\n\trm -rf "+tmpFolder+"\nfi\n"
+        prefix += Util.waitOnFile(tmpFolder, tmpFolder, appear=False, message="Waiting for old folder to disappear!")
         prefix += "mkdir "+tmpFolder+" ; " # make new folder and wait for it to be there
-        prefix += "if [ ! -d \""+tmpFolder+"\" ]; then\n\twhile [ ! -d \""+tmpFolder+"\" ]\n\tdo\n\t\tsleep 1\n\tdone\nfi ; " # wait for the new one to be genned
+        prefix += Util.waitOnFile(tmpFolder, tmpFolder) # wait for the new one to be genned
         prefix += "cd "+tmpFolder+" ; " # change to it
         for entry in prefixFiles:
-            prefix += "if cp "+entry+" "+tmpFolder+"; then\n\t"
-            prefix += "if [ ! -f \""+tmpFolder+entry.split("/")[-1]+"\" ]; then\n\t\twhile [ ! -f \""+tmpFolder+entry.split("/")[-1]+"\" ] \n\t\tdo\n\t\t\tsleep 1\n\t\tdone\n\tfi\nfi ; "
-
+            prefix += "if cp "+entry+" "+tmpFolder+"; then\n"
+            prefix += Util.waitOnFile(tmpFolder+entry.split("/")[-1], tmpFolder, directory=False, message="Waiting on "+entry+" copy!", level=1)
+            prefix += "fi\n"
         suffix = ""
         for entry in suffixFiles:
-            suffix += "if [ ! -f \""+entry+"\" ]; then\n\tsleep 5\nfi ; " # if the output isn't there wait for 5 seconds
-            suffix += "if mv "+entry+" "+self.buildPath+"; then\n\t"
-            suffix += "if [ ! -f \""+self.buildPath+entry.split("/")[-1]+"\" ]; then\n\t\twhile [ ! -f \""+self.buildPath+entry.split("/")[-1]+"\" ] \n\t\tdo\n\t\t\tsleep 1\n\t\tdone\n\tfi\nfi ; "        
+            suffix += Util.waitOnFile(entry, tmpFolder, directory=False, message="Waiting on output file "+entry)
+            suffix += "if mv "+entry+" "+self.buildPath+"; then\n"
+            suffix += Util.waitOnFile(self.buildPath+entry.split("/")[-1], tmpFolder, directory=False, message="Waiting on "+self.buildPath+entry.split("/")[-1]+" to move!", level=1)
+            suffix += "fi\n"
         suffix += "rm -rf "+tmpFolder+" ; " # clean up after ourselves and wait for the removal to complete
-        suffix += "if [ -d \""+tmpFolder+"\" ]; then\n\twhile [ -d \""+tmpFolder+"\" ]\n\tdo\n\t\tsleep 1\n\tdone\nfi ; "
+        suffix += Util.waitOnFile(tmpFolder, tmpFolder, appear=False, message="Waiting on tmp folder to delete!")
         suffix += "exit" # close the terminal
 
         return prefix, suffix
 
-    def bashCommandWrapper(self, command, step):
+    def bashCommandWrapper(self, path, command, step):
         """
         """
-        return "if "+command+"; then\n\techo \"DAStepSuccess: "+step+" command succeeded\"\nelse\n\techo \"DAStepERROR: "+step+" command failed\"\n\texit 1\nfi ; "
+        return "if "+command+"; then\n\techo \"DAStepSuccess: "+step+" command succeeded\"\nelse\n\techo \"DAStepERROR: "+step+" command failed\"\n\trm -rf "+path+"\n\texit 1\nfi ; "
 
     def makeNativeCommand(self, BC, NTV):
         """
@@ -271,7 +272,7 @@ class BitCode:
         prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"]] )
         optCommand = self.OPT+" -load "+self.Tracer+" -EncodedTrace "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
         clangPPCommand = self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["TRAtmp"]+" -o "+self.BCDict[BC][NTV]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        return prefix+self.bashCommandWrapper(optCommand, "opt")+self.bashCommandWrapper(clangPPCommand, "clang++")+suffix
+        return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
 
     def makeTraceCommand(self, BC, NTV, TRC):
         """
@@ -283,7 +284,7 @@ class BitCode:
         envSet = "export TRACE_NAME="+self.BCDict[BC][NTV][TRC]["Name"]+" TRACE_COMPRESSION="+str( self.args.trace_compression )+" ; "
         NTVfile = self.BCDict[BC][NTV][TRC]["tmpFolder"]+self.BCDict[BC][NTV]["Name"]
         trcCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"]
-        return prefix+envSet+self.bashCommandWrapper(trcCommand, "trace")+suffix
+        return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tmpFolder"], trcCommand, "trace")+suffix
 
     def makeCartographerCommand(self, BC, NTV, TRC):
         """
@@ -300,7 +301,7 @@ class BitCode:
             command += " -L --nb "
         else:
             command += " --nb "
-        return prefix + self.bashCommandWrapper( command, "cartographer" ) + suffix
+        return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], command, "cartographer" ) + suffix
 
     def makeTikCommand(self, BC, NTV, TRC):
         """
@@ -311,7 +312,7 @@ class BitCode:
         BCfile = self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"]+self.BCDict[BC]["Name"]
 
         tikCommand = self.tikBinary+" -f LLVM -j "+kernelFile+" -t=LLVM -o "+self.BCDict[BC][NTV][TRC]["tik"]["tmpPath"]+" -S -v 5 -l "+self.BCDict[BC][NTV][TRC]["tik"]["Log"]+" "+BCfile
-        return prefix +self.bashCommandWrapper(tikCommand, "tik" )+ suffix
+        return prefix +self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], tikCommand, "tik" )+ suffix
 
     def makeTikSwapCommand(self, BC, NTV, TRC):
         """
@@ -324,7 +325,10 @@ class BitCode:
         tikSwapCommand = self.tikSwapBinary+" -t "+tikFile+" -b "+BCfile+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]
         compilationCommand = self.CXX+" -lz -lpthread -fuse-ld="+self.LD+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+tikFile+" "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]+" "+self.Backend+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]
         runCommand = self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]+" "+self.BCDict[BC][NTV][TRC]["RARG"]
-        return prefix + self.bashCommandWrapper(tikFileCheck, "tikFileCheck") + self.bashCommandWrapper(tikSwapCommand, "TikSwap") + self.bashCommandWrapper(compilationCommand, "Tik Compilation") + self.bashCommandWrapper(runCommand, "Tik Binary") + suffix
+        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikFileCheck, "tikFileCheck") + \
+                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikSwapCommand, "TikSwap") + \
+                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], compilationCommand, "Tik Compilation") + \
+                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], runCommand, "Tik Binary") + suffix
 
     def makeDetectorCommand(self, BC, NTV, TRC):
         """
@@ -336,7 +340,7 @@ class BitCode:
         BCfile = self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"]+self.BCDict[BC]["Name"]
         kernelFile = self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         libDetectorCommand = self.libDetectorBin+" -i "+BCfile +" -k "+kernelFile+" -o "+self.BCDict[BC][NTV][TRC]["function"]["tmpPath"]
-        return prefix + self.bashCommandWrapper(libDetectorCommand, "libDetector") + suffix
+        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"], libDetectorCommand, "libDetector") + suffix
 
     def makeDEcommand(self, BC, NTV, TRC):
         """
@@ -346,7 +350,7 @@ class BitCode:
         kernelFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         traceFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]
-        return prefix + self.bashCommandWrapper(DEcommand, "DagExtractor") + suffix
+        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], DEcommand, "DagExtractor") + suffix
 
     def makeWScommand(self, BC, NTV, TRC):
         """
@@ -356,7 +360,7 @@ class BitCode:
         kernelFile = self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         traceFile = self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         WScommand = self.WStool+" -i "+traceFile+" -k "+kernelFile+" -o "+self.BCDict[BC][NTV][TRC]["WS"]["tmpPath"]+" --nb"
-        return prefix + self.bashCommandWrapper(WScommand, "WorkingSet") + suffix
+        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"], WScommand, "WorkingSet") + suffix
 
     def makeKHcommand(self, BC, NTV, TRC):
         """
@@ -366,7 +370,7 @@ class BitCode:
         kernelFile = self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         BCfile     = self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"]+self.BCDict[BC]["Name"]
         KHcommand  = self.KHtool+" -k "+kernelFile+" -i "+BCfile+" -o "+self.BCDict[BC][NTV][TRC]["KH"]["tmpPath"]
-        return prefix + self.bashCommandWrapper(KHcommand, "KernelHasher") + suffix
+        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"], KHcommand, "KernelHasher") + suffix
 
     def makeScripts(self):
         """

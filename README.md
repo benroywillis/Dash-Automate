@@ -37,4 +37,3 @@ An input json file is required to inform Dash-Automate about compile-time and ru
 
 #### Makefile
 The makefile must respect the TraceAtlas environment variables. This is required for the TraceAtlas toolchain to work correctly. Currently only GNU Makefiles are supported.
-
