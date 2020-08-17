@@ -11,3 +11,4 @@ launch.json
 *.bak
 tmp*
 tools/
+*.log

@@ -1,6 +1,18 @@
-#### Dash Automate
+# Dash Automate
 
-Dash Automate is an automation tool for the TraceAtlas toolchain. It uses the SLLURM workload manager to generate static and dynamic program data and enter that data into a database. Only SLURM is supported. This program has only been tested on Ubuntu Server 18.04.
+Dash Automate is an automation tool for the TraceAtlas toolchain. It uses the SLURM workload manager to generate static and dynamic program data and enter that data into a database. Only SLURM is supported. This program has only been tested on Ubuntu Server 18.04.
+
+## Use
+To run simply type
+
+        python3 DashAutomate.py
+
+Or you can use the forwarding script
+
+        dashAutomate
+
++ Add the install path of Dash-Automate to $PATH.
++ Make sure you have python3 in /usr/local/, or change the path of the interpreter in the script to your liking.
 
 ## Modules and Dependencies
 * python3.x
