@@ -199,25 +199,88 @@ def readJson(path, args, name=None, subD=False):
             exit("Error: No .json file named %s found." % jsonFile)
             return None
 
-### Project helpers
 def parseValidSubDs(jsonDict, args):
     """
     """
     subdirectories = []
     if jsonDict.get("Subdirectories", None) is not None:
         for path in jsonDict["Subdirectories"]:
-            # if this subdirectory is a valid path
-            if os.path.isdir(path):
-                # if this subdirectory is not the path we're currently in
-                currentDir = args.project_prefix
-                if path.strip("/") != currentDir.strip("/"):
-                    subdirectories.append(path)
-                else:
-                    globLog.error("The subdirectories path '{}' is not valid. If you do not need the subdirectories functionality for this project, please remove it from your .json file.".format(path))
+            if path.startswith("/") or path.startswith("$"):
+                absPath = path if path.endswith("/") else path+"/"
             else:
-                globLog.error("The subdirectory path {} is not valid.".format(path))
+                absPath = args.project_prefix+path if path.endswith("/") else args.project_prefix+path+"/"
+            # if this subdirectory is a valid path
+            if os.path.isdir(absPath):
+                # if this subdirectory is not the path we're currently in
+                if absPath.strip("/") != args.project_prefix.strip("/"):
+                    subdirectories.append(absPath)
+                else:
+                    globLog.error("The subdirectories path '{}' is not valid. If you do not need the subdirectories functionality for this project, please remove it from your .json file.".format(absPath))
+            else:
+                globLog.error("The subdirectory path {} is not valid.".format(absPath))
     return subdirectories
 
+def getSubDs(absolutePath, args):
+    """
+    Description
+    In order to find the subprojects below us, we have to recurse into the directories specified by the compile.jsons
+    This function finds and validates the subdirectories described in absolutePath/compile.json
+    It also indicates whether or not there is a project to build in this current directory
+    """
+    jsonDict = readJson(absolutePath, args, subD=True)
+    if jsonDict == None:
+        subdirectories = []
+        project = False
+        return subdirectories, project
+
+    if jsonDict.get("Subdirectories", None) is not None:
+        subdirectories = []
+        for path in jsonDict["Subdirectories"]:
+            if path.startswith("/") or path.startswith("$"):
+                newPath = path if path.endswith("/") else path+"/"
+            else:
+                newPath = absolutePath if absolutePath.endswith("/") else absolutePath+"/"
+                newPath += path.strip(".") if path.strip(".").endswith("/") else path.strip(".")+"/"
+
+            # if this subdirectory is a valid path
+            if os.path.isdir(newPath):
+                # if this subdirectory is not the path we're currently in
+                if newPath.strip("/") != absolutePath.strip("/"):
+                    subdirectories.append(newPath)
+                else:
+                    globLog.error("The subdirectories path '{}' is not valid. If you do not need the subdirectories functionality for this project, please remove it from your .json file.".format(newPath))
+            else:
+                globLog.error("The subdirectory path {} is not valid.".format(newPath))
+
+    else:
+        subdirectories = []
+    if jsonDict.get("Build", None) is not None:
+        project = True
+    else:
+        project = False
+    return subdirectories, project
+
+def recurseThroughSubDs(path, args, repPaths):
+    """
+    @brief      Takes this directories subdirectories and recurses into them until it reaches the bottom of the subdirectory tree.
+    @param[in]  path        Absolute path to a subdirectory defined in this directory's compile.json
+    @param[in]  args        Dictionary containing arguments passed to this tool
+    @param[in]  repPaths    Set containing all subdirectory paths.
+    @retval     repPaths    A set containing all subdirectory paths in the tree.
+    """
+    # we already have this compile.json subdirectories in self.subdirectories, now we have to recurse into lower ones
+    reportPathList, project = getSubDs(path, args)
+    if project:
+        repPaths.add(path)
+
+    # if we find some new subdirectories, recurse to them and find their subdirectories
+    if len(reportPathList) > 0:
+        for item in reportPathList:
+            repPaths = recurseThroughSubDs(item, args, repPaths)
+
+    return repPaths
+
+### Project helpers
 def replaceVariables(command, variableDict):
     """
     @brief Maintains backward compatibility of old compile.json format by replacing variables.
@@ -449,66 +512,6 @@ def waitOnFile(file, path, appear=True, directory=True, N=3, message=None, level
     command += "if ["+condition+obj+" \""+file+"\" ]; then"+l2+"echo "+failmessage+l2+"rm -rf "+path+l2+"exit"+l1+"fi"+l0+"fi\n ; "
 
     return command
-
-def getSubDs(absolutePath, args):
-    """
-    Description
-    In order to find the subprojects below us, we have to recurse into the directories specified by the compile.jsons
-    This function finds and validates the subdirectories described in absolutePath/compile.json
-    It also indicates whether or not there is a project to build in this current directory
-    """
-    jsonDict = readJson(absolutePath, args, subD=True)
-    if jsonDict == None:
-        subdirectories = []
-        project = False
-        return subdirectories, project
-
-    if jsonDict.get("Subdirectories", None) is not None:
-        subdirectories = []
-        for path in jsonDict["Subdirectories"]:
-            if path.startswith("/") or path.startswith("$"):
-                newPath = path
-            else:
-                newPath = absolutePath if absolutePath.endswith("/") else absolutePath+"/"
-                newPath += path.strip(".") if path.strip(".").endswith("/") else path.strip(".")+"/"
-
-            # if this subdirectory is a valid path
-            if os.path.isdir(newPath):
-                # if this subdirectory is not the path we're currently in
-                if newPath.strip("/") != absolutePath.strip("/"):
-                    subdirectories.append(newPath)
-                else:
-                    globLog.error("The subdirectories path '{}' is not valid. If you do not need the subdirectories functionality for this project, please remove it from your .json file.".format(path))
-            else:
-                globLog.error("The subdirectory path {} is not valid.".format(path))
-
-    else:
-        subdirectories = []
-    if jsonDict.get("Build", None) is not None:
-        project = True
-    else:
-        project = False
-    return subdirectories, project
-
-def recurseThroughSubDs(path, args, repPaths):
-    """
-    @brief      Takes this directories subdirectories and recurses into them until it reaches the bottom of the subdirectory tree.
-    @param[in]  path        Absolute path to a subdirectory defined in this directory's compile.json
-    @param[in]  args        Dictionary containing arguments passed to this tool
-    @param[in]  repPaths    Set containing all subdirectory paths.
-    @retval     repPaths    A set containing all subdirectory paths in the tree.
-    """
-    # we already have this compile.json subdirectories in self.subdirectories, now we have to recurse into lower ones
-    reportPathList, project = getSubDs(path, args)
-    if project:
-        repPaths.add(path)
-
-    # if we find some new subdirectories, recurse to them and find their subdirectories
-    if len(reportPathList) > 0:
-        for item in reportPathList:
-            repPaths = recurseThroughSubDs(item, args, repPaths)
-
-    return repPaths
 
 def getAuthor( JD ):
     """

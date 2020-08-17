@@ -43,7 +43,7 @@ class DashAutomate:
         # lock on each thread to protect the buildingBitcodes set
         self.threadlock = threading.Condition()
         # report file path
-        self.reportFile = self.args.project_prefix+"FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json"
+        self.reportFile = os.getcwd()+"/FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json"
         # full report dictionary
         self.FULLREPORT = dict()
         self.FULLREPORT["Full Report"] = dict()
@@ -175,15 +175,18 @@ class DashAutomate:
         projectPaths = set()
         if not self.args.no_subdirectories:
             for path in subdirectories:
+                #absPath = self.args.project_prefix+path
                 projectPaths = Util.recurseThroughSubDs(path, self.args, projectPaths)
         # local directory
         if compileD.get("Build", None) is not None:
             projectPaths.add("") # This has to be a relative path
 
         for path in projectPaths:
-            refinedPath = path if path.endswith("/") or path == "" else path+"/"
-            absPath = os.getcwd()+"/"+refinedPath
-            self.projects.add( pj( self.rootPath, absPath, self.args.build, self.args.input_file) )
+            rawpath = path.split("/")
+            while "" in rawpath:
+                rawpath.remove("")
+            refinedPath = "/"+"/".join(x for x in rawpath)
+            self.projects.add( pj( self.rootPath, refinedPath, self.args.build, self.args.input_file) )
 
     def ThreadOne(self):
         """

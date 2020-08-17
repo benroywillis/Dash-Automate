@@ -21,7 +21,10 @@ class BitCode:
         self.rootPath       = rootPath
         self.projectPath    = path
         # path to relative build folder
-        self.buildPath      = path+"/"+self.args.build+"/"
+        rawpath = path.split("/")
+        while "" in rawpath:
+            rawpath.remove("")
+        self.buildPath      = "/"+"/".join(x for x in rawpath)+"/"+self.args.build+"/"
         # relative path from the root project to this bitcode project 
         self.relativePath   = Util.getPathDiff(rootPath, self.projectPath)
         # configure bitcode file, tmp folder name and products
