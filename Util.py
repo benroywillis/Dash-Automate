@@ -125,10 +125,10 @@ def argumentParse():
     # build flow configuration options and flags
     arg_parser.add_argument("-i", "--input-file", default="compile.json", help="Input JSON file name.")
     arg_parser.add_argument("-b", "--build", default="build", help="Specifiy build folder name.")
-    arg_parser.add_argument("-bo", "--bash-only", action="store_true", help="Use bash for the build flow.")
+    #arg_parser.add_argument("-bo", "--bash-only", action="store_true", help="Use bash for the build flow.")
     arg_parser.add_argument("-ns", "--no-subdirectories", action="store_true", help="Ignore subdirectories specified in the .json.")
     arg_parser.add_argument("-nl", "--no-labeling", action="store_true", help="Turn off kernel labeling in the Cartographer.")
-    arg_parser.add_argument("-np", "--no-papi", action="store_true", help="Disable the PAPI step of the tool.")
+    #arg_parser.add_argument("-np", "--no-papi", action="store_true", help="Disable the PAPI step of the tool.")
     arg_parser.add_argument("-kt", "--keep-trace", action="store_true", help="Don't delete the trace during build flow.")
     arg_parser.add_argument("-P", "--project-prefix", default=os.getcwd(), help="Set path prefix to the project root folder.")
     # toolchain configuration

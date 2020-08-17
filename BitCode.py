@@ -480,7 +480,7 @@ class BitCode:
                     reportDict[BC][NTV] = dict()
                     # if the native failed, don't look at anything else
                     if Util.findErrors(self.BCDict[BC][NTV]["Log"]):
-                        reportDict["Errors"].append(self.BCDict[BC][NTV]["buildPath"])
+                        reportDict["Errors"].append(self.BCDict[BC][NTV]["Log"])
                         continue
                     self.BCDict[BC][NTV]["SUCCESS"] = True
                     for TRC in self.BCDict[BC][NTV]:
