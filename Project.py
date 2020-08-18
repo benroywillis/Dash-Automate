@@ -26,6 +26,7 @@ class Project:
         self.projectPath = path if path.endswith("/") else path+"/"
         # Absolute path to the project build folder
         self.buildPath = self.projectPath+buildFolder+"/"
+        self.logger = logging.getLogger("Project: "+Util.getPathDiff(rootpath, self.projectPath))
         # Name of the input JSON file
         self.jsonName = jsonName
         # Dictionary of the projects input JSON file
@@ -54,7 +55,6 @@ class Project:
         self.ID = -1
         # Flag indicating errors in the build flow
         self.errors = False
-        self.logger = logging.getLogger("Project: "+Util.getPathDiff(rootpath, self.projectPath))
 
     def __hash__(self):
         return hash(self.projectPath)
@@ -85,7 +85,7 @@ class Project:
                 except:
                     continue
                 return jsonDict
-        logging.critical("Could not find input JSON file for project {}".format(self.projectPath))
+        self.logger.critical("Could not find input JSON file for project {}".format(self.projectPath))
         return None
 
     def getBuildCommand(self):

@@ -179,7 +179,7 @@ class DashAutomate:
                 projectPaths = Util.recurseThroughSubDs(path, self.args, projectPaths)
         # local directory
         if compileD.get("Build", None) is not None:
-            projectPaths.add("") # This has to be a relative path
+            projectPaths.add(self.args.project_prefix)
 
         for path in projectPaths:
             rawpath = path.split("/")
