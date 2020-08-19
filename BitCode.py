@@ -57,16 +57,7 @@ class BitCode:
         self.WStool             = self.args.toolchain_prefix+"bin/workingSet"
         self.KHtool             = self.args.toolchain_prefix+"bin/kernelHasher"
         # generate the map that will house all of our files, paths and commands
-        if len(LFLAGS) == 0:
-            if len(RARGS) == 0:
-                self.makeBCDict([""], [""])
-            else:
-                self.makeBCDict([""], RARGS)
-        else:
-            if len(RARGS) == 0:
-                self.makeBCDict(LFLAGS, [""])
-            else:
-                self.makeBCDict(LFLAGS, RARGS)
+        self.makeBCDict(LFLAGS, RARGS)
         # SQL pushing objects for trace and kernel data
         self.RunID = run
         self.BCSQL = SQL.BitcodeSQL(self.BC, self.RunID, parentID, self.BCDict, self.args)

@@ -156,6 +156,10 @@ def argumentParse():
     args.log_level = int(args.log_level)
     if not args.project_prefix.endswith("/"):
         args.project_prefix+= "/"
+
+    # a nightly build AND only new build is not possible in one run
+    if args.nightly_build and args.only_new:
+        exit("A nightly build and only new build is not possible in a single run!")
     return args
 
 def readJson(path, args, name=None, subD=False):

@@ -3,6 +3,7 @@ import pyodbc
 import time
 import logging
 import json
+import ctypes
 
 globLog = logging.getLogger("SQLDatabase")
 
@@ -192,40 +193,69 @@ class DashAutomateSQL(SQLDataBase):
         super().command(pushCom)
         self.ID = super().getLastID()
 
-    def NightlyBuildList(self):
+    def ExistingProjects(self):
         """
-        @brief Creates a minimum set of programs that cover all project directories with maximum kernel-time density projects
+        @brief Creates a list of programs that summarize all traces in the current RunID
+
+        The return list is composed of tuples: [(project path, BC, NTV, TRC, LFLAG, RARG, TRCtime, CARtime)]
         """
-        selCom = "SELECT Root.Path, Kernels.Binary, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, FlowMetrics.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.previous)+" AND Kernels.[Index] = 0 INNER JOIN Root ON Kernels.Parent = Root.UID;"
+        #selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, FlowMetrics.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
+        selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, Kernels.Hash FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
         rows = super().command(selCom, ret=True)
         traceList = []
         for row in rows:
-            # use the FlowMetrics ID to grab all kernels for a given trace
-            kernCom = "SELECT Kernels.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = "+str(row[4])+" ;"
-            kernels = super().command(kernCom, ret=True)
-            kernels = len(kernels)
             relPath = ""
             if "build" in row[0].split("/")[-1]:
                 relPath = row[0].split("/")[:-1]
             else:
-                relPath = row[0]
+                relPath = [row[0]]
+            while "" in relPath:
+                relPath.remove("")
+            relPath = "/".join(x for x in relPath)+"/"
             trcName = row[1]
-            bcName = trcName.split("_")[0]
-            ntvName = "_".join(x for x in trcName.split("_")[:2])
-            trcTime = row[2] if row[3] > 0 else 0
-            carTime = row[3] if row[3] > 0 else 0
-            traceList.append( (relPath, bcName, ntvName, trcName, ((trcTime+carTime)/kernels if kernels > 0 else 0)) )
+            bcName = "_".join(x for x in trcName.split("_")[:-2])
+            ntvName = "_".join(x for x in trcName.split("_")[:-1])            
+            LFLAG = row[2]
+            RARG  = row[3]
+            trcTime = row[4] if row[4] > 0 else 0
+            carTime = row[5] if row[5] > 0 else 0
+            h = int(row[6]) if row[6] is not None else 0
+            traceList.append( (relPath, bcName, ntvName, trcName, LFLAG, RARG, trcTime, carTime, h) )
 
-        # now find the traces with greatest density from each project
+        # now sort the incoming data into a map
+        traceMap = dict()
         for entry in traceList:
-            if self.pathProject.get(entry[0], None) is not None:
-                # resolve clash
-                existing = self.pathProject[entry[0]]
-                if existing[4] < entry[4]:
-                    self.pathProject[entry[0]] = entry
-            else:
-                self.pathProject[entry[0]] = entry
-        exit(self.pathProject)
+            if traceMap.get(entry[0], None) is None:
+                traceMap[entry[0]] = dict()
+            if traceMap[entry[0]].get(entry[1], None) is None:
+                traceMap[entry[0]][entry[1]] = dict()
+            if traceMap[entry[0]][entry[1]].get(entry[2], None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]] = dict()
+            if traceMap[entry[0]][entry[1]][entry[2]].get(entry[3], None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]][entry[3]] = dict()
+
+            if traceMap[entry[0]][entry[1]][entry[2]][entry[3]].get("Parameters", None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Parameters"] = (entry[4],entry[5])
+
+            if traceMap[entry[0]][entry[1]][entry[2]][entry[3]].get("Hashes", None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Hashes"] = set()
+            traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Hashes"].add( ctypes.c_long(entry[8]).value )
+
+            if traceMap[entry[0]][entry[1]][entry[2]][entry[3]].get("Kernels", None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Kernels"] = 0
+            traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Kernels"] += 1
+
+            if traceMap[entry[0]][entry[1]][entry[2]][entry[3]].get("Time", None) is None:
+                traceMap[entry[0]][entry[1]][entry[2]][entry[3]]["Time"] = int(entry[6])+int(entry[7])
+        for path in traceMap:
+            for BC in traceMap[path]:
+                for NTV in traceMap[path][BC]:
+                    for TRC in traceMap[path][BC][NTV]:
+                        traceMap[path][BC][NTV][TRC]["Hashes"] = list(traceMap[path][BC][NTV][TRC]["Hashes"])
+        with open("traceMap.json","w") as f:
+            json.dump(traceMap, f, indent=4)
+
+        return traceMap
 
 class ProjectSQL(SQLDataBase):
     def __init__(self, rootpath, abspath, inputdict):
@@ -265,7 +295,7 @@ class ProjectSQL(SQLDataBase):
             self.ID = oldPost[0] # format: [UID, Path, Author, Libraries]
             if self.author != oldPost[2] or self.libraries != oldPost[3]:
                 self.newEntry = True
-                self.logger.debug("Updating Libraries and Author from "+oldPost[2]+","+oldPost[3]+" to "+libraries+","+author)
+                self.logger.debug("Updating Libraries and Author from "+oldPost[2]+","+oldPost[3]+" to "+self.libraries+","+self.author)
                 super().command("UPDATE Root SET Libraries = '"+self.libraries+"', Author = '"+self.author+"' WHERE Uid = "+str(self.ID)+";")
             return self.ID
         else:

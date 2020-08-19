@@ -207,6 +207,11 @@ class Project:
                 elif RARGSDict.get("default", None) is not None:
                     self.Bitcodes[name]["RARGS"] = RARGSDict["default"]
 
+            if len(self.Bitcodes[name]["LFLAGS"]) == 0:
+                self.Bitcodes[name]["LFLAGS"] = [""]
+            if len(self.Bitcodes[name]["RARGS"]) == 0:
+                self.Bitcodes[name]["RARGS"] = [""]
+
     def parseErrors(self):
         """
         @brief Looks through build flow log for keywords to indicate problems with the build flow

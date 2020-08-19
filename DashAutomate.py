@@ -33,6 +33,8 @@ class DashAutomate:
         self.log = logging.getLogger("DashAutomate")
         # DB connection object for run-related SQL pushes
         self.DASQL = SQL.DashAutomateSQL(self.rootPath, self.args.previous_id)
+        # tree holds all existing traces in the specified previous runID
+        self.existingMap = None
         # thread one generates the project directory tree, builds each valid project, and starts each respective project's bitcode once the project is done
         self.thread1 = threading.Thread(target=self.ThreadOne)
         # flags indicating activity for each thread
@@ -100,10 +102,16 @@ class DashAutomate:
         @brief Initializes SQLDatabase class connection
         """
         # make a connection to the DB
-        SQL.SQLDataBase.__enabled__(self.args.commit)
+        rootHead = [x for x in self.rootPath.split("/") if x != ""][-1]
+        if (self.args.commit) and (rootHead != "Dash-Corpus"):
+            self.log.error("In order to commit changes to the database, this tool must be called in the Dash-Corpus directory.")
+            self.args.commit = False
+        SQL.SQLDataBase.__enabled__(self.args.commit or self.args.only_new or self.args.nightly_build)
         SQL.SQLDataBase.connect()
+        if self.args.nightly_build or self.args.only_new:
+            self.existingMap = self.DASQL.ExistingProjects()
         # now push the RunID
-        if self.args.run_id == "0":
+        if self.args.run_id == "0" and self.args.commit:
             self.DASQL.pushRunID()
             self.log.debug("RunID: "+str(self.DASQL.ID))
         else:
@@ -116,7 +124,7 @@ class DashAutomate:
         # first, initialize DASQL
         self.initSQL()
         self.thread1.start()
-        self.thread2.start()
+        #self.thread2.start()
 
     def addProjectReport(self, project):
         """
@@ -165,6 +173,79 @@ class DashAutomate:
         with open(self.reportFile, "w+") as report:
             json.dump(self.FULLREPORT, report, indent=4)
         
+    def toBuild(self, proj):
+        """
+        @brief Decides what can be built from the incoming project
+        """
+        # if this is not supposed to be a special build, just return the entire project
+        if not self.args.nightly_build and not self.args.only_new and not self.args.commit:
+            returnList = []
+            for BC in proj.Bitcodes:
+                returnList.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
+            return returnList
+        # process project path to see if it is eligible for pushing
+        if self.args.commit:
+            if "Dash-Corpus" not in proj.projectPath:
+                self.log.warn("Only projects within Dash-Corpus can be committed to the database. Skipping project "+proj.projectPath)
+                return []
+        relPath = Util.getPathDiff(self.rootPath, proj.projectPath)
+        nightlyBuild = []
+        onlyNew = []
+        existingBCs = dict()
+        if self.existingMap.get(relPath, None) is not None:
+            for BC in proj.Bitcodes:
+                existingBCname = BC.split(".")[0]
+                # compare each project bitcode to existing bitcode combos in the database
+                if self.existingMap[relPath].get(existingBCname, None) is not None:
+                    for NTV in self.existingMap[relPath][existingBCname]:
+                        for TRC in self.existingMap[relPath][existingBCname][NTV]:
+                            if existingBCs.get(BC, None) is None:
+                                existingBCs[BC] = dict()
+                                existingBCs[BC]["combos"] = set()
+                            existingBCs[BC]["combos"].add( (self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][0], self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][1]) )
+                else:
+                    # this bitcode is not in the database at all
+                    onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
+                    break
+        else:
+            for BC in proj.Bitcodes:
+                onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
+            print("Path not found in database, building entire bitcode")
+            return onlyNew
+
+        # now loop through all bitcodes that were found in the database and compare their traces to what this project has
+        # a project trace matches a trace already in the database if the path, BC and (LFLAG,RARG) all match 
+        for BC in existingBCs:
+            unfoundCombos = set()
+            # check LFLAG, RARG against incoming project for existence
+            for LFLAG in proj.Bitcodes[BC]["LFLAGS"]:
+                for RARG in proj.Bitcodes[BC]["RARGS"]:
+                    combo = (LFLAG,RARG)
+                    found = False
+                    for eCombo in existingBCs[BC]["combos"]:
+                        if combo == eCombo:
+                            found = True
+                    if not found:
+                        unfoundCombos.add( combo )
+            # now turn unique combos into lists that can be permuted
+            LF = set()
+            RR = set()
+            for comb in unfoundCombos:
+                LF.add(comb[0])
+                RR.add(comb[1])
+            if len(unfoundCombos) > 0:
+                if len(LF)*len(RR) == len(unfoundCombos):
+                    onlyNew.append( (BC, list(LF), list(RR)) )
+                else:
+                    # we have special combos of LF and RR that can't just be permuted by big lists. So we have to separate these into unique entries
+                    self.log.warn("Found a unique combination of LFLAGS and RARGS in bitcode "+BC+" that cannot be permuted. This bitcode will appear multiple times when finishing.")
+                    for comb in unfoundCombos:
+                        onlyNew.append( BC, [comb[0]], [comb[1]])
+        if self.args.only_new:
+            print("Returning only LFLAGS and RARGS combos not found in database: "+str(onlyNew))
+            return onlyNew
+        return nightlyBuild
+
     def getProjects(self):
         """
         @brief Acquires all project directories from subdirectory tree
@@ -175,17 +256,13 @@ class DashAutomate:
         projectPaths = set()
         if not self.args.no_subdirectories:
             for path in subdirectories:
-                #absPath = self.args.project_prefix+path
                 projectPaths = Util.recurseThroughSubDs(path, self.args, projectPaths)
         # local directory
         if compileD.get("Build", None) is not None:
             projectPaths.add(self.args.project_prefix)
 
         for path in projectPaths:
-            rawpath = path.split("/")
-            while "" in rawpath:
-                rawpath.remove("")
-            refinedPath = "/"+"/".join(x for x in rawpath)
+            refinedPath = "/"+"/".join(y for y in [x for x in path.split("/") if x != ""])
             self.projects.add( pj( self.rootPath, refinedPath, self.args.build, self.args.input_file) )
 
     def ThreadOne(self):
@@ -199,13 +276,13 @@ class DashAutomate:
         self.getProjects()
 
         # for each project, run its build command
-        returnProjects = []
         for proj in self.projects:
             if proj.Valid:
                 proj.run()
                 self.buildingProjects.add(proj)
             else:
                 self.log.error("Project is not valid: "+proj.projectPath)
+                self.addProjectReport(proj)
 
         doneProjects = set()
         while len(self.buildingProjects) > 0:
@@ -216,8 +293,9 @@ class DashAutomate:
                         self.log.error("Project is not valid: "+proj.projectPath)
                         self.addProjectReport(proj)
                     doneProjects.add(proj)
-                    for BC in proj.Bitcodes:
-                        newBC = Bc(self.args.project_prefix, proj.projectPath, BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"], self.DASQL.ID, proj.ID, self.args)
+                    BCsToBuild = self.toBuild(proj)
+                    for BC in BCsToBuild:
+                        newBC = Bc(self.args.project_prefix, proj.projectPath, BC[0], BC[1], BC[2], self.DASQL.ID, proj.ID, self.args)
                         if not newBC.errors:
                             newBC.run()
                             self.buildingBitcodes.add(newBC)
