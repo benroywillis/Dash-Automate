@@ -35,6 +35,8 @@ class DashAutomate:
         self.DASQL = SQL.DashAutomateSQL(self.rootPath, self.args.previous_id)
         # tree holds all existing traces in the specified previous runID
         self.existingMap = None
+        # set to hold project paths that have already had a project built
+        self.builtProjects = set()
         # thread one generates the project directory tree, builds each valid project, and starts each respective project's bitcode once the project is done
         self.thread1 = threading.Thread(target=self.ThreadOne)
         # flags indicating activity for each thread
@@ -177,74 +179,107 @@ class DashAutomate:
         """
         @brief Decides what can be built from the incoming project
         """
+        # process project path to see if it is eligible for pushing
+        if self.args.commit:
+            if "Dash-Corpus" not in proj.projectPath:
+                self.log.warn("Only projects within Dash-Corpus can be committed to the database. Skipping project "+proj.projectPath)
+                return []
         # if this is not supposed to be a special build, just return the entire project
         if not self.args.nightly_build and not self.args.only_new and not self.args.commit:
             returnList = []
             for BC in proj.Bitcodes:
                 returnList.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
             return returnList
-        # process project path to see if it is eligible for pushing
-        if self.args.commit:
-            if "Dash-Corpus" not in proj.projectPath:
-                self.log.warn("Only projects within Dash-Corpus can be committed to the database. Skipping project "+proj.projectPath)
-                return []
-        relPath = Util.getPathDiff(self.rootPath, proj.projectPath)
-        nightlyBuild = []
-        onlyNew = []
-        existingBCs = dict()
-        if self.existingMap.get(relPath, None) is not None:
-            for BC in proj.Bitcodes:
-                existingBCname = BC.split(".")[0]
-                # compare each project bitcode to existing bitcode combos in the database
-                if self.existingMap[relPath].get(existingBCname, None) is not None:
-                    for NTV in self.existingMap[relPath][existingBCname]:
-                        for TRC in self.existingMap[relPath][existingBCname][NTV]:
-                            if existingBCs.get(BC, None) is None:
-                                existingBCs[BC] = dict()
-                                existingBCs[BC]["combos"] = set()
-                            existingBCs[BC]["combos"].add( (self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][0], self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][1]) )
-                else:
-                    # this bitcode is not in the database at all
-                    onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
-                    break
-        else:
-            for BC in proj.Bitcodes:
-                onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
-            print("Path not found in database, building entire bitcode")
-            return onlyNew
 
-        # now loop through all bitcodes that were found in the database and compare their traces to what this project has
-        # a project trace matches a trace already in the database if the path, BC and (LFLAG,RARG) all match 
-        for BC in existingBCs:
-            unfoundCombos = set()
-            # check LFLAG, RARG against incoming project for existence
-            for LFLAG in proj.Bitcodes[BC]["LFLAGS"]:
-                for RARG in proj.Bitcodes[BC]["RARGS"]:
-                    combo = (LFLAG,RARG)
-                    found = False
-                    for eCombo in existingBCs[BC]["combos"]:
-                        if combo == eCombo:
-                            found = True
-                    if not found:
-                        unfoundCombos.add( combo )
-            # now turn unique combos into lists that can be permuted
-            LF = set()
-            RR = set()
-            for comb in unfoundCombos:
-                LF.add(comb[0])
-                RR.add(comb[1])
-            if len(unfoundCombos) > 0:
-                if len(LF)*len(RR) == len(unfoundCombos):
-                    onlyNew.append( (BC, list(LF), list(RR)) )
-                else:
-                    # we have special combos of LF and RR that can't just be permuted by big lists. So we have to separate these into unique entries
-                    self.log.warn("Found a unique combination of LFLAGS and RARGS in bitcode "+BC+" that cannot be permuted. This bitcode will appear multiple times when finishing.")
-                    for comb in unfoundCombos:
-                        onlyNew.append( BC, [comb[0]], [comb[1]])
-        if self.args.only_new:
+        relPath = Util.getPathDiff(self.rootPath, proj.projectPath)
+        ## run from the highest density project from each makefile
+        # this project's traces will be evaluated for the one with highest kernel/time density. That project will be chosen
+        if self.args.nightly_build:
+            nightlyBuild = []
+            minimumBitcode = ( None, (None,None), 0 )
+            if len( self.builtProjects & {proj.projectPath} ) == 0:
+                # have to find highest-density trace
+                if self.existingMap.get(relPath, None) is not None:
+                    for BC in proj.Bitcodes:
+                        existingBCname = BC.split(".")[0]
+                        if self.existingMap[relPath].get(existingBCname, None) is not None:
+                            for NTV in self.existingMap[relPath][existingBCname]:
+                                for TRC in self.existingMap[relPath][existingBCname][NTV]:
+                                    TRCentry = self.existingMap[relPath][existingBCname][NTV][TRC]
+                                    density = TRCentry["Kernels"] / TRCentry["Time"] if TRCentry["Time"] > 0 else 0 
+                                    if density > minimumBitcode[2]:
+                                        minimumBitcode = ( BC, self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"], density)
+                self.builtProjects.add(relPath)
+            if minimumBitcode[0] == None:
+                # nothing to be done here, send back nothing
+                self.log.debug("Returning no bitcodes because none were found in the database.")
+                return nightlyBuild
+            else:
+                # find the minimum bitcode configuration and build that
+                for BC in proj.Bitcodes:
+                    if BC == minimumBitcode[0]:
+                        for LFLAG in proj.Bitcodes[BC]["LFLAGS"]:
+                            for RARG in proj.Bitcodes[BC]["RARGS"]:
+                                if (LFLAG,RARG) == minimumBitcode[1]:
+                                    self.log.debug("Returning bitcode "+minimumBitcode[0]+" with parameters "+minimumBitcode[1][0]+" and "+minimumBitcode[1][1]+".")
+                                    return [(BC, [LFLAG], [RARG])]
+                return []
+
+        elif self.args.only_new:
+        # build dictionary of projects in the database
+            onlyNew = []
+            existingBCs = dict()
+            if self.existingMap.get(relPath, None) is not None:
+                for BC in proj.Bitcodes:
+                    existingBCname = BC.split(".")[0]
+                    # compare each project bitcode to existing bitcode combos in the database
+                    if self.existingMap[relPath].get(existingBCname, None) is not None:
+                        for NTV in self.existingMap[relPath][existingBCname]:
+                            for TRC in self.existingMap[relPath][existingBCname][NTV]:
+                                if existingBCs.get(BC, None) is None:
+                                    existingBCs[BC] = dict()
+                                    existingBCs[BC]["combos"] = set()
+                                existingBCs[BC]["combos"].add( (self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][0], self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][1]) )
+                    else:
+                        # this bitcode is not in the database at all
+                        onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
+                        break
+            else:
+                for BC in proj.Bitcodes:
+                    onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
+                return onlyNew
+
+            ## only new projects
+            # now loop through all bitcodes that were found in the database and compare their traces to what this project has
+            # a project trace matches a trace already in the database if the path, BC and (LFLAG,RARG) all match 
+            for BC in existingBCs:
+                unfoundCombos = set()
+                # check LFLAG, RARG against incoming project for existence
+                for LFLAG in proj.Bitcodes[BC]["LFLAGS"]:
+                    for RARG in proj.Bitcodes[BC]["RARGS"]:
+                        combo = (LFLAG,RARG)
+                        found = False
+                        for eCombo in existingBCs[BC]["combos"]:
+                            if combo == eCombo:
+                                found = True
+                        if not found:
+                            unfoundCombos.add( combo )
+                # now turn unique combos into lists that can be permuted
+                LF = set()
+                RR = set()
+                for comb in unfoundCombos:
+                    LF.add(comb[0])
+                    RR.add(comb[1])
+                if len(unfoundCombos) > 0:
+                    if len(LF)*len(RR) == len(unfoundCombos):
+                        onlyNew.append( (BC, list(LF), list(RR)) )
+                    else:
+                        # we have special combos of LF and RR that can't just be permuted by big lists. So we have to separate these into unique entries
+                        self.log.warn("Found a unique combination of LFLAGS and RARGS in bitcode "+BC+" that cannot be permuted. This bitcode will appear multiple times when finishing.")
+                        for comb in unfoundCombos:
+                            onlyNew.append( BC, [comb[0]], [comb[1]])
             print("Returning only LFLAGS and RARGS combos not found in database: "+str(onlyNew))
             return onlyNew
-        return nightlyBuild
 
     def getProjects(self):
         """
