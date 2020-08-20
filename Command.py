@@ -276,6 +276,6 @@ class Command:
             bashFile = Name
         else:
             bashFile = self.scriptsPath+Name
-        with open(bashFile, "w+") as f:
+        with open(bashFile, "w") as f:
             f.write(bashString)
         return bashFile
