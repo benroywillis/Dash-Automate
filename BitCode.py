@@ -326,7 +326,7 @@ class BitCode:
         tikFile = self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["tik"]["Name"]
         tikFileCheck = "[ -f "+tikFile+" ]"
         tikSwapCommand = self.tikSwapBinary+" -t "+tikFile+" -b "+BCfile+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]
-        compilationCommand = self.CXX+" -lz -lpthread -fuse-ld="+self.LD+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+tikFile+" "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]+" "+self.Backend+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]
+        compilationCommand = self.CXX+" -O3 -lz -lpthread -fuse-ld="+self.LD+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+tikFile+" "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]+" "+self.Backend+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]
         runCommand = self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]+" "+self.BCDict[BC][NTV][TRC]["RARG"]
         return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikFileCheck, "tikFileCheck") + \
                         self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikSwapCommand, "TikSwap") + \
