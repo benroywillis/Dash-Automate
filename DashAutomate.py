@@ -106,8 +106,11 @@ class DashAutomate:
         if self.args.run_id == "0":
             self.DASQL.pushRunID()
             self.log.debug("RunID: "+str(self.DASQL.ID))
+            self.reportFile = os.getcwd()+"/FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json"
+
         else:
             self.DASQL.ID = self.args.run_id
+            self.reportFile = os.getcwd()+"/FULLREPORT_"+str(self.DASQL.ID)+"_"+self.args.build+".json"
 
     def run(self):
         """
