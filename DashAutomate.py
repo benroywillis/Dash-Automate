@@ -129,7 +129,7 @@ class DashAutomate:
         # first, initialize DASQL
         self.initSQL()
         self.thread1.start()
-        #self.thread2.start()
+        self.thread2.start()
 
     def addProjectReport(self, project):
         """
@@ -188,7 +188,7 @@ class DashAutomate:
                 self.log.warn("Only projects within Dash-Corpus can be committed to the database. Skipping project "+proj.projectPath)
                 return []
         # if this is not supposed to be a special build, just return the entire project
-        if not self.args.nightly_build and not self.args.only_new and not self.args.commit:
+        if not self.args.nightly_build and not self.args.only_new:
             returnList = []
             for BC in proj.Bitcodes:
                 returnList.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
@@ -244,10 +244,12 @@ class DashAutomate:
                                     existingBCs[BC]["combos"] = set()
                                 existingBCs[BC]["combos"].add( (self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][0], self.existingMap[relPath][existingBCname][NTV][TRC]["Parameters"][1]) )
                     else:
+                        self.log.debug("Bitcode "+existingBCname+" not found in database")
                         # this bitcode is not in the database at all
                         onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
                         break
             else:
+                self.log.debug("Path "+relPath+" not found in database")
                 for BC in proj.Bitcodes:
                     onlyNew.append( (BC, proj.Bitcodes[BC]["LFLAGS"], proj.Bitcodes[BC]["RARGS"]) )
                 return onlyNew
@@ -281,7 +283,7 @@ class DashAutomate:
                         self.log.warn("Found a unique combination of LFLAGS and RARGS in bitcode "+BC+" that cannot be permuted. This bitcode will appear multiple times when finishing.")
                         for comb in unfoundCombos:
                             onlyNew.append( BC, [comb[0]], [comb[1]])
-            print("Returning only LFLAGS and RARGS combos not found in database: "+str(onlyNew))
+            self.log.debug("Returning only LFLAGS and RARGS combos not found in database: "+str(onlyNew))
             return onlyNew
 
     def getProjects(self):

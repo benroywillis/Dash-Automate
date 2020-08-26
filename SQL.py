@@ -198,6 +198,7 @@ class DashAutomateSQL(SQLDataBase):
         @brief Creates a list of programs that summarize all traces in the current RunID
 
         The return list is composed of tuples: [(project path, BC, NTV, TRC, LFLAG, RARG, TRCtime, CARtime)]
+        NOTE: the TRC name is actually the same as the NTV name, or binary name. The pushing protocol was changed to assign binary name to trace name after RunID 2300.
         """
         #selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, FlowMetrics.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
         selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, Kernels.Hash FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
@@ -208,13 +209,13 @@ class DashAutomateSQL(SQLDataBase):
             if "build" in row[0].split("/")[-1]:
                 relPath = row[0].split("/")[:-1]
             else:
-                relPath = [row[0]]
+                relPath = row[0].split("/")
             while "" in relPath:
                 relPath.remove("")
             relPath = "/".join(x for x in relPath)+"/"
-            trcName = row[1]
+            trcName = row[1].split(".")[0]+"_"+str(len(traceList))+".trc"
             bcName = "_".join(x for x in trcName.split("_")[:-2])
-            ntvName = "_".join(x for x in trcName.split("_")[:-1])            
+            ntvName = "_".join(x for x in trcName.split("_")[:-1])
             LFLAG = row[2]
             RARG  = row[3]
             trcTime = row[4] if row[4] > 0 else 0
