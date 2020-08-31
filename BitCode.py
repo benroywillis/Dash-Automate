@@ -222,7 +222,9 @@ class BitCode:
         @param[in] prefixFiles  List of files that need to be copied into the tmp folder at script time for the script to run properly. Entries should point to the files where they stand before the script runs.
         @param[in] suffixFiles  List of files that need to be copied out of the tmp filder after the script commands are done. Entries should point to the files where they stand in the tmp folder.
         """
-        prefix = "hostname ; sleep 1 ; cd /tmp/ ; "
+        # interrupt handler to ensure the tmp folder is always deleted
+        prefix =  "except()\n{\n\techo \"Script interrupted! Destroying tmp folder.\"\n\trm -rf "+tmpFolder+"\n\texit\n}\ntrap except 2 9 15 # catch SIGINT SIGKILL SIGTERM\n\n"
+        prefix += "hostname ; sleep 1 ; cd /tmp/ ; "
         prefix += "if [ -d \""+tmpFolder+"\" ]; then\n\techo \"Removing old folder!\"\n\trm -rf "+tmpFolder+"\nfi\n"
         prefix += Util.waitOnFile(tmpFolder, tmpFolder, appear=False, message="Waiting for old folder to disappear!")
         prefix += "mkdir "+tmpFolder+" ; " # make new folder and wait for it to be there
