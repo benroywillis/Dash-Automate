@@ -32,8 +32,8 @@ Or you can use the forwarding script
 
 ## Quick-Start Guide
 Dash-Automate requires 2 things from the user: a compile.json file, and a GNU Makefile that uses the Dash-Ontology environment.
-#### Vocabulary
-First a little vocabulary. We will be using the following terms frequently in this guide.
+### Vocabulary
+We will be using the following terms frequently in this guide.
 1. Bitcode: a special kind of output from a clang compiler pass. This file must end with either the `.bc` or `.o` file suffix. The contents of this file is LLVM-IR and can be confirmed by running the following command on the file
 ```
 file output.bc
@@ -41,14 +41,14 @@ file output.bc
    - If the output of this command starts with `ELF`, this is not a bitcode file.
    - If the output of this command has `LLVM IR bitcode` in it, this is a bitcode file.
 2. dynamic links: any flag in a compiler command that starts with `-l`. The use of dynamic links in your compilation flow should only be used when absolutely necessary.
-3. bitcode archive: A static library of LLVM IR objects. They have a `.a` suffix. The use of these archives should be used to the fullest extent possible in your compilation flow.
-#### Simple Project Criteria
+3. bitcode archive: A static library of LLVM IR objects. They have a `.a` suffix. The use of these archives should be done to the fullest extent possible in your compilation flow.
+### Simple Project Criteria
 If you satisfy the following criteria then you only need to read the first bullet of the `Build` and `User` keys of the `compile.json` section, then you may move on to the `Makefile` section.
 - You are building a single project that has no subdirectories.
 - You only require the command `make` to build your project.
 - You are not using any dynamic links in your compilation flow.
 - Your binary requires no runtime arguments.
-#### compile.json
+### compile.json
 An input json file is required to inform Dash-Automate about compile-time and runtime flags specific to the project. Dash-Automate will, by default, look for a file called compile.json. This name can be changed with the ` -i ` flag.
 
 Your compile.json file can contain up to four fields.
@@ -68,6 +68,6 @@ Your compile.json file can contain up to four fields.
      - Libraries: Value must be a list of strings. Define all APIs used here.
      - Comments: Provide a brief summary of what this project is doing.
      - Date: Any form.
-     
-#### Makefile
+
+### Makefile
 The makefile must respect the TraceAtlas environment variables. This is required for the TraceAtlas toolchain to work correctly. Currently only GNU Makefiles are supported.

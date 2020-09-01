@@ -157,7 +157,7 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["SUCCESS"] = False
                 # tikSwap information
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"] = "tik_"+TRCname+".ll"
+                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"] = "tikSwap_"+TRCname+".ll"
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["buildPath"] = self.buildPath+"tikSwap_"+TRCname+".ll"
                 tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"]+"/"
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["tmpFolder"] = tmpFolder 
@@ -308,7 +308,7 @@ class BitCode:
         BCfile = self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"]+self.BCDict[BC]["Name"]
 
         tikCommand = self.tikBinary+" -f LLVM -j "+kernelFile+" -t=LLVM -o "+self.BCDict[BC][NTV][TRC]["tik"]["tmpPath"]+" -S -v 5 -l "+self.BCDict[BC][NTV][TRC]["tik"]["Log"]+" "+BCfile
-        return prefix +self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], tikCommand, "tik" )+ suffix
+        return prefix +self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"], tikCommand, "tik" )+ suffix
 
     def makeTikSwapCommand(self, BC, NTV, TRC):
         """
