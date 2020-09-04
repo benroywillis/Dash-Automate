@@ -345,7 +345,7 @@ class BitCode:
         
         kernelFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         traceFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]
+        DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]+" --nb"
         return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], DEcommand, "DagExtractor") + suffix
 
     def makeWScommand(self, BC, NTV, TRC):
