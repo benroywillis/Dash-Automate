@@ -772,10 +772,18 @@ def RunJob(command, SLURM=True):
     """
     @brief  Class helper function to bash a command and get its ID back
     """
-    proc = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
     if SLURM:
+        failure = False
         while True:
-            standardout = proc.communicate()
+            proc = sp.Popen(command, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+            # the file object attached to this process is not guaranteed
+            try:
+                standardout = proc.communicate()
+            except Exception as e:
+                globLog.error("Lost the file object when trying to communicate: "+str(e))
+                failure = True
+                time.sleep(1)
+                continue
             for entry in flatten(standardout):
                 ID = re.findall("(\d+)", entry.decode("utf-8"))
                 if len(ID) > 0:

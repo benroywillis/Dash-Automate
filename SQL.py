@@ -200,7 +200,6 @@ class DashAutomateSQL(SQLDataBase):
         The return list is composed of tuples: [(project path, BC, NTV, TRC, LFLAG, RARG, TRCtime, CARtime)]
         NOTE: the TRC name is actually the same as the NTV name, or binary name. The pushing protocol was changed to assign binary name to trace name after RunID 2300.
         """
-        #selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, FlowMetrics.UID FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
         selCom = "SELECT Root.Path, Kernels.Binary, Kernels.LFLAG, Kernels.RARG, FlowMetrics.TraceTime, FlowMetrics.KernelDetectTime, Kernels.Hash FROM Kernels INNER JOIN FlowMetrics ON Kernels.FlowId = FlowMetrics.UID AND Kernels.RunId = "+str(self.oldID)+" INNER JOIN Root ON Kernels.Parent = Root.UID;"
         rows = super().command(selCom, ret=True)
         traceList = []
