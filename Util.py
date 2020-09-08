@@ -399,7 +399,8 @@ def getRARGSDict(jsonDict):
                             if RARGS[key] == None:
                                 return None
                 else:
-                    exit("The \"Commands\" field in the input JSON file needs to be a dictionary, with a bitcode file name as key (no suffix) and run command as value.".format(key))
+                    globLog.critical("The \"Commands\" field in the input JSON file needs to be a dictionary, with a bitcode file name as key (no suffix) and run command as value.\n\tDash-Automate is now done. Please interrupt the process with Ctrl+C")
+                    EXIT_TOOL()
             else:
                 globLog.critical("Your input JSON Run field needs at least a \"Commands\" field.")
                 return None
@@ -909,5 +910,6 @@ def EXIT_TOOL():
     """
     @brief Cleans up before the tool exits.
     """
+    # close both threads somehow...
     # nothing special for now
     exit()
