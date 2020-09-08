@@ -160,6 +160,8 @@ class DashAutomate:
             self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+            self.FULLREPORT[relPath]["Report"]["Tik Errors"] = dict()
+            self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
         self.FULLREPORT[relPath][bitcode.BC] = bitcode.report()
         self.FULLREPORT[relPath]["Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
         self.FULLREPORT[relPath]["Report"]["Tik Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Traces"]

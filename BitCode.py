@@ -556,6 +556,12 @@ class BitCode:
                             reportDict[BC][NTV][TRC]["Tik Successes"] = successes[1]
                             reportDict["Total"]["Tik Success Kernels"] += reportDict[BC][NTV][TRC]["Tik Success Kernels"]
                             reportDict["Total"]["Tik Successes"] += reportDict[BC][NTV][TRC]["Tik Successes"]
+                            self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"] = Util.getTikSwapErrors(self.BCDict[BC][NTV][TRC]["tikSwap"]["Log"])
+                            reportDict[BC][NTV][TRC]["TikSwap Errors"] = self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"]
+                            for key in self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"]:
+                                if reportDict["Total"]["TikSwap Errors"].get(key, None) is None:
+                                    reportDict["Total"]["TikSwap Errors"][key] = 0
+                                reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
 
         return reportDict
 
