@@ -34,7 +34,7 @@ Or you can use the forwarding script
 Dash-Automate requires 2 things from the user: a compile.json file, and a GNU Makefile that uses the TraceAtlas environment.
 ### Vocabulary
 We will be using the following terms frequently in this guide.
-1. Bitcode: a special kind of output from a clang compiler pass. This file must end with either the `.bc` or `.o` file suffix. The contents of this file is LLVM-IR and can be confirmed by running the following command on the file
+1. Bitcode: a special kind of output file from a clang compiler pass. This file must end with either the `.bc` or `.o` file suffix. The contents of this file is LLVM-IR and can be confirmed by running the following command on the file
 ```
 file output.bc
 ```
@@ -65,7 +65,7 @@ Your compile.json file can contain up to four fields.
      - As a list of strings: Each string will be applied to every bitcode coming out of your Makefile. For example, if 1 bitcode is produced by the Makefile, and a list of three strings is defined here, that bitcode will be run three times, each time with a unique list entry as the arguments. In another example, if 3 bitcodes are produced by your Makefile, and a list of three strings is defined here, then each bitcode will be run 3 times, for a total of 9 traces.
      - As a dictionary of keys: Each key in the dictionary should refer to a bitcode name from the Makefile, just like the dictionary defined for the LFLAGS section. The values of these keys can be either lists of strings or just a string. 
 3. Subdirectories
-   * This key defines the subdirectories for Dash-Automate to recurse into. It must be a list of strings. Each string should be a relative path to a child directory, treating the current directory as root.
+   * This key defines the subdirectories for Dash-Automate to recurse into. It is not required to be defined. If it is defined, it must be a list of strings. Each string should be a relative path to a child directory, treating the current directory as root.
 4. User
    * Defines the user information. There are four fields, all are required:
      - Author: Value must be a string. 
@@ -77,7 +77,7 @@ Your compile.json file can contain up to four fields.
 In this section the rules for project buildflow and file I/O are defined. If these rules are not respected, undefined behavior will occur.
 
 1. Buildflow
-   * Currently, only GNU Makefiles are supported. Your Makefile must respect the TraceAtlas environment variables. We recommend that you define the variables yourself using the syntax in the following example:
+   * Currently, only GNU Makefiles are supported. Your Makefile must use the TraceAtlas environment variables. We recommend that you define the variables yourself using the syntax in the following example:
 ```
 CC ?= gcc
 ```
