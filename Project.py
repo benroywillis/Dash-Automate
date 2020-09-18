@@ -103,6 +103,8 @@ class Project:
             if self.compileJSON["Build"].get("Commands", None) is not None:
                 compileCommands = self.compileJSON["Build"]["Commands"]
 
+        if compileCommands == None:
+            return "make -k"
         if isinstance(compileCommands, str):
             comm = Util.replaceVariables(compileCommands, self.compileJSON["Build"].get("Variables", None))
             # process the given command for emptiness  -k flag
@@ -119,8 +121,6 @@ class Project:
             logging.critical("Compile commands must be a string or list.")
             self.Valid = False
 
-        if compileCommands == None:
-            returnString = "make -k"
         return returnString
 
     def run(self):
