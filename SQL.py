@@ -374,10 +374,14 @@ class BitcodeSQL(SQLDataBase):
                             if tikFile is not None:
                                 tikBin = tikFile.read()
                                 if super().enabled:
-                                    super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
-                                    IDtuple = super().command("SELECT UID from tik;", ret=True)
-                                    self.tikID = IDtuple[-1][0]
-                                    self.logger.debug("tik ID: "+str(self.tikID))
+                                    try:
+                                        super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
+                                        IDtuple = super().command("SELECT UID from tik;", ret=True)
+                                        self.tikID = IDtuple[-1][0]
+                                        self.logger.debug("tik ID: "+str(self.tikID))
+                                    except Exception as e:
+                                        self.logger.error("Tik binary push failed with error:\n"+str(e))
+                                        self.tikID = -1
                             # tikswap data
                             # nothing for now
 
