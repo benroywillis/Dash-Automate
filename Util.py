@@ -148,6 +148,7 @@ def argumentParse():
     arg_parser.add_argument("-pid", "--previous-id", default="0", help="Specify the RunID use when calculating build diffs or project list for nightly builds.")
     arg_parser.add_argument("-nb", "--nightly-build", action="store_true", help="Enable nightly build, designed to run only the projects necessary to fully test the TraceAtlas toolchain.")
     arg_parser.add_argument("-on", "--only-new", action="store_true", help="Only build projects not present in the SQL database under RunID --previous-id.")
+    arg_parser.add_argument("-dbf", "--database-file", default="/mnt/nobackup-09/Dash/Sources/tools/database/.login", help="Specify absolute path to database login file.")
     # logging
     arg_parser.add_argument("-ll", "--log-level", default="20", help="Set log level. Valid settings are 0 (Everything), 10 (DEBUG), 20 (INFO), 30 (WARNING), 40 (ERROR), and 50 (CRITICAL).")
     arg_parser.add_argument("-lf", "--log-file", default=os.getcwd()+"/DashAutomate.log", help="Set output log file name.")
@@ -795,6 +796,17 @@ def RunJob(command, SLURM=True):
         return proc.pid
 
 ### SQL
+def getDBParameters(path):
+    """
+    @brief Reads the DB connection parameters
+    """
+    with open(path, "r") as f:
+        params = list()
+        for line in f:
+            answer = line.strip("\n").split("=")
+            params.append( answer[1] )
+    return params
+
 def getGitRepoIDs(path):
     """
     @brief Retrieves the most recent hash of the git repository for Dash-Corpus and its submodules at tool runtime

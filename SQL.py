@@ -17,13 +17,13 @@ class SQLDataBase:
     if DB_COUNT > DB_MAX_COUNT:
         raise ValueError("Cannot create more than one DB connection at a time!")
     # connection parameters
-    enabled = True
-    server = 'spade-11.fulton.asu.edu'
-    database = "dash"
-    username = "SA"
-    password = "dash!sTraces"
-    cnxn = None
-    cursor = None
+    enabled  = False
+    username = None
+    password = None
+    database = None
+    server   = None
+    cnxn     = None
+    cursor   = None
 
     @classmethod
     def __enabled__(cls, flag):
@@ -70,6 +70,15 @@ class SQLDataBase:
             else:
                 raise ValueError("Cannot connect to another database while a connection is still active!")
             cls.cursor = cls.cnxn.cursor()
+
+    @classmethod
+    def checkConnection(cls):
+        """
+        @brief Checks the connection and attempts to reset and reestablish if necessary
+        """
+        if cls.enabled:
+            if cls.cnxn == None:
+                cls.connect()
 
     @classmethod
     def disconnect(cls):

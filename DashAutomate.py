@@ -103,11 +103,18 @@ class DashAutomate:
         """
         @brief Initializes SQLDatabase class connection
         """
+        params = Util.getDBParameters(self.args.database_file)
+        SQL.SQLDataBase.__username__(params[0])
+        SQL.SQLDataBase.__password__(params[1])
+        SQL.SQLDataBase.__database__(params[2])
+        SQL.SQLDataBase.__server__(params[3])
+        
         # make a connection to the DB
         rootHead = [x for x in self.rootPath.split("/") if x != ""][-1]
         if (self.args.commit) and (rootHead != "Dash-Corpus"):
             self.log.error("In order to commit changes to the database, this tool must be called in the Dash-Corpus directory.")
             self.args.commit = False
+            return
         SQL.SQLDataBase.__enabled__(self.args.commit or self.args.only_new or self.args.nightly_build)
         SQL.SQLDataBase.connect()
         if self.args.nightly_build or self.args.only_new:
