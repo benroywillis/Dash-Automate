@@ -134,6 +134,8 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPath"] = tmpFolder+"kernel_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathpigfile"] = self.buildPath+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathpigfile"] = tmpFolder+"pig_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathBBfile"] = self.buildPath+"BB_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathintermediate"] = self.buildPath+"kernInt_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathintermediate"] = tmpFolder+"kernInt_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Script"] = self.buildPath+"scripts/Cartographer_"+TRCname+".sh"
@@ -288,11 +290,11 @@ class BitCode:
         @retval     commandList List of commands ready to be put into a bash script.
                     returnFiles Names of each bash script to be made. Indices of each list match each other.
         """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]] )
         
         TRCfile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         BCfile =  self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        command = "time -p "+self.Cartographer+" -i "+TRCfile+" -k "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -b "+BCfile
+        command = "time -p "+self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -k "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -D "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]
         if not self.args.no_labeling:
             command += " -L --nb "
         else:
