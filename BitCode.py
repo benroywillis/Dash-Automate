@@ -402,7 +402,7 @@ class BitCode:
                             # tikSwap is tied to tik, therefore it immediately follows tik within brackets
                             # tik, DE, func, WS, KH all tied to the cartographer script
                             ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"] ), \
-                                            [ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"] ) ], \
+                                            [ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"], timeLimit=600 ) ], \
                                             self.Command.constructBashFile(TRCdict["DE"]["Script"], TRCdict["DE"]["Command"], TRCdict["DE"]["Log"] ), \
                                             self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
                                             self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \

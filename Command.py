@@ -17,7 +17,7 @@ Scripts and Commands come in pairs: The script contains useful work and the comm
 The scripts and commands can be build for either SLURM or just the local bashing software.
 """
 class Command:
-    def __init__(self, sourcePath, scriptPath="", logFilePath="", targetPath="", SLURM=True, partition=[], environment = ""):
+    def __init__(self, sourcePath, scriptPath="", logFilePath="", targetPath="", SLURM=True, partition=[], environment = "", timeLimit = None):
         """
         @param[in] sourcePath   Path to the directory containing the files that will serve as input parameters
         @param[in] scriptPath   Path to the folder that will contain the scripts
@@ -25,6 +25,8 @@ class Command:
         @param[in] targetpath   Absolute path to the directory that the output files will go
         @param[in] SLURM        Flag setting the bash files targeted at SLURM or the script software. Right now this is the only bashing interface supported
         @param[in] partition    List of strings specifying which SLURM partition to run scripts on
+        @param[in] environment  String for the environment that is set before a script is run
+        @param[in] timeLimit    Integer for the time limit, in seconds, to be put on each script by default.
         """
         # absolute path to the directory holding our input files
         self.sourcePath = sourcePath
@@ -34,6 +36,7 @@ class Command:
         self.SLURM = SLURM
         self.partition = ",".join(x for x in partition)
         self.environment = environment
+        self.timeLimit = timeLimit if timeLimit is not None else 0
 
     def buildTrees(self, scriptTree, globalJobIDs=[], dependencyID=""):
         """
@@ -228,7 +231,7 @@ class Command:
                 files.remove(f)
             toRemove.clear()
 
-    def constructBashFile(self, Name, commands, logfile="", tasks=1, environment=""):
+    def constructBashFile(self, Name, commands, logfile="", tasks=1, environment="", timeLimit=None):
         """
         @brief Accepts the commands as input and constructs a bash file to run the commands in
         @param[in] Name         String containing the bash file's name. If Name starts with '/', it is assumed to be the absolute path and self.scriptsPath is not used.
@@ -238,6 +241,9 @@ class Command:
                                 If commands is a list, it will be split by entry: every entry will be treated as one command.
         @param[in] logfile      Optional argument specifying the logfile name in absolute path form
         @param[in] tasks        Number of simultaneous threads this job is expected to demand
+        @param[in] environment  Environment to be set for the script.
+        @param[in] tasks        Number of simultaneous threads this job is expected to demand.
+        @param[in] timeLimit    Integer of the maximum allowable time, in seconds, for this script to run. 
         @retval    BashFile     Path to the bashfile that has been made.
         """
         # if not set, set environment to init parameter
@@ -257,7 +263,11 @@ class Command:
             bashString += "#SBATCH --output="+logfile+"\n"
             bashString += "#SBATCH --error="+logfile+"\n"
             # set maximum time for a given script to be 1 day
-            bashString += "#SBATCH --time=1440\n"
+            if timeLimit is not None or self.timeLimit is not 0:
+                if timeLimit is not None:
+                    bashString += "#SBATCH --time="+str(timeLimit)+"\n"
+                else:
+                    bashString += "#SBATCH --time="+str(self.timeLimit)+"\n"
             if len(environment) > 0:
                 bashString += "export "+environment+"\n"
 
