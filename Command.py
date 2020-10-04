@@ -26,7 +26,7 @@ class Command:
         @param[in] SLURM        Flag setting the bash files targeted at SLURM or the script software. Right now this is the only bashing interface supported
         @param[in] partition    List of strings specifying which SLURM partition to run scripts on
         @param[in] environment  String for the environment that is set before a script is run
-        @param[in] timeLimit    Integer for the time limit, in seconds, to be put on each script by default.
+        @param[in] timeLimit    Integer for the time limit, in minutes, to be put on each script by default.
         """
         # absolute path to the directory holding our input files
         self.sourcePath = sourcePath
@@ -243,7 +243,7 @@ class Command:
         @param[in] tasks        Number of simultaneous threads this job is expected to demand
         @param[in] environment  Environment to be set for the script.
         @param[in] tasks        Number of simultaneous threads this job is expected to demand.
-        @param[in] timeLimit    Integer of the maximum allowable time, in seconds, for this script to run. 
+        @param[in] timeLimit    Integer of the maximum allowable time, in minutes, for this script to run. 
         @retval    BashFile     Path to the bashfile that has been made.
         """
         # if not set, set environment to init parameter
