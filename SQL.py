@@ -72,14 +72,14 @@ class SQLDataBase:
             cls.cursor = cls.cnxn.cursor()
 
     @classmethod
-    def checkConnection(cls):
+    def reconnect(cls):
         """
         @brief Checks the connection and attempts to reset and reestablish if necessary
         """
         if cls.enabled:
-            if cls.cnxn == None:
-                cls.connect()
-
+            cls.disconnect()
+            cls.connect()
+            
     @classmethod
     def disconnect(cls):
         """
@@ -108,6 +108,9 @@ class SQLDataBase:
                 cls.cursor.execute(command)
             except Exception as e:
                 globLog.critical("Exception thrown when pushing SQL command: \n\t"+str(e))
+                if e[0] == "08S01":
+                    # communication link failure
+                    cls.reconnect()
                 return 
 
             if ret:
@@ -116,6 +119,9 @@ class SQLDataBase:
                 except Exception as e:
                     globLog.critical("Exception thrown when requesting SQL return data:\n\t"+str(e))
                     row = []
+                    if e[0] == "08S01":
+                        # communication link failure
+                        cls.reconnect()
                 return row
             else:
                 return
@@ -138,11 +144,17 @@ class SQLDataBase:
                 cls.cursor.execute("select SCOPE_IDENTITY()")
             except Exception as e:
                 globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
+                if e[0] == "08S01":
+                    # communication link failure
+                    cls.reconnect()
                 return 
             try:
                 row = cls.cursor.fetchall()
             except Exception as e:
                 globLog.error("When getting last ID of SQL push: "+str(e))
+                if e[0] == "08S01":
+                    # communication link failure
+                    cls.reconnect()
                 return -1
             
             globLog.debug("ID -> "+str(row[0][0]))
@@ -161,6 +173,9 @@ class SQLDataBase:
                 cls.cursor.commit()
             except Exception as e:
                 globLog.critical("Exception thrown when running cursor.commit()':\n\t"+str(e))
+                if e[0] == "08S01":
+                    # communication link failure
+                    cls.reconnect()
                 return 
             
             globLog.debug("Committed changes")
@@ -352,7 +367,7 @@ class BitcodeSQL(SQLDataBase):
                             traceTime = self.BCD[BC][NTV][TRC]["time"]
                             cartTime  = self.BCD[BC][NTV][TRC]["CAR"]["time"]
                             LFLAG     = self.BCD[BC][NTV]["LFLAG"]
-                            RARG      = self.BCD[BC][NTV][TRC]["RARG"]
+                            RARG      = self.BCD[BC][NTV][TRC]["RARG"].strip("'")
                             ELFName   = self.BCD[BC][NTV]["Name"]
                             FlowMetricsData = [self.parentID, "'"+str(zlibVersion)+"'", compressionLevel, traceSize, traceTime, cartTime, -1, "'"+LFLAG+"'", "'"+RARG+"'", "'"+ELFName+"'"]
                             pushCommand = "INSERT INTO FlowMetrics ("+",".join(str(x) for x in FlowMetricsColumns)+") VALUES ("+",".join(str(x) for x in FlowMetricsData)+");"
@@ -390,6 +405,9 @@ class BitcodeSQL(SQLDataBase):
                                         self.logger.debug("tik ID: "+str(self.tikID))
                                     except Exception as e:
                                         self.logger.error("Tik binary push failed with error:\n"+str(e))
+                                        if e[0] == "08S01":
+                                            # communication link failure
+                                            cls.reconnect()
                                         self.tikID = -1
                             # tikswap data
                             # nothing for now

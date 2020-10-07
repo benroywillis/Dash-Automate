@@ -117,6 +117,7 @@ class DashAutomate:
             return
         SQL.SQLDataBase.__enabled__(self.args.commit or self.args.only_new or self.args.nightly_build)
         SQL.SQLDataBase.connect()
+
         if self.args.nightly_build or self.args.only_new:
             self.existingMap = self.DASQL.ExistingProjects()
         # now push the RunID
