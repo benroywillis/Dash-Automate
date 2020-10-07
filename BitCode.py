@@ -135,7 +135,7 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathpigfile"] = self.buildPath+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathpigfile"] = tmpFolder+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathBBfile"] = self.buildPath+"BB_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathintermediate"] = self.buildPath+"kernInt_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathintermediate"] = tmpFolder+"kernInt_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Script"] = self.buildPath+"scripts/Cartographer_"+TRCname+".sh"
