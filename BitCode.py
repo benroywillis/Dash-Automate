@@ -184,10 +184,12 @@ class BitCode:
                 # Dag Extractor information
                 self.BCDict[BCpath][NTV][TRCkey]["DE"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["Name"] = "DE_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["buildPath"] = self.buildPath+"DE_"+TRCname+".json"
                 tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["DE"]["Name"]+"/"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpFolder"] = tmpFolder 
+                self.BCDict[BCpath][NTV][TRCkey]["DE"]["buildPath"] = self.buildPath+"DE_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpPath"] = tmpFolder+"DE_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotBuildPath"] = self.buildPath+TRCname+".dot"
+                self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotTmpPath"] = tmpFolder+TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["Script"] = self.buildPath+"scripts/DE_"+TRCname+".sh"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["Log"] = self.buildPath+"logs/DE_"+TRCname+".log"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["Command"] = self.makeDEcommand(BCpath, NTV, TRCkey)
@@ -343,11 +345,11 @@ class BitCode:
     def makeDEcommand(self, BC, NTV, TRC):
         """
         """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC][NTV][TRC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC][NTV][TRC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"], self.BCDict[BC][NTV][TRC]["DE"]["dotTmpPath"]] )
         
         kernelFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
         traceFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]+" --nb"
+        DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -d "+self.BCDict[BC][NTV][TRC]["DE"]["dotTmpPath"]+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]+" --nb"
         return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], DEcommand, "DagExtractor") + suffix
 
     def makeWScommand(self, BC, NTV, TRC):
