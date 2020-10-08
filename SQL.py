@@ -108,9 +108,7 @@ class SQLDataBase:
                 cls.cursor.execute(command)
             except Exception as e:
                 globLog.critical("Exception thrown when pushing SQL command: \n\t"+str(e))
-                if e[0] == "08S01":
-                    # communication link failure
-                    cls.reconnect()
+                cls.handleException(e)
                 if ret:
                     return []
                 return 
@@ -121,9 +119,7 @@ class SQLDataBase:
                 except Exception as e:
                     globLog.critical("Exception thrown when requesting SQL return data:\n\t"+str(e))
                     row = []
-                    if e[0] == "08S01":
-                        # communication link failure
-                        cls.reconnect()
+                    cls.handleException(e)
                 return row
             else:
                 return
@@ -146,17 +142,13 @@ class SQLDataBase:
                 cls.cursor.execute("select SCOPE_IDENTITY()")
             except Exception as e:
                 globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
-                if e[0] == "08S01":
-                    # communication link failure
-                    cls.reconnect()
+                cls.handleException(e)
                 return -1
             try:
                 row = cls.cursor.fetchall()
             except Exception as e:
                 globLog.error("When getting last ID of SQL push: "+str(e))
-                if e[0] == "08S01":
-                    # communication link failure
-                    cls.reconnect()
+                cls.handleException(e)
                 return -1
             
             globLog.debug("ID -> "+str(row[0][0]))
@@ -175,13 +167,19 @@ class SQLDataBase:
                 cls.cursor.commit()
             except Exception as e:
                 globLog.critical("Exception thrown when running cursor.commit()':\n\t"+str(e))
-                if e[0] == "08S01":
-                    # communication link failure
-                    cls.reconnect()
+                cls.handleException(e)
                 return 
             
             globLog.debug("Committed changes")
 
+    @classmethod
+    def handleException(cls, e):
+        """
+        """
+        if "08S01" in str(e):
+            # communication link failure
+            cls.reconnect()
+        
 class DashAutomateSQL(SQLDataBase):
     def __init__(self, path, previous):
         """
@@ -407,9 +405,7 @@ class BitcodeSQL(SQLDataBase):
                                         self.logger.debug("tik ID: "+str(self.tikID))
                                     except Exception as e:
                                         self.logger.error("Tik binary push failed with error:\n"+str(e))
-                                        if e[0] == "08S01":
-                                            # communication link failure
-                                            cls.reconnect()
+                                        cls.handleException(e)
                                         self.tikID = -1
                             # tikswap data
                             # nothing for now
