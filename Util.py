@@ -890,7 +890,11 @@ def getKernelLabels(KD, index):
         if KD.get("Kernels", None) is not None:
             if KD["Kernels"].get(index, None) is not None:
                 if KD["Kernels"][index].get("Label", None) is not None:
-                    return KD["Kernels"][index]["Label"]
+                    label = KD["Kernels"][index]["Label"]
+                    if len(label) > 256:
+                        # truncate, database only allows 256 characters or less
+                        label = label[0:255]
+                    return label
                 else:
                     return ""
             else:

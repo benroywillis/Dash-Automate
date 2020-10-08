@@ -111,6 +111,8 @@ class SQLDataBase:
                 if e[0] == "08S01":
                     # communication link failure
                     cls.reconnect()
+                if ret:
+                    return []
                 return 
 
             if ret:
@@ -147,7 +149,7 @@ class SQLDataBase:
                 if e[0] == "08S01":
                     # communication link failure
                     cls.reconnect()
-                return 
+                return -1
             try:
                 row = cls.cursor.fetchall()
             except Exception as e:
