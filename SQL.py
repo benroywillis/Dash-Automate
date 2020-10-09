@@ -70,15 +70,6 @@ class SQLDataBase:
             else:
                 raise ValueError("Cannot connect to another database while a connection is still active!")
             cls.cursor = cls.cnxn.cursor()
-
-    @classmethod
-    def reconnect(cls):
-        """
-        @brief Checks the connection and attempts to reset and reestablish if necessary
-        """
-        if cls.enabled:
-            cls.disconnect()
-            cls.connect()
             
     @classmethod
     def disconnect(cls):
@@ -171,6 +162,17 @@ class SQLDataBase:
                 return 
             
             globLog.debug("Committed changes")
+
+    @classmethod
+    def reconnect(cls):
+        """
+        @brief Checks the connection and attempts to reset and reestablish if necessary
+        """
+        if cls.enabled:
+            while cls.getLastID() == -1:
+                globLog.warning("Attempting to reconnect to database...")
+                cls.disconnect()
+                cls.connect()
 
     @classmethod
     def handleException(cls, e):
@@ -403,15 +405,10 @@ class BitcodeSQL(SQLDataBase):
                             if tikFile is not None:
                                 tikBin = tikFile.read()
                                 if super().enabled:
-                                    try:
-                                        super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
-                                        IDtuple = super().command("SELECT UID from tik;", ret=True)
-                                        self.tikID = IDtuple[-1][0]
-                                        self.logger.debug("tik ID: "+str(self.tikID))
-                                    except Exception as e:
-                                        self.logger.error("Tik binary push failed with error:\n\t"+str(e))
-                                        cls.handleException(e)
-                                        self.tikID = -1
+                                    super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
+                                    IDtuple = super().command("SELECT UID from tik;", ret=True)
+                                    self.tikID = IDtuple[-1][0]
+                                    self.logger.debug("tik ID: "+str(self.tikID))
                             # tikswap data
                             # nothing for now
 
