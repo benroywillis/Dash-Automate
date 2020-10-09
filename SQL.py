@@ -119,7 +119,7 @@ class SQLDataBase:
                 return []
 
     @classmethod
-    def getLastID(cls):
+    def getLastID(cls, handle=True):
         """
         @brief      Retrieves the ID of the last entry put into the database by the object self.
                     This will only return the last ID generated for this SQL connection
@@ -133,13 +133,15 @@ class SQLDataBase:
                 cls.cursor.execute("select SCOPE_IDENTITY()")
             except Exception as e:
                 globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
-                cls.handleException(e)
+                if handle:
+                    cls.handleException(e)
                 return -1
             try:
                 row = cls.cursor.fetchall()
             except Exception as e:
                 globLog.error("When getting last ID of SQL push: "+str(e))
-                cls.handleException(e)
+                if handle:
+                    cls.handleException(e)
                 return -1
             
             globLog.debug("ID -> "+str(row[0][0]))
@@ -169,7 +171,7 @@ class SQLDataBase:
         @brief Checks the connection and attempts to reset and reestablish if necessary
         """
         if cls.enabled:
-            while cls.getLastID() == -1:
+            while cls.getLastID(handle=False) == -1:
                 globLog.warning("Attempting to reconnect to database...")
                 cls.disconnect()
                 cls.connect()
