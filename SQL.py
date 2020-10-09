@@ -65,7 +65,7 @@ class SQLDataBase:
         @brief      Creates an active connection to the target SQL database.
         """
         if cls.enabled:
-            if (cls.cnxn == None):
+            if cls.cnxn is None:
                 cls.cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};SERVER='+cls.server+';DATABASE='+cls.database+';UID='+cls.username+';PWD='+cls.password)
             else:
                 raise ValueError("Cannot connect to another database while a connection is still active!")
@@ -384,9 +384,14 @@ class BitcodeSQL(SQLDataBase):
                                 DAGfile = None
                             if DAGfile is not None:
                                 DAGdata = "'"+DAGfile.read()+"'"
-                            super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
-                            self.DAGID = super().getLastID()
-                            self.logger.debug("DAG ID: "+str(self.DAGID))
+                            try:
+                                super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
+                                self.DAGID = super().getLastID()
+                                self.logger.debug("DAG ID: "+str(self.DAGID))
+                            except Exception as e:
+                                self.logger.error("DAG push failed with error:\n\t"+str(e))
+                                cls.handleException(e)
+                                self.DAGID = -1
 
                             # tik data
                             try:
@@ -404,7 +409,7 @@ class BitcodeSQL(SQLDataBase):
                                         self.tikID = IDtuple[-1][0]
                                         self.logger.debug("tik ID: "+str(self.tikID))
                                     except Exception as e:
-                                        self.logger.error("Tik binary push failed with error:\n"+str(e))
+                                        self.logger.error("Tik binary push failed with error:\n\t"+str(e))
                                         cls.handleException(e)
                                         self.tikID = -1
                             # tikswap data
