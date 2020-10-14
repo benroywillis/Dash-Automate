@@ -241,7 +241,7 @@ class DashAutomate:
             # nightly builds are supposed to test changes to the TraceAtlas toolchain in a way that verifies the operation of its programs beyond its own test suite
             # It builds at least 1 project from each Makefile, ideally the one that has the highest kernels / (CAR time + trace time) density. 
             # It should not take more than 6h to build and push all of its projects to the database
-            # Additionally it tries to build the minimum set of projects that will both build every kernel hash and optimize kernel density and 
+            # Additionally it tries to build the minimum set of projects that will both build every kernel hash and optimize kernel density
             nightlyBuild = []
             minimumBitcode = ( None, (None,None), 0 )
             if len( self.builtProjects & {proj.projectPath} ) == 0:

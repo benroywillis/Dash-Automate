@@ -143,9 +143,12 @@ class SQLDataBase:
                 if handle:
                     cls.handleException(e)
                 return -1
-            
-            globLog.debug("ID -> "+str(row[0][0]))
-            return row[0][0] # ID should just be the first entry
+        
+            ID = row[0][0] # ID should just be the first entry
+            if ID is None:
+                ID = -1
+            globLog.debug("ID -> "+str(ID))
+            return ID 
 
     @classmethod
     def commit(cls):
@@ -171,10 +174,28 @@ class SQLDataBase:
         @brief Checks the connection and attempts to reset and reestablish if necessary
         """
         if cls.enabled:
-            while cls.getLastID(handle=False) == -1:
+            tries = 0
+            success = False
+            while not success and tries <= 9:
+                time.sleep(2**tries)
+                tries += 1
                 globLog.warning("Attempting to reconnect to database...")
                 cls.disconnect()
                 cls.connect()
+                # try to retrieve the most recent UID generated for the kernel table
+                try:
+                    cls.cursor.execute("SELECT IDENT_CURRENT( 'Kernels' );")
+                except Exception as e:
+                    globLog.error("When testing reestablished connection the following exception ocurred: "+str(e))
+                    continue
+                out = cls.cursor.fetchall()
+                globLog.info("Returned value after reconnection attempt was "+str(out))
+                success = True if out[0][0] is not None else False
+
+            if not success:
+                exit("Connection could not be reestablished. Exiting...")
+
+            globLog.info("Successfully reestablished connection!")
 
     @classmethod
     def handleException(cls, e):
@@ -388,14 +409,10 @@ class BitcodeSQL(SQLDataBase):
                                 DAGfile = None
                             if DAGfile is not None:
                                 DAGdata = "'"+DAGfile.read()+"'"
-                            try:
-                                super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
-                                self.DAGID = super().getLastID()
-                                self.logger.debug("DAG ID: "+str(self.DAGID))
-                            except Exception as e:
-                                self.logger.error("DAG push failed with error:\n\t"+str(e))
-                                cls.handleException(e)
-                                self.DAGID = -1
+
+                            super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
+                            self.DAGID = super().getLastID()
+                            self.logger.debug("DAG ID: "+str(self.DAGID))
 
                             # tik data
                             try:
@@ -407,10 +424,14 @@ class BitcodeSQL(SQLDataBase):
                             if tikFile is not None:
                                 tikBin = tikFile.read()
                                 if super().enabled:
-                                    super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
-                                    IDtuple = super().command("SELECT UID from tik;", ret=True)
-                                    self.tikID = IDtuple[-1][0]
-                                    self.logger.debug("tik ID: "+str(self.tikID))
+                                    try:
+                                        super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
+                                        IDtuple = super().command("SELECT UID from tik;", ret=True)
+                                        self.tikID = IDtuple[-1][0]
+                                        self.logger.debug("tik ID: "+str(self.tikID))
+                                    except Exception as e:
+                                        self.logger.error("Exception when pushing tik data: "+str(e))
+                                        self.tikID = -1
                             # tikswap data
                             # nothing for now
 
