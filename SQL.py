@@ -23,7 +23,7 @@ class SQLDataBase:
     database = None
     server   = None
     cnxn     = None
-    cursor   = None
+    reset    = False
 
     @classmethod
     def __enabled__(cls, flag):
@@ -69,7 +69,6 @@ class SQLDataBase:
                 cls.cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};SERVER='+cls.server+';DATABASE='+cls.database+';UID='+cls.username+';PWD='+cls.password)
             else:
                 raise ValueError("Cannot connect to another database while a connection is still active!")
-            cls.cursor = cls.cnxn.cursor()
             
     @classmethod
     def disconnect(cls):
@@ -78,9 +77,7 @@ class SQLDataBase:
                     class.
         """
         if cls.enabled:
-            cls.cursor.close()
             cls.cnxn.close()
-            cls.cursor = None
             cls.cnxn = None
 
     @classmethod
@@ -96,7 +93,7 @@ class SQLDataBase:
                 raise ValueError("Cannot submit a command when there is no DB connection!")
 
             try:
-                cls.cursor.execute(command)
+                curse = cls.cnxn.execute(command)
             except Exception as e:
                 globLog.critical("Exception thrown when pushing SQL command: \n\t"+str(e))
                 cls.handleException(e)
@@ -106,7 +103,7 @@ class SQLDataBase:
 
             if ret:
                 try:
-                    row = cls.cursor.fetchall()
+                    row = curse.fetchall()
                 except Exception as e:
                     globLog.critical("Exception thrown when requesting SQL return data:\n\t"+str(e))
                     row = []
@@ -130,14 +127,14 @@ class SQLDataBase:
             returnlist = []
 
             try:
-                cls.cursor.execute("select SCOPE_IDENTITY()")
+                curse = cls.cnxn.execute("select SCOPE_IDENTITY()")
             except Exception as e:
                 globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
                 if handle:
                     cls.handleException(e)
                 return -1
             try:
-                row = cls.cursor.fetchall()
+                row = curse.fetchall()
             except Exception as e:
                 globLog.error("When getting last ID of SQL push: "+str(e))
                 if handle:
@@ -160,9 +157,9 @@ class SQLDataBase:
             if cls.cnxn == None:
                 raise ValueError("Cannot commit changes when there is no DB connection!")
             try:
-                cls.cursor.commit()
+                cls.cnxn.commit()
             except Exception as e:
-                globLog.critical("Exception thrown when running cursor.commit()':\n\t"+str(e))
+                globLog.critical("Exception thrown when running cnxn.cursor.commit()':\n\t"+str(e))
                 cls.handleException(e)
                 return 
             
@@ -184,11 +181,11 @@ class SQLDataBase:
                 cls.connect()
                 # try to retrieve the most recent UID generated for the kernel table
                 try:
-                    cls.cursor.execute("SELECT IDENT_CURRENT( 'Kernels' );")
+                    curse = cls.cnxn.execute("SELECT IDENT_CURRENT( 'Kernels' );")
                 except Exception as e:
                     globLog.error("When testing reestablished connection the following exception ocurred: "+str(e))
                     continue
-                out = cls.cursor.fetchall()
+                out = curse.fetchall()
                 globLog.info("Returned value after reconnection attempt was "+str(out))
                 success = True if out[0][0] is not None else False
 
@@ -196,6 +193,7 @@ class SQLDataBase:
                 exit("Connection could not be reestablished. Exiting...")
 
             globLog.info("Successfully reestablished connection!")
+            cls.reset = True
 
     @classmethod
     def handleException(cls, e):
@@ -410,10 +408,14 @@ class BitcodeSQL(SQLDataBase):
                             if DAGfile is not None:
                                 DAGdata = "'"+DAGfile.read()+"'"
 
-                            super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
-                            self.DAGID = super().getLastID()
-                            self.logger.debug("DAG ID: "+str(self.DAGID))
-
+                            if len(DAGdata) < 100000:
+                                super().command("INSERT INTO DagData (DagData) VALUES ("+DAGdata+");")
+                                self.DAGID = super().getLastID()
+                                self.logger.debug("DAG ID: "+str(self.DAGID))
+                            else:
+                                self.logger.warning("DAG data was greater than 100,000 characters long. Skipping...")
+                                self.DAGID = -1
+                                
                             # tik data
                             try:
                                 tikFile = open(self.BCD[BC][NTV][TRC]["tik"]["buildPath"], "rb")
@@ -425,7 +427,7 @@ class BitcodeSQL(SQLDataBase):
                                 tikBin = tikFile.read()
                                 if super().enabled:
                                     try:
-                                        super().cursor.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
+                                        super().cnxn.execute("INSERT INTO tik (tik) VALUES (?) ", pyodbc.Binary(tikBin))
                                         IDtuple = super().command("SELECT UID from tik;", ret=True)
                                         self.tikID = IDtuple[-1][0]
                                         self.logger.debug("tik ID: "+str(self.tikID))

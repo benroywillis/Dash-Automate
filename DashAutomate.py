@@ -409,6 +409,10 @@ class DashAutomate:
                     self.log.info("Bitcode "+bit.buildPath+bit.BC+" is done.")
                     self.addBitcodeReport(bit)
                     doneBitcodes.add(bit)
+                    if self.DASQL.reset:
+                        self.DASQL.logger.warn("Resetting SQL attributes after reconnect")
+                        self.DASQL.cnxn = bit.BCSQL.cnxn
+                        self.DASQL.reset = False
                     self.DASQL.commit()
             self.buildingBitcodes -= doneBitcodes
             self.release()
