@@ -16,14 +16,23 @@ class SQLDataBase:
     DB_COUNT += 1
     if DB_COUNT > DB_MAX_COUNT:
         raise ValueError("Cannot create more than one DB connection at a time!")
-    # connection parameters
+    # by default, this class is not active, and when it is not, it doesn't submit SQL commands.
     enabled  = False
+    # connection parameters for pyodbc
     username = None
     password = None
     database = None
     server   = None
     cnxn     = None
+    # when the connection breaks for whatever reason, this flag is raised to alert class children of a possible change
     reset    = False
+    # If true, autocommits each SQL statement as they are submitted. If false, explicit commit is required
+    # When autocom is off, locks on rows of the database can remain open indefinitely, increasing the hazard of deadlock for the sql service
+    autocom  = True
+    # Timeout period to wait for a lock when querying a locked row (for example)
+    # If the timeout period is reached, the query returns an error
+    # Applied to all statements, and valid for the entire connection
+    timeout  = 1000
 
     @classmethod
     def __enabled__(cls, flag):
@@ -66,9 +75,11 @@ class SQLDataBase:
         """
         if cls.enabled:
             if cls.cnxn is None:
-                cls.cnxn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};SERVER='+cls.server+';DATABASE='+cls.database+';UID='+cls.username+';PWD='+cls.password)
+                cls.cnxn = pyodbc.connect("Driver={ODBC Driver 17 for SQL Server};SERVER="+cls.server+";DATABASE="+cls.database+";UID="+cls.username+";PWD="+cls.password, autocommit=cls.autocom)
             else:
                 raise ValueError("Cannot connect to another database while a connection is still active!")
+            # set timeout period for locks
+            cls.command("SET LOCK_TIMEOUT "+str(cls.timeout)+";")
             
     @classmethod
     def disconnect(cls):
@@ -127,9 +138,9 @@ class SQLDataBase:
             returnlist = []
 
             try:
-                curse = cls.cnxn.execute("select SCOPE_IDENTITY()")
+                curse = cls.cnxn.execute("SELECT SCOPE_IDENTITY() ")
             except Exception as e:
-                globLog.critical("Exception thrown when running 'select SCOPE_IDENTITY()':\n\t"+str(e))
+                globLog.critical("Exception thrown when running 'SELECT SCOPE_IDENTITY()':\n\t"+str(e))
                 if handle:
                     cls.handleException(e)
                 return -1
@@ -221,7 +232,7 @@ class DashAutomateSQL(SQLDataBase):
         # maps a project's relative path to its project to run
         self.pathProject = dict()
         self.ID = None
-        self.runtime = "'"+time.strftime('%Y-%m-%d %H:%M:%S')+"'"
+        self.runtime = "'"+time.strftime("%Y-%m-%d %H:%M:%S")+"'"
         self.logger = logging.getLogger("DashAutomate SQL")
 
     def pushRunID(self):

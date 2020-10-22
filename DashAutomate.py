@@ -413,7 +413,6 @@ class DashAutomate:
                         self.DASQL.logger.warn("Resetting SQL attributes after reconnect")
                         self.DASQL.cnxn = bit.BCSQL.cnxn
                         self.DASQL.reset = False
-                    self.DASQL.commit()
             self.buildingBitcodes -= doneBitcodes
             self.release()
         self.log.info("Bitcodes done.")
