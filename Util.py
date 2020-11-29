@@ -577,44 +577,46 @@ def getLogTime(filepath):
         return -1
 
     timeValues = []
-    for line in logfile:
-        try:
+    # if utf cant decode the text it will throw an exception
+    try:
+        for line in logfile:
             timeValues = re.findall(".*real\s\d+.*", line)
-        except Exception as e:
-            globLog.error("Could not parse line in file "+filepath)
-            return 0
+            if len(timeValues) > 0:
+                list1 = re.findall("\d+\w", line)+re.findall("\d+.", line)
+                totalseconds = 0
+                days = []
+                hours = []
+                minutes = []
+                seconds = []
+                for entry in list1:  # should contain days, hours, minutes, whole seconds
+                    if len(re.findall("\d+d", entry)) != 0:
+                        if len(days) == 0:
+                            days = re.findall("\d+d", entry)
+                    if len(re.findall("\d+h", entry)) != 0:
+                        if len(hours) == 0:
+                            hours = re.findall("\d+h", entry)
+                    if len(re.findall("\d+m", entry)) != 0:
+                        if len(minutes) == 0:
+                            minutes = re.findall("\d+m", entry)
+                    if len(re.findall("\d+\.", entry)) != 0:
+                        if len(seconds) == 0:
+                            seconds = re.findall("\d+\.", entry)
 
-        if len(timeValues) > 0:
-            list1 = re.findall("\d+\w", line)+re.findall("\d+.", line)
-            totalseconds = 0
-            days = []
-            hours = []
-            minutes = []
-            seconds = []
-            for entry in list1:  # should contain days, hours, minutes, whole seconds
-                if len(re.findall("\d+d", entry)) != 0:
-                    if len(days) == 0:
-                        days = re.findall("\d+d", entry)
-                if len(re.findall("\d+h", entry)) != 0:
-                    if len(hours) == 0:
-                        hours = re.findall("\d+h", entry)
-                if len(re.findall("\d+m", entry)) != 0:
-                    if len(minutes) == 0:
-                        minutes = re.findall("\d+m", entry)
-                if len(re.findall("\d+\.", entry)) != 0:
-                    if len(seconds) == 0:
-                        seconds = re.findall("\d+\.", entry)
+                if len(days) != 0:
+                    totalseconds = totalseconds+86400*int(days[0][:-1])
+                if len(hours) != 0:
+                    totalseconds = totalseconds+3600*int(hours[0][:-1])
+                if len(minutes) != 0:
+                    totalseconds = totalseconds+60*int(minutes[0][:-1])
+                if len(seconds) != 0:
+                    totalseconds = totalseconds+int(seconds[0][:-1])
 
-            if len(days) != 0:
-                totalseconds = totalseconds+86400*int(days[0][:-1])
-            if len(hours) != 0:
-                totalseconds = totalseconds+3600*int(hours[0][:-1])
-            if len(minutes) != 0:
-                totalseconds = totalseconds+60*int(minutes[0][:-1])
-            if len(seconds) != 0:
-                totalseconds = totalseconds+int(seconds[0][:-1])
+                return totalseconds
 
-            return totalseconds    
+    except Exception as e:
+        globLog.error("Could not parse log file for time: "+filepath)
+        return 0
+
 
     return 0
 
@@ -916,10 +918,14 @@ def findErrors(logpath):
         globLog.error("Could not find log file "+logpath)
         return True
 
-    for line in f:
-        errors = re.findall(".*DAStepERROR\:.*", line)
-        if len(errors) > 0:
-            return True
+    try:
+        for line in f:
+            errors = re.findall(".*DAStepERROR\:.*", line)
+            if len(errors) > 0:
+                return True
+    except UnicodeDecodeError:
+        globLog.error("Could not decode file {}. Skipping error processing.".format(logpath))
+
     return False
 
 def EXIT_TOOL():
