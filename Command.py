@@ -153,7 +153,12 @@ class Command:
                     jobFound = True
                     if checkDependencies:
                         # our job is present, check its state and dependencies
-                        depjob = sp.Popen("squeue --noheader -j "+str(job)+" -O Reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+                        # sometimes the argument list can be too long
+                        try:
+                            depjob = sp.Popen("squeue --noheader -j "+str(job)+" -O Reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+                        except OSError as e:
+                            logger.error("Could not launch dependent job command for job "+str(job)+": "+str(e))
+                            continue
                         depstring = ""
                         while depjob.poll() is None:
                             depstring += depjob.stdout.read().decode("utf-8")
