@@ -664,14 +664,14 @@ def parseTikSwapResults(filepath):
     swapSuccess = 0
     compilationSuccess = 0
     binarySuccess = 0
-    for line in logfile:
-        try:
+    try:
+        for line in logfile:
             swapSuccess += len( re.findall(".*DAStepSuccess:\sTikSwap\scommand\ssucceeded.*", line))
             count += len(re.findall(".*Successfully\sswapped\sentrance\s0.*", line))
             compilationSuccess += len( re.findall(".*DAStepSuccess:\sTik\sCompilation\scommand\ssucceeded.*", line))
             binarySuccess += len( re.findall(".*DAStepSuccess:\sTik\sBinary\scommand\ssucceeded.*", line))
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file: "+str(e))
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file: "+str(e))
 
     # swap results
     tikSwapKernels = count
@@ -742,15 +742,15 @@ def getTikSwapErrors(filepath):
         return reportDict
 
     errorList = []
-    for line in logfile:
-        try:
+    try:
+        for line in logfile:
             reasons = re.findall(".*\[error\].*", line)
             reasons += re.findall(".*\[critical\].*", line)
             segFaults = re.findall("Segmentation.*", line)
             errorList += segFaults + reasons  # + errors
-        except Exception as e:
-            globLog.error("Could not parse line in tikSwap log file "+filepath)
-            return reportDict
+    except Exception as e:
+        globLog.error("Could not parse line in tikSwap log file "+filepath)
+        return reportDict
 
     for entry in errorList:
         entry = entry.lower()
