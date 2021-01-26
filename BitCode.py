@@ -144,6 +144,7 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["time"] = []
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Kernels"] = []
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["SUCCESS"] = False
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["ERRORS"] = {}
                 # tik information
                 self.BCDict[BCpath][NTV][TRCkey]["tik"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["Name"] = "tik_"+TRCname+".ll"
@@ -157,6 +158,8 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["Command"] = self.makeTikCommand(BCpath, NTV, TRCkey)
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["Kernels"] = -2
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["SUCCESS"] = False
+                self.BCDict[BCpath][NTV][TRCkey]["tik"]["ERRORS"] = {}
+
                 # tikSwap information
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"] = "tikSwap_"+TRCname+".ll"
@@ -170,6 +173,8 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Command"] = self.makeTikSwapCommand(BCpath, NTV, TRCkey)
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Kernels"] = -2
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["SUCCESS"] = False
+                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["ERRORS"] = {}
+
                 # function annotator information
                 self.BCDict[BCpath][NTV][TRCkey]["function"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["function"]["Name"] = "function_"+TRCname+".json"
@@ -467,6 +472,7 @@ class BitCode:
         reportDict["Total"]["TikSwap Kernels"] = 0
         reportDict["Total"]["Tik Compilation Kernels"] = 0
         reportDict["Total"]["Tik Success Kernels"] = 0
+        reportDict["Total"]["Cartographer Errors"] = dict()
         reportDict["Total"]["Tik Errors"] = dict()
         reportDict["Total"]["TikSwap Errors"] = dict()
         if self.BCDict == None:
@@ -498,7 +504,13 @@ class BitCode:
                             reportDict[BC][NTV][TRC]["size"] = self.BCDict[BC][NTV][TRC]["size"]
                             reportDict["Total"]["Size"] += reportDict[BC][NTV][TRC]["size"]
                             reportDict[BC][NTV][TRC]["TRCtime"] = self.BCDict[BC][NTV][TRC]["time"]
-                            
+                            # parse cartographer errors
+                            self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"] = Util.getCartographerErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
+                            reportDict[BC][NTV][TRC]["Cartographer Errors"] = self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"]
+                            for key in self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"]:
+                                if reportDict["Total"]["Cartographer Errors"].get(key, None) is None:
+                                    reportDict["Total"]["Cartographer Errors"][key] = 0
+                                reportDict["Total"]["Cartographer Errors"][key] += self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"][key]
                             # if the cartographer failed, don't look at anything else
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])

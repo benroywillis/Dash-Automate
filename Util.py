@@ -603,20 +603,19 @@ def getLogTime(filepath):
                             seconds = re.findall("\d+\.", entry)
 
                 if len(days) != 0:
-                    totalseconds = totalseconds+86400*int(days[0][:-1])
+                    totalseconds += totalseconds+86400*int(days[0][:-1])
                 if len(hours) != 0:
-                    totalseconds = totalseconds+3600*int(hours[0][:-1])
+                    totalseconds += totalseconds+3600*int(hours[0][:-1])
                 if len(minutes) != 0:
-                    totalseconds = totalseconds+60*int(minutes[0][:-1])
+                    totalseconds += totalseconds+60*int(minutes[0][:-1])
                 if len(seconds) != 0:
-                    totalseconds = totalseconds+int(seconds[0][:-1])
+                    totalseconds += totalseconds+int(seconds[0][:-1])
 
                 return totalseconds
 
     except Exception as e:
         globLog.error("Could not parse log file for time: "+filepath)
         return 0
-
 
     return 0
 
@@ -686,6 +685,49 @@ def parseTikSwapResults(filepath):
     tikBinarySuccessKernels = tikCompilationKernels if tikBinarySuccess > 0 else 0
 
     return ( (tikSwapKernels, tikSwapBinaries), (tikCompilationKernels, tikCompilationBinaries), (tikBinarySuccessKernels, tikBinarySuccess) )
+
+def getCartographerErrors(filepath):
+    reportDict = dict()
+    try:
+        logfile = open(filepath, "r")
+    except:
+        globLog.error("Could not parse tik log "+filepath)
+        return reportDict
+
+    errorList = []
+    try:
+    	for line in logfile:
+            reasons = re.findall(".*\[error\].*", line)
+            reasons += re.findall(".*\[critical\].*", line)
+            segFaults = re.findall("Segmentation.*", line)
+            errorList += segFaults + reasons  # + errors
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return reportDict
+
+    for entry in errorList:
+        entry = entry.lower()
+        segs = re.findall(".*segmentation.*", entry)
+        if len(segs) == 0:
+            lineNumber = re.findall("\.cpp\:\d+\:", entry)
+            critical = re.findall(".*\[critical\].*", entry)
+            if len(lineNumber) > 0:
+                if reportDict.get(str(lineNumber[0]), None) is not None:
+                    reportDict[str(lineNumber[0])] = reportDict[str(lineNumber[0])] + 1
+                else:
+                    reportDict[str(lineNumber[0])] = 1
+            if len(critical) > 0:
+                if reportDict.get("ModuleErrors", None) is not None:
+                    reportDict["ModuleErrors"] = reportDict["ModuleErrors"] + 1
+                else:
+                    reportDict["ModuleErrors"] = 1
+
+        else:
+            if reportDict.get("Segmentation Faults", None) is not None:
+                reportDict["Segmentation Faults"] = reportDict["Segmentation Faults"] + 1
+            else:
+                reportDict["Segmentation Faults"] = 1
+    return reportDict
 
 def getTikErrors(filepath):
     reportDict = dict()

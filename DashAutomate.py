@@ -61,6 +61,7 @@ class DashAutomate:
         self.FULLREPORT["Full Report"]["TikSwap Kernels"] = 0
         self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] = 0
         self.FULLREPORT["Full Report"]["Tik Success Kernels"] = 0
+        self.FULLREPORT["Full Report"]["Cartographer Errors"] = dict()
         self.FULLREPORT["Full Report"]["Tik Errors"] = dict()
         self.FULLREPORT["Full Report"]["TikSwap Errors"] = dict()
         self.FULLREPORT["Full Report"]["Bad Projects"] = list()
@@ -168,6 +169,7 @@ class DashAutomate:
             self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+            self.FULLREPORT[relPath]["Report"]["Cartographer Errors"] = dict()
             self.FULLREPORT[relPath]["Report"]["Tik Errors"] = dict()
             self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
         # sum directory totals
@@ -182,6 +184,10 @@ class DashAutomate:
         self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
+            if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
+                self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
+            self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
             if self.FULLREPORT[relPath]["Report"]["Tik Errors"].get(key) is None:
                 self.FULLREPORT[relPath]["Report"]["Tik Errors"][key] = 0
@@ -202,6 +208,10 @@ class DashAutomate:
         self.FULLREPORT["Full Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
         self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
         self.FULLREPORT["Full Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
+            if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
+                self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0
+            self.FULLREPORT["Full Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
             if self.FULLREPORT["Full Report"]["Tik Errors"].get(key) is None:
                 self.FULLREPORT["Full Report"]["Tik Errors"][key] = 0
