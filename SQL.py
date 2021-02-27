@@ -488,6 +488,8 @@ class BitcodeSQL(SQLDataBase):
                             if isinstance(KD, dict):
                                 if KD.get("Kernels", None) is not None:
                                     for index in KD["Kernels"]:
+                                        if (index == "Average Kernel Size (Blocks)") or (index == "Average Kernel Size (Nodes)"):
+                                            continue
                                         parent = self.parentID
                                         ind = index
                                         binary = self.BCD[BC][NTV]["Name"]

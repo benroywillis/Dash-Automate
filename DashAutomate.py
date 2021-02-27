@@ -61,6 +61,8 @@ class DashAutomate:
         self.FULLREPORT["Full Report"]["TikSwap Kernels"] = 0
         self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] = 0
         self.FULLREPORT["Full Report"]["Tik Success Kernels"] = 0
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = 0
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = 0
         self.FULLREPORT["Full Report"]["Cartographer Errors"] = dict()
         self.FULLREPORT["Full Report"]["Tik Errors"] = dict()
         self.FULLREPORT["Full Report"]["TikSwap Errors"] = dict()
@@ -169,6 +171,9 @@ class DashAutomate:
             self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] = 0
             self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+            self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = 0            
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = 0            
             self.FULLREPORT[relPath]["Report"]["Cartographer Errors"] = dict()
             self.FULLREPORT[relPath]["Report"]["Tik Errors"] = dict()
             self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
@@ -184,6 +189,15 @@ class DashAutomate:
         self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+        nodeSum = 0.0
+        blockSum = 0.0
+        for bitcodeFile in self.FULLREPORT[relPath]:
+            if bitcodeFile == "Report":
+                continue
+            nodeSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"]
+            blockSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Blocks)"]
+        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = nodeSum / self.FULLREPORT[relPath]["Report"]["Traces"] if self.FULLREPORT[relPath]["Report"]["Traces"] > 0 else 0
+        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = blockSum / self.FULLREPORT[relPath]["Report"]["Traces"] if self.FULLREPORT[relPath]["Report"]["Traces"] > 0 else 0
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
             if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
                 self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
@@ -208,6 +222,14 @@ class DashAutomate:
         self.FULLREPORT["Full Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
         self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
         self.FULLREPORT["Full Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+        nodeSum = 0.0
+        blockSum = 0.0
+        for path in self.FULLREPORT:
+            if self.FULLREPORT[path].get("Report") is not None:
+                nodeSum  += self.FULLREPORT[path]["Report"]["Average Kernel Size (Nodes)"]
+                blockSum += self.FULLREPORT[path]["Report"]["Average Kernel Size (Blocks)"]
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(len(self.FULLREPORT.keys())-1) ) if len(self.FULLREPORT.keys())-1 > 0 else 0
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(len(self.FULLREPORT.keys())-1) ) if len(self.FULLREPORT.keys())-1 > 0 else 0
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
             if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
                 self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0

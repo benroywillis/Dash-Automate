@@ -49,7 +49,7 @@ class BitCode:
         self.OPT                = "opt"+self.args.compiler_suffix
         self.Tracer             = self.args.toolchain_prefix+"lib/AtlasPasses.so"
         self.Backend            = self.args.toolchain_prefix+"lib/libAtlasBackend.a"
-        self.Cartographer       = self.args.toolchain_prefix+"bin/nc"
+        self.Cartographer       = self.args.toolchain_prefix+"bin/newCartographer"
         self.libDetectorBin     = self.args.toolchain_prefix+"bin/libDetector"
         self.DagExtractorPath   = self.args.toolchain_prefix+"bin/dagExtractor"
         self.tikBinary          = self.args.toolchain_prefix+"bin/tik"
@@ -109,7 +109,7 @@ class BitCode:
             for j in range(len(RARGS)):
                 TRCkey = "TRC"+str(j)
                 self.BCDict[BCpath][NTV][TRCkey] = dict()
-                TRC = NTV[:-7]+"_"+str(j)+".csv"
+                TRC = NTV[:-7]+"_"+str(j)+".bin"
                 TRCname = TRC.split(".")[0]
                 # Trace file name, information, and some counts about the trace
                 self.BCDict[BCpath][NTV][TRCkey]["Name"] = TRC
@@ -118,6 +118,9 @@ class BitCode:
                 tmpFolder = self.tmpPath[:-1]+TRCname+"/"
                 self.BCDict[BCpath][NTV][TRCkey]["tmpFolder"] = tmpFolder 
                 self.BCDict[BCpath][NTV][TRCkey]["tmpPath"] = tmpFolder+TRC
+                self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"] = "BlockInfo_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["buildPathBlockFile"] = self.buildPath+self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"]
+                self.BCDict[BCpath][NTV][TRCkey]["tmpPathBlockFile"]   = tmpFolder+     self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"]
                 self.BCDict[BCpath][NTV][TRCkey]["RARG"] = RARGS[j]
                 self.BCDict[BCpath][NTV][TRCkey]["Command"] = self.makeTraceCommand(BCpath, NTV, TRCkey)
                 self.BCDict[BCpath][NTV][TRCkey]["Script"] = self.buildPath+"scripts/makeTrace"+TRCname+".sh"
@@ -136,8 +139,6 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathpigfile"] = tmpFolder+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathBBfile"] = self.buildPath+"BB_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathintermediate"] = self.buildPath+"kernInt_"+TRCname+".csv"
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathintermediate"] = tmpFolder+"kernInt_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Script"] = self.buildPath+"scripts/Cartographer_"+TRCname+".sh"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Log"] = self.buildPath+"logs/Cartographer_"+TRCname+".log"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Command"] = self.makeCartographerCommand(BCpath, NTV, TRCkey)
@@ -159,7 +160,6 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["Kernels"] = -2
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["SUCCESS"] = False
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["ERRORS"] = {}
-
                 # tikSwap information
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"] = "tikSwap_"+TRCname+".ll"
@@ -174,7 +174,6 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Kernels"] = -2
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["SUCCESS"] = False
                 self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["ERRORS"] = {}
-
                 # function annotator information
                 self.BCDict[BCpath][NTV][TRCkey]["function"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["function"]["Name"] = "function_"+TRCname+".json"
@@ -284,9 +283,9 @@ class BitCode:
         @brief      Creates a bash-ready command that will run the given executable
         @retval     command     Bash-ready command for running the given NTV executable
         """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"]] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
 
-        envSet = "export MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " ; "
+        envSet = "export MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
         NTVfile = self.BCDict[BC][NTV][TRC]["tmpFolder"]+self.BCDict[BC][NTV]["Name"]
         trcCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"]
         return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tmpFolder"], trcCommand, "trace")+suffix
@@ -298,11 +297,12 @@ class BitCode:
                     returnFiles Names of each bash script to be made. Indices of each list match each other.
         """
         #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]] )
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"],self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]] )
         
-        TRCfile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        BCfile =  self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        command = "time -p "+self.Cartographer+" -i "+TRCfile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]#+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -D "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]
+        TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
+        BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
+        BCfile    = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
+        command   = "time -p "+self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]#+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -D "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]
         #if not self.args.no_labeling:
         #    command += " -L --nb "
         #else:
@@ -407,17 +407,15 @@ class BitCode:
                             # make cartographers tied to their trace scripts
                             CARdict = TRCdict["CAR"]
                             runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
-                            """
                             # tikSwap is tied to tik, therefore it immediately follows tik within brackets
                             # tik, DE, func, WS, KH all tied to the cartographer script
                             ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"], timeLimit=10 ), \
                                             [ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"], timeLimit=10 ) ], \
-                                            self.Command.constructBashFile(TRCdict["DE"]["Script"], TRCdict["DE"]["Command"], TRCdict["DE"]["Log"] ), \
-                                            self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
-                                            self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \
+                                            #self.Command.constructBashFile(TRCdict["DE"]["Script"], TRCdict["DE"]["Command"], TRCdict["DE"]["Log"] ), \
+                                            #self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
+                                            #self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \
                                             self.Command.constructBashFile(TRCdict["KH"]["Script"], TRCdict["KH"]["Command"], TRCdict["KH"]["Log"]) )
                             runQueue[i][j][k].append(ExtraTuple)
-                            """
                             k += 1 # increment TRC counter
                     j += 1 # increment NTV counter
             i += 1 # increment BC counter
@@ -472,6 +470,8 @@ class BitCode:
         reportDict["Total"]["TikSwap Kernels"] = 0
         reportDict["Total"]["Tik Compilation Kernels"] = 0
         reportDict["Total"]["Tik Success Kernels"] = 0
+        reportDict["Total"]["Average Kernel Size (Nodes)"] = 0        
+        reportDict["Total"]["Average Kernel Size (Blocks)"] = 0        
         reportDict["Total"]["Cartographer Errors"] = dict()
         reportDict["Total"]["Tik Errors"] = dict()
         reportDict["Total"]["TikSwap Errors"] = dict()
@@ -504,6 +504,11 @@ class BitCode:
                             reportDict[BC][NTV][TRC]["size"] = self.BCDict[BC][NTV][TRC]["size"]
                             reportDict["Total"]["Size"] += reportDict[BC][NTV][TRC]["size"]
                             reportDict[BC][NTV][TRC]["TRCtime"] = self.BCDict[BC][NTV][TRC]["time"]
+                            # kernel size stats
+                            reportDict[BC][NTV][TRC]["Average Kernel Size (Nodes)"] = Util.getAvgKSize(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], Nodes=True)
+                            reportDict["Total"]["Average Kernel Size (Nodes)"] += float(reportDict[BC][NTV][TRC]["Average Kernel Size (Nodes)"])
+                            reportDict[BC][NTV][TRC]["Average Kernel Size (Blocks)"] = Util.getAvgKSize(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], Blocks=True)
+                            reportDict["Total"]["Average Kernel Size (Blocks)"] += float(reportDict[BC][NTV][TRC]["Average Kernel Size (Blocks)"])
                             # parse cartographer errors
                             self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"] = Util.getCartographerErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
                             reportDict[BC][NTV][TRC]["Cartographer Errors"] = self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"]
@@ -583,7 +588,9 @@ class BitCode:
                                     reportDict["Total"]["TikSwap Errors"][key] = 0
                                 reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
                             """
-
+        # normalize average kernel size stats to the number of traces because the cartographer gives us per-trace averages
+        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(reportDict["Total"]["Traces"]) if reportDict["Total"]["Traces"] > 0 else 0
+        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(reportDict["Total"]["Traces"]) if reportDict["Total"]["Traces"] > 0 else 0
         return reportDict
 
     def deleteTraces(self):

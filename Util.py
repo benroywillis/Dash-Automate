@@ -686,6 +686,30 @@ def parseTikSwapResults(filepath):
 
     return ( (tikSwapKernels, tikSwapBinaries), (tikCompilationKernels, tikCompilationBinaries), (tikBinarySuccessKernels, tikBinarySuccess) )
 
+def getAvgKSize(kernelPath, Nodes=False, Blocks=False):
+    """
+    Returns the average kernel size, either in GraphNodes or basic blocks (from the original source bitcode), of the kernels in kernelPath
+    """
+    # read in kernel file
+    # parse average kernel size number (in either nodes or blocks)
+    # return the float
+    avg = 0.0
+    try:
+        dic = json.load( open(kernelPath, "r") )
+    except:
+        return avg
+
+    if dic.get("Kernels") is not None:
+        if isinstance(dic["Kernels"], dict):
+            if Nodes:
+                if dic["Kernels"].get("Average Kernel Size (Nodes)") is not None:
+                    return dic["Kernels"]["Average Kernel Size (Nodes)"]
+            else:
+                if dic["Kernels"].get("Average Kernel Size (Blocks)") is not None:
+                    return dic["Kernels"]["Average Kernel Size (Blocks)"]
+    else:
+        return avg
+
 def getCartographerErrors(filepath):
     reportDict = dict()
     try:
