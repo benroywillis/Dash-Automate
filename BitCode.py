@@ -479,6 +479,8 @@ class BitCode:
             reportDict["Errors"] += ["Bitcode file not found"]
             return reportDict
 
+        # keeps track of all traces that had non-zero kernels
+        nonzeroTraces = 0
         for BC in self.BCDict:
             reportDict[BC] = dict()
             for NTV in self.BCDict[BC]:
@@ -527,6 +529,8 @@ class BitCode:
                             reportDict["Total"]["Cartographer Kernels"] += reportDict[BC][NTV][TRC]["Cartographer Kernels"]
                             if self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] <= 0:
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"]+" -> 0 Kernels")
+                            else:
+                                nonzeroTraces += 1
 
                             """
                             # accessories
@@ -589,8 +593,10 @@ class BitCode:
                                 reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
                             """
         # normalize average kernel size stats to the number of traces because the cartographer gives us per-trace averages
-        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(reportDict["Total"]["Traces"]) if reportDict["Total"]["Traces"] > 0 else 0
-        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(reportDict["Total"]["Traces"]) if reportDict["Total"]["Traces"] > 0 else 0
+        # only count the programs that had more than 1 kernel
+
+        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
+        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
         return reportDict
 
     def deleteTraces(self):

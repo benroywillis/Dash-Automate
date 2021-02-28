@@ -191,13 +191,17 @@ class DashAutomate:
         self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
         nodeSum = 0.0
         blockSum = 0.0
+        # only count the traces that registered kernels, otherwise cartographer failures and other things taint the averages
+        nonzeroTraces = 0
         for bitcodeFile in self.FULLREPORT[relPath]:
             if bitcodeFile == "Report":
                 continue
+            if self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"] > 0:
+                nonzeroTraces += 1
             nodeSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"]
             blockSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Blocks)"]
-        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = nodeSum / self.FULLREPORT[relPath]["Report"]["Traces"] if self.FULLREPORT[relPath]["Report"]["Traces"] > 0 else 0
-        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = blockSum / self.FULLREPORT[relPath]["Report"]["Traces"] if self.FULLREPORT[relPath]["Report"]["Traces"] > 0 else 0
+        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
+        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
             if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
                 self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
@@ -224,12 +228,15 @@ class DashAutomate:
         self.FULLREPORT["Full Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
         nodeSum = 0.0
         blockSum = 0.0
+        nonzeroProjects = 0
         for path in self.FULLREPORT:
             if self.FULLREPORT[path].get("Report") is not None:
+                if self.FULLREPORT[path]["Report"]["Cartographer Kernels"] > 0:
+                    nonzeroProjects += 1
                 nodeSum  += self.FULLREPORT[path]["Report"]["Average Kernel Size (Nodes)"]
                 blockSum += self.FULLREPORT[path]["Report"]["Average Kernel Size (Blocks)"]
-        self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(len(self.FULLREPORT.keys())-1) ) if len(self.FULLREPORT.keys())-1 > 0 else 0
-        self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(len(self.FULLREPORT.keys())-1) ) if len(self.FULLREPORT.keys())-1 > 0 else 0
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
+        self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
         for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
             if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
                 self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0
