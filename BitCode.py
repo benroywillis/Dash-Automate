@@ -550,7 +550,7 @@ class BitCode:
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["WS"]["Log"])
                             else:
                                 self.BCDict[BC][NTV][TRC]["WS"]["SUCCESS"] = True
-
+                            """
                             # parse tik information
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["tik"]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
@@ -591,10 +591,8 @@ class BitCode:
                                 if reportDict["Total"]["TikSwap Errors"].get(key, None) is None:
                                     reportDict["Total"]["TikSwap Errors"][key] = 0
                                 reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
-                            """
         # normalize average kernel size stats to the number of traces because the cartographer gives us per-trace averages
         # only count the programs that had more than 1 kernel
-
         reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
         reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
         return reportDict

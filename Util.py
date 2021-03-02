@@ -699,16 +699,12 @@ def getAvgKSize(kernelPath, Nodes=False, Blocks=False):
     except:
         return avg
 
-    if dic.get("Kernels") is not None:
-        if isinstance(dic["Kernels"], dict):
-            if Nodes:
-                if dic["Kernels"].get("Average Kernel Size (Nodes)") is not None:
-                    return dic["Kernels"]["Average Kernel Size (Nodes)"]
-            else:
-                if dic["Kernels"].get("Average Kernel Size (Blocks)") is not None:
-                    return dic["Kernels"]["Average Kernel Size (Blocks)"]
+    if Nodes:
+        if dic.get("Average Kernel Size (Nodes)") is not None:
+            return dic["Average Kernel Size (Nodes)"]
     else:
-        return avg
+        if dic.get("Average Kernel Size (Blocks)") is not None:
+            return dic["Average Kernel Size (Blocks)"]
 
 def getCartographerErrors(filepath):
     reportDict = dict()
