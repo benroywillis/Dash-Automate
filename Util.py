@@ -663,14 +663,14 @@ def parseTikSwapResults(filepath):
     swapSuccess = 0
     compilationSuccess = 0
     binarySuccess = 0
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             swapSuccess += len( re.findall(".*DAStepSuccess:\sTikSwap\scommand\ssucceeded.*", line))
             count += len(re.findall(".*Successfully\sswapped\sentrance\s0.*", line))
             compilationSuccess += len( re.findall(".*DAStepSuccess:\sTik\sCompilation\scommand\ssucceeded.*", line))
             binarySuccess += len( re.findall(".*DAStepSuccess:\sTik\sBinary\scommand\ssucceeded.*", line))
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file: "+str(e))
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file: "+str(e))
 
     # swap results
     tikSwapKernels = count
