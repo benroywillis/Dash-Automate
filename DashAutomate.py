@@ -443,7 +443,12 @@ class DashAutomate:
         while len(self.buildingBitcodes) > 0 or self.thread1on:
             if not self.waitForPermission():
                 continue
+            self.buildingBitcodes -= doneBitcodes
+            buildingBitcodeCopy = set()
             for bit in self.buildingBitcodes:
+                buildingBitcodeCopy.add(bit)
+            self.release()
+            for bit in buildingBitcodeCopy:
                 if bit.done():
                     self.log.info("Bitcode "+bit.buildPath+bit.BC+" is done.")
                     self.addBitcodeReport(bit)
@@ -452,8 +457,6 @@ class DashAutomate:
                         self.DASQL.logger.warn("Resetting SQL attributes after reconnect")
                         self.DASQL.cnxn = bit.BCSQL.cnxn
                         self.DASQL.reset = False
-            self.buildingBitcodes -= doneBitcodes
-            self.release()
         self.log.info("Bitcodes done.")
         self.thread2on = False
 

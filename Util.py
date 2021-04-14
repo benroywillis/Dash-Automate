@@ -640,13 +640,13 @@ def getTikKernels(filepath):
 
     count = 0
     errors = 0
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             errors += len(re.findall(".*DAStepERROR:\stik\scommand\sfailed.*", line))
             count += len(re.findall(".*Successfully\sconverted\skernel.*", line))
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file "+filepath)
-            return 0
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return 0
     if errors > 0:
         return 0
     return count
@@ -758,15 +758,15 @@ def getTikErrors(filepath):
         return reportDict
 
     errorList = []
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             reasons = re.findall(".*\[error\].*", line)
             reasons += re.findall(".*\[critical\].*", line)
             segFaults = re.findall("Segmentation.*", line)
             errorList += segFaults + reasons  # + errors
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file "+filepath)
-            return reportDict
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return reportDict
 
     for entry in errorList:
         entry = entry.lower()
@@ -804,15 +804,15 @@ def getTikSwapErrors(filepath):
         return reportDict
 
     errorList = []
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             reasons = re.findall(".*\[error\].*", line)
             reasons += re.findall(".*\[critical\].*", line)
             segFaults = re.findall("Segmentation.*", line)
             errorList += segFaults + reasons  # + errors
-        except Exception as e:
-            globLog.error("Could not parse line in tikSwap log file "+filepath)
-            return reportDict
+    except Exception as e:
+        globLog.error("Could not parse line in tikSwap log file "+filepath)
+        return reportDict
 
     for entry in errorList:
         entry = entry.lower()
