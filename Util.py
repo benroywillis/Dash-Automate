@@ -580,7 +580,7 @@ def getLogTime(filepath):
     # if utf cant decode the text it will throw an exception
     try:
         for line in logfile:
-            timeValues = re.findall(".*real\s\d+.*", line)
+            timeValues = re.findall("real\s\d+.\d+", line)
             if len(timeValues) > 0:
                 list1 = re.findall("\d+\w", line)+re.findall("\d+.", line)
                 totalseconds = 0
