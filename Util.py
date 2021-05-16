@@ -10,6 +10,8 @@ import ctypes
 
 globLog = logging.getLogger("Util")
 
+    #"DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
+    #"DASH_ROOT='/home/bwilli46/DashLibraries/debug/' " +\
 ### Global Definitions
 SourceScript = "export " +\
     "CC='clang-9 -flto -DENABLE_TRACING' " +\

@@ -163,7 +163,7 @@ class Command:
                         while depjob.poll() is None:
                             depstring += depjob.stdout.read().decode("utf-8")
                         if "DependencyNeverSatis" in depstring:
-                            logger.error("Cancelling job "+str(job)+" because its dependencies were never satisified.")
+                            logger.error("Cancelling job "+str(job)+" because its dependencies were never satisfied.")
                             cancelJobs.append(job)
             if len(cancelJobs) > 0:
                 self.cancel(cancelJobs)
