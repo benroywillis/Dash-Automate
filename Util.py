@@ -14,8 +14,8 @@ globLog = logging.getLogger("Util")
     #"DASH_ROOT='/home/bwilli46/DashLibraries/debug/' " +\
 ### Global Definitions
 SourceScript = "export " +\
-    "CC='clang-9 -flto -DENABLE_TRACING' " +\
-    "CXX='clang++-9 -flto -DENABLE_TRACING' " +\
+    "CC='clang-9 -flto -DENABLE_TRACING -g3 -O0' " +\
+    "CXX='clang++-9 -flto -DENABLE_TRACING -g3 -O0' " +\
     "DASH_DATA='/mnt/nobackup-09/Dash/Data/' " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
     "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
