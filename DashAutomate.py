@@ -157,6 +157,7 @@ class DashAutomate:
         """
         @brief Adds bitcode report to global report file
         """
+        self.log.debug("Adding bitcode report")
         # relative path to the project directory, not including the build folder name
         relPath = Util.getPathDiff(self.rootPath, bitcode.projectPath, build=False)
         if self.FULLREPORT.get( relPath, None ) is None:
@@ -255,8 +256,11 @@ class DashAutomate:
         if len(self.FULLREPORT[relPath][bitcode.BC]["Errors"]) > 0:
             self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = self.FULLREPORT[relPath][bitcode.BC]["Errors"]
 
+        self.log.debug("Completed processing, appending to file")
+        reportCopy = self.FULLREPORT
         with open(self.reportFile, "w+") as report:
-            json.dump(self.FULLREPORT, report, indent=4)
+            json.dump(reportCopy, report, indent=4)
+        self.log.debug("Done!")
         
     def toBuild(self, proj):
         """
@@ -410,6 +414,7 @@ class DashAutomate:
 
         doneProjects = set()
         while len(self.buildingProjects) > 0:
+            # clean all bad jobs before checking project progress
             Command.clean()
             self.givePermission()
             for proj in self.buildingProjects:
@@ -452,7 +457,7 @@ class DashAutomate:
             for bit in self.buildingBitcodes:
                 buildingBitcodeCopy.add(bit)
             self.release()
-			# clean all not satisfied jobs before checking bitcode progress
+			# clean all bad jobs before checking bitcode progress
             Command.clean()
             for bit in buildingBitcodeCopy:
                 if bit.done():
