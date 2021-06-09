@@ -9,6 +9,27 @@ import re
 MemSize = 4000
 
 logger = logging.getLogger("Command")
+def clean():
+    """
+    @brief Cancels all jobs with label "DependencyNeverSatisfied" on the SLURM queue
+    """
+    check = sp.Popen("squeue --noheader -O jobid,reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    output = ""
+    # first acquire the queue to look for jobs whose dependencies have not been satisfied
+    while check.poll() is None:
+        output += check.stdout.read().decode("utf-8")
+    jobs   = output.split("\n")
+    jobIDs = re.findall("(\d+)", output)
+    # find all indices in jobIDs that have "DependencyNeverSatis" as their reason
+    indices = []
+    for i in range( len(jobs) ):
+        if "DependencyNeverSatis" in jobs[i]:
+            indices.append(i)
+    #for entry in indices:
+    #    print(jobs[entry])
+    killIDs = " ".join(str(jobIDs[i]) for i in indices)
+    cancel = sp.Popen("scancel "+killIDs, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    cancel.wait()
 
 """
 @brief Class facilitating the generation of bash scripts and commands
@@ -173,6 +194,7 @@ class Command:
             logging.critical("In Command.poll()\n\tCan only handle dependency jobId lists from SLURM!")
             exit()
             return False
+
 
     def cancel(self, jobid):
         """

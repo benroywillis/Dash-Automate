@@ -433,7 +433,7 @@ class BitCode:
     def done(self):
         """
         """
-        if not self.Command.poll(self.jobID):
+        if not self.Command.poll(self.jobID, checkDependencies=False):
             # get size and times for SQL push
             self.sizeAndTime()
             # push to SQL

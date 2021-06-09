@@ -1,5 +1,6 @@
 from BitCode import BitCode as Bc
 from Project import Project as pj
+import Command
 import Util
 import SQL
 import os
@@ -148,9 +149,9 @@ class DashAutomate:
         """
         if project.errors:
             self.FULLREPORT["Full Report"]["Bad Projects"].append(project.projectPath)
-
+        copyReport = self.FULLREPORT
         with open(self.reportFile, "w+") as report:
-            json.dump(self.FULLREPORT, report, indent=4)
+            json.dump(copyReport, report, indent=4)
 
     def addBitcodeReport(self, bitcode):
         """
@@ -409,7 +410,6 @@ class DashAutomate:
 
         doneProjects = set()
         while len(self.buildingProjects) > 0:
-            self.givePermission()
             for proj in self.buildingProjects:
                 if proj.done():
                     if not proj.Valid:
@@ -421,10 +421,12 @@ class DashAutomate:
                         newBC = Bc(self.args.project_prefix, proj.projectPath, BC[0], BC[1], BC[2], self.DASQL.ID, proj.ID, self.args)
                         if not newBC.errors:
                             newBC.run()
+                            self.givePermission()
                             self.buildingBitcodes.add(newBC)
                         else:
                             self.addBitcodeReport(newBC)
                     self.log.info("Project "+proj.projectPath+" is done.")
+                    self.log.info("Projects remaining: "+",".join(x.relPath for x in self.buildingProjects-doneProjects))
                     self.addProjectReport(proj)
                     if proj.PSQL.newEntry:
                         self.DASQL.commit()
@@ -448,6 +450,8 @@ class DashAutomate:
             for bit in self.buildingBitcodes:
                 buildingBitcodeCopy.add(bit)
             self.release()
+			# clean all not satisfied jobs before checking bitcode progress
+            Command.clean()
             for bit in buildingBitcodeCopy:
                 if bit.done():
                     self.log.info("Bitcode "+bit.buildPath+bit.BC+" is done.")
