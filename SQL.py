@@ -316,14 +316,13 @@ class DashAutomateSQL(SQLDataBase):
         return traceMap
 
 class ProjectSQL(SQLDataBase):
-    def __init__(self, rootpath, abspath, inputdict):
+    def __init__(self, relativePath, inputdict):
         """
         @brief Facilitates pushing to the Root table in Dash-Ontology database
-        @param[in] rootpath     Absolute path to the root directory of the corpus being built. Should be the Dash-Corpus install prefix.
-        @param[in] abspath      Absolute path to the specific directory within the corpus.
+        @param[in] abspath      Relative path from the root build directory to the specific directory of this project within the corpus.
         @param[in] inputdict    Input JSON file containing User information
         """
-        self.relPath = Util.getPathDiff(rootpath, abspath, build=False)
+        self.relPath = relativePath
         self.author = Util.getAuthor(inputdict)
         self.libraries = Util.getLibraries(inputdict)
         self.ID = -1
@@ -414,7 +413,7 @@ class BitcodeSQL(SQLDataBase):
                             try:
                                 DAGfile = open(self.BCD[BC][NTV][TRC]["DE"]["buildPath"], "r")
                             except FileNotFoundError:
-                                self.logger.warn("Could not find DAG file: "+self.BCD[BC][NTV][TRC]["DE"]["buildPath"])
+                                #self.logger.warn("Could not find DAG file: "+self.BCD[BC][NTV][TRC]["DE"]["buildPath"])
                                 DAGfile = None
                             if DAGfile is not None:
                                 DAGdata = "'"+DAGfile.read()+"'"
@@ -474,13 +473,13 @@ class BitcodeSQL(SQLDataBase):
                             try:
                                 FD = json.load( open( self.BCD[BC][NTV][TRC]["function"]["buildPath"],"r" ) )
                             except:
-                                self.logger.warn("Could not find function annotation file: "+self.BCD[BC][NTV][TRC]["function"]["buildPath"])
+                                #self.logger.warn("Could not find function annotation file: "+self.BCD[BC][NTV][TRC]["function"]["buildPath"])
                                 FD = None
                             # pig file
                             try:
                                 PD = json.load( open( self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"],"r" ) )
                             except:
-                                self.logger.warn("Could not find pig file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"])
+                                #self.logger.warn("Could not find pig file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"])
                                 PD = None
 
                             # push per-kernel data
