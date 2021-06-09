@@ -191,6 +191,7 @@ class DashAutomate:
         self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
         self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+        self.log.debug("Just summed directory totals")
         nodeSum = 0.0
         blockSum = 0.0
         # only count the traces that registered kernels, otherwise cartographer failures and other things taint the averages
@@ -216,6 +217,7 @@ class DashAutomate:
             if self.FULLREPORT[relPath]["Report"]["TikSwap Errors"].get(key) is None:
                 self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] = 0
             self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
+        self.log.debug("Just summed average kernel sizes")
 
         # sum FullReport totals
         self.FULLREPORT["Full Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
@@ -251,12 +253,13 @@ class DashAutomate:
             if self.FULLREPORT["Full Report"]["TikSwap Errors"].get(key) is None:
                 self.FULLREPORT["Full Report"]["TikSwap Errors"][key] = 0
             self.FULLREPORT["Full Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
+        self.log.debug("Just calculated FullReport totals")
 
         # add errors
         if len(self.FULLREPORT[relPath][bitcode.BC]["Errors"]) > 0:
             self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = self.FULLREPORT[relPath][bitcode.BC]["Errors"]
+        self.log.debug("Just completed errors")
 
-        self.log.debug("Completed processing, appending to file")
         reportCopy = self.FULLREPORT
         with open(self.reportFile, "w+") as report:
             json.dump(reportCopy, report, indent=4)
