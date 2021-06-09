@@ -410,7 +410,10 @@ class DashAutomate:
 
         doneProjects = set()
         while len(self.buildingProjects) > 0:
+            Command.clean()
+            self.givePermission()
             for proj in self.buildingProjects:
+                self.log.debug("Checking project "+proj.relPath)
                 if proj.done():
                     if not proj.Valid:
                         self.log.error("Project is not valid: "+proj.projectPath)
@@ -421,7 +424,6 @@ class DashAutomate:
                         newBC = Bc(self.args.project_prefix, proj.projectPath, BC[0], BC[1], BC[2], self.DASQL.ID, proj.ID, self.args)
                         if not newBC.errors:
                             newBC.run()
-                            self.givePermission()
                             self.buildingBitcodes.add(newBC)
                         else:
                             self.addBitcodeReport(newBC)

@@ -148,9 +148,7 @@ class Project:
         @brief Monitors the project's active build job. If the job has completed, a bitcode map for the project, specifying the LFLAGS and RARGS for each one is generated.
         @retval Returns False if an active job is still active, True if there are no active jobs and all housekeeping has been taken care of
         """
-        if self.Command.poll(self.jobID, checkDependencies=False):
-            return False
-        else:
+        if not self.Command.poll(self.jobID, checkDependencies=False):
             time.sleep(0.1)        
             bitcodes = Util.getLocalFiles(self.projectPath, suffix=[".bc",".o"])
             if len(bitcodes) > 0:
@@ -161,8 +159,9 @@ class Project:
                 self.ID = self.PSQL.ID
             else:
                 self.parseErrors()
-                
             return True
+
+        return False
 
     def parseBitcodes(self, bitcodes):
         """
