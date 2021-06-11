@@ -172,9 +172,9 @@ class Command:
                return False
 
             # flatten the input data and check whether all entries are still in the queue or not
+            logging.debug("Checking for jobs "+",".join(str(x) for x in activeIDs))
             for strjob in Util.flatten(jobId):
                 job = int(strjob)
-                logging.debug("Checking for job "+str(job)+" in "+",".join(str(x) for x in activeIDs))
                 if job in activeIDs:
                     return True
             return False
