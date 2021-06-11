@@ -160,105 +160,108 @@ class DashAutomate:
         self.log.debug("Adding bitcode report")
         # relative path to the project directory, not including the build folder name
         relPath = Util.getPathDiff(self.rootPath, bitcode.projectPath, build=False)
-        if self.FULLREPORT.get( relPath, None ) is None:
-            self.FULLREPORT[relPath] = dict()
-            self.FULLREPORT[relPath]["Report"] = dict()
-            self.FULLREPORT[relPath]["Report"]["Traces"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Traces"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Swaps"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Compilations"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Successes"] = 0
-            self.FULLREPORT[relPath]["Report"]["Cartographer Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
-            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = 0            
-            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = 0            
-            self.FULLREPORT[relPath]["Report"]["Cartographer Errors"] = dict()
-            self.FULLREPORT[relPath]["Report"]["Tik Errors"] = dict()
-            self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
-        # sum directory totals
-        self.FULLREPORT[relPath][bitcode.BC] = bitcode.report()
-        self.FULLREPORT[relPath]["Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
-        self.FULLREPORT[relPath]["Report"]["Tik Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Traces"]
-        self.FULLREPORT[relPath]["Report"]["Tik Swaps"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Swaps"]
-        self.FULLREPORT[relPath]["Report"]["Tik Compilations"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilations"]
-        self.FULLREPORT[relPath]["Report"]["Tik Successes"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Successes"]
-        self.FULLREPORT[relPath]["Report"]["Cartographer Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Kernels"]
-        self.FULLREPORT[relPath]["Report"]["Tik Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Kernels"]
-        self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
-        self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
-        self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
-        self.log.debug("Just summed directory totals")
-        nodeSum = 0.0
-        blockSum = 0.0
-        # only count the traces that registered kernels, otherwise cartographer failures and other things taint the averages
-        nonzeroTraces = 0
-        for bitcodeFile in self.FULLREPORT[relPath]:
-            if bitcodeFile == "Report":
-                continue
-            if self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"] > 0:
-                nonzeroTraces += 1
-            nodeSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"]
-            blockSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Blocks)"]
-        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
-        self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
-            if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
-                self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
-            self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
-            if self.FULLREPORT[relPath]["Report"]["Tik Errors"].get(key) is None:
-                self.FULLREPORT[relPath]["Report"]["Tik Errors"][key] = 0
-            self.FULLREPORT[relPath]["Report"]["Tik Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"][key]
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"]:
-            if self.FULLREPORT[relPath]["Report"]["TikSwap Errors"].get(key) is None:
-                self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] = 0
-            self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
-        self.log.debug("Just summed average kernel sizes")
+        BCreport = bitcode.report()
 
         # sum FullReport totals
-        self.FULLREPORT["Full Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
-        self.FULLREPORT["Full Report"]["Tik Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Traces"]
-        self.FULLREPORT["Full Report"]["Tik Swaps"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Swaps"]
-        self.FULLREPORT["Full Report"]["Tik Compilations"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilations"]
-        self.FULLREPORT["Full Report"]["Tik Successes"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Successes"]
-        self.FULLREPORT["Full Report"]["Cartographer Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Kernels"]
-        self.FULLREPORT["Full Report"]["Tik Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Kernels"]
-        self.FULLREPORT["Full Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
-        self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
-        self.FULLREPORT["Full Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
-        nodeSum = 0.0
-        blockSum = 0.0
-        nonzeroProjects = 0
-        for path in self.FULLREPORT:
-            if self.FULLREPORT[path].get("Report") is not None:
-                if self.FULLREPORT[path]["Report"]["Cartographer Kernels"] > 0:
-                    nonzeroProjects += 1
-                nodeSum  += self.FULLREPORT[path]["Report"]["Average Kernel Size (Nodes)"]
-                blockSum += self.FULLREPORT[path]["Report"]["Average Kernel Size (Blocks)"]
-        self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
-        self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
-            if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
-                self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0
-            self.FULLREPORT["Full Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
-            if self.FULLREPORT["Full Report"]["Tik Errors"].get(key) is None:
-                self.FULLREPORT["Full Report"]["Tik Errors"][key] = 0
-            self.FULLREPORT["Full Report"]["Tik Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"][key]
-        for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"]:
-            if self.FULLREPORT["Full Report"]["TikSwap Errors"].get(key) is None:
-                self.FULLREPORT["Full Report"]["TikSwap Errors"][key] = 0
-            self.FULLREPORT["Full Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
-        self.log.debug("Just calculated FullReport totals")
+        self.FULLREPORT["Full Report"]["Traces"] += BCreport["Total"]["Traces"]
+        self.FULLREPORT["Full Report"]["Tik Traces"] += BCreport["Total"]["Tik Traces"]
+        self.FULLREPORT["Full Report"]["Tik Swaps"] += BCreport["Total"]["Tik Swaps"]
+        self.FULLREPORT["Full Report"]["Tik Compilations"] += BCreport["Total"]["Tik Compilations"]
+        self.FULLREPORT["Full Report"]["Tik Successes"] += BCreport["Total"]["Tik Successes"]
+        self.FULLREPORT["Full Report"]["Cartographer Kernels"] += BCreport["Total"]["Cartographer Kernels"]
+        self.FULLREPORT["Full Report"]["Tik Kernels"] += BCreport["Total"]["Tik Kernels"]
+        self.FULLREPORT["Full Report"]["TikSwap Kernels"] += BCreport["Total"]["TikSwap Kernels"]
+        self.FULLREPORT["Full Report"]["Tik Compilation Kernels"] += BCreport["Total"]["Tik Compilation Kernels"]
+        self.FULLREPORT["Full Report"]["Tik Success Kernels"] += BCreport["Total"]["Tik Success Kernels"]
 
         # add errors
-        if len(self.FULLREPORT[relPath][bitcode.BC]["Errors"]) > 0:
-            self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = self.FULLREPORT[relPath][bitcode.BC]["Errors"]
+        if len(BCreport["Errors"]) > 0:
+            self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = BCreport["Errors"]
         self.log.debug("Just completed errors")
+
+        if self.args.long_report:
+            if self.FULLREPORT.get( relPath, None ) is None:
+                self.FULLREPORT[relPath] = dict()
+                self.FULLREPORT[relPath]["Report"] = dict()
+                self.FULLREPORT[relPath]["Report"]["Traces"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Traces"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Swaps"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Compilations"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Successes"] = 0
+                self.FULLREPORT[relPath]["Report"]["Cartographer Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] = 0
+                self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = 0            
+                self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = 0            
+                self.FULLREPORT[relPath]["Report"]["Cartographer Errors"] = dict()
+                self.FULLREPORT[relPath]["Report"]["Tik Errors"] = dict()
+                self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
+            # sum directory totals
+            self.FULLREPORT[relPath][bitcode.BC] = BCreport
+            self.FULLREPORT[relPath]["Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
+            self.FULLREPORT[relPath]["Report"]["Tik Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Traces"]
+            self.FULLREPORT[relPath]["Report"]["Tik Swaps"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Swaps"]
+            self.FULLREPORT[relPath]["Report"]["Tik Compilations"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilations"]
+            self.FULLREPORT[relPath]["Report"]["Tik Successes"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Successes"]
+            self.FULLREPORT[relPath]["Report"]["Cartographer Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Kernels"]
+            self.FULLREPORT[relPath]["Report"]["Tik Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Kernels"]
+            self.FULLREPORT[relPath]["Report"]["TikSwap Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Kernels"]
+            self.FULLREPORT[relPath]["Report"]["Tik Compilation Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilation Kernels"]
+            self.FULLREPORT[relPath]["Report"]["Tik Success Kernels"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Success Kernels"]
+            self.log.debug("Just summed directory totals")
+            nodeSum = 0.0
+            blockSum = 0.0
+            nonzeroProjects = 0
+            for path in self.FULLREPORT:
+                if self.FULLREPORT[path].get("Report") is not None:
+                    if self.FULLREPORT[path]["Report"]["Cartographer Kernels"] > 0:
+                        nonzeroProjects += 1
+                    nodeSum  += self.FULLREPORT[path]["Report"]["Average Kernel Size (Nodes)"]
+                    blockSum += self.FULLREPORT[path]["Report"]["Average Kernel Size (Blocks)"]
+            self.FULLREPORT["Full Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
+            self.FULLREPORT["Full Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroProjects) ) if nonzeroProjects > 0 else 0
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
+                if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
+                    self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0
+                self.FULLREPORT["Full Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
+                if self.FULLREPORT["Full Report"]["Tik Errors"].get(key) is None:
+                    self.FULLREPORT["Full Report"]["Tik Errors"][key] = 0
+                self.FULLREPORT["Full Report"]["Tik Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"][key]
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"]:
+                if self.FULLREPORT["Full Report"]["TikSwap Errors"].get(key) is None:
+                    self.FULLREPORT["Full Report"]["TikSwap Errors"][key] = 0
+                self.FULLREPORT["Full Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
+            self.log.debug("Just calculated FullReport totals")
+            nodeSum = 0.0
+            blockSum = 0.0
+            # only count the traces that registered kernels, otherwise cartographer failures and other things taint the averages
+            nonzeroTraces = 0
+            for bitcodeFile in self.FULLREPORT[relPath]:
+                if bitcodeFile == "Report":
+                    continue
+                if self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"] > 0:
+                    nonzeroTraces += 1
+                nodeSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"]
+                blockSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Blocks)"]
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
+                if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
+                    self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
+                self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"][key]
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"]:
+                if self.FULLREPORT[relPath]["Report"]["Tik Errors"].get(key) is None:
+                    self.FULLREPORT[relPath]["Report"]["Tik Errors"][key] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Errors"][key]
+            for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"]:
+                if self.FULLREPORT[relPath]["Report"]["TikSwap Errors"].get(key) is None:
+                    self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] = 0
+                self.FULLREPORT[relPath]["Report"]["TikSwap Errors"][key] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["TikSwap Errors"][key]
+            self.log.debug("Just summed average kernel sizes")
 
         reportCopy = self.FULLREPORT
         with open(self.reportFile, "w+") as report:
