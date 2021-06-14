@@ -535,7 +535,7 @@ class BitcodeSQL(SQLDataBase):
                                         finalData    += [FlowId, BowId, DagId, Hash, TikId, PigId, CpigId]
                                         if Labels is not None:
                                             finalColumns += ["Labels"]
-                                            finalData    += ["'"+Labels+"'"]
+                                            finalData    += ["'"+";".join(x for x in Labels)+"'"]
                                         finalColumns += ["EPigId","ECPigId"]
                                         finalData    += [EPigId, ECPigId]
                                         
