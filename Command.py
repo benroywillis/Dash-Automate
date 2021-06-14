@@ -14,21 +14,24 @@ def clean():
     @brief Cancels all jobs with label "DependencyNeverSatisfied" on the SLURM queue
     """
     logger.debug("Starting queue clean!")
-    check = sp.Popen("squeue --noheader -O jobid,reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    check = sp.Popen("squeue --noheader -O jobid,userid,reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    user = os.geteuid()
     output = ""
     logger.debug("Checking queue contents!")
     # first acquire the queue to look for jobs whose dependencies have not been satisfied
     while check.poll() is None:
         output += check.stdout.read().decode("utf-8")
     jobs   = output.split("\n")
-    jobIDs = re.findall("(\d+)", output)
+    numbers = re.findall("(\d+)", output)
+    # even indices are jobIDs, odd are user IDs
+    jobIDs = numbers[0::2]
+    users  = [int(x) for x in numbers[1::2]]
     # find all indices in jobIDs that have "DependencyNeverSatis" as their reason
     indices = []
-    for i in range( len(jobs) ):
-        if "DependencyNeverSatis" in jobs[i]:
+    for i in range( len(jobIDs) ):
+        if ("DependencyNeverSatis" in jobs[i]) and (users[i] == user):
             indices.append(i)
-    #for entry in indices:
-    #    print(jobs[entry])
+    
     if len(indices):
         logger.debug("Killing dead jobs!")
         killIDs = " ".join(str(jobIDs[i]) for i in indices)
