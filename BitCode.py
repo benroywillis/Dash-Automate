@@ -401,7 +401,7 @@ class BitCode:
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
                             runQueue[i][j].append([])
-                            # make traces tied to their native scripts
+                            # make Profiles tied to their native scripts
                             TRCdict = self.BCDict[BC][NTV][TRC]
                             runQueue[i][j][k].append( self.Command.constructBashFile(TRCdict["Script"], TRCdict["Command"], TRCdict["Log"], environment=Util.SourceScript) )
                             # make cartographers tied to their trace scripts
@@ -440,7 +440,7 @@ class BitCode:
             self.BCSQL.push()
             # delete trace if needed
             if not self.args.keep_trace:
-                self.deleteTraces()
+                self.deleteProfiles()
             return True
 
     def sizeAndTime(self):
@@ -449,7 +449,7 @@ class BitCode:
                 if NTV[-6:] == "native":
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
-                            self.BCDict[BC][NTV][TRC]["size"] = Util.getTraceSize(self.BCDict[BC][NTV][TRC]["buildPath"])
+                            self.BCDict[BC][NTV][TRC]["size"] = Util.getProfilesize(self.BCDict[BC][NTV][TRC]["buildPath"])
                             self.BCDict[BC][NTV][TRC]["time"] = Util.getLogTime(self.BCDict[BC][NTV][TRC]["Log"])
                             self.BCDict[BC][NTV][TRC]["CAR"]["time"] = Util.getLogTime(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
 
@@ -460,8 +460,11 @@ class BitCode:
         reportDict["Errors"] = list()
         reportDict["Total"] = dict()
         reportDict["Total"]["Size"] = 0
-        reportDict["Total"]["Traces"] = 0
-        reportDict["Total"]["Tik Traces"] = 0
+        reportDict["Total"]["Executables"] = 0
+        reportDict["Total"]["Profiles"] = 0
+        reportDict["Total"]["Failed Profiles"] = 0
+        reportDict["Total"]["Segmented Profiles"] = 0
+        reportDict["Total"]["Tik Profiles"] = 0
         reportDict["Total"]["Tik Swaps"] = 0
         reportDict["Total"]["Tik Compilations"] = 0
         reportDict["Total"]["Tik Successes"] = 0
@@ -479,8 +482,8 @@ class BitCode:
             reportDict["Errors"] += ["Bitcode file not found"]
             return reportDict
 
-        # keeps track of all traces that had non-zero kernels
-        nonzeroTraces = 0
+        # keeps track of all Profiles that had non-zero kernels
+        nonzeroProfiles = 0
         for BC in self.BCDict:
             reportDict[BC] = dict()
             for NTV in self.BCDict[BC]:
@@ -490,18 +493,21 @@ class BitCode:
                     if Util.findErrors(self.BCDict[BC][NTV]["Log"]):
                         reportDict["Errors"].append(self.BCDict[BC][NTV]["Log"])
                         continue
+                    # add the executable
+                    reportDict["Total"]["Executables"] += 1
                     self.BCDict[BC][NTV]["SUCCESS"] = True
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
                             # if the trace failed, don't look at anything else
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"])
+                                reportDict["Total"]["Failed Profiles"] += 1
                                 continue
                             self.BCDict[BC][NTV][TRC]["SUCCESS"] = True
 
                             reportDict[BC][NTV][TRC] = dict()
                             # record the trace
-                            reportDict["Total"]["Traces"] += 1
+                            reportDict["Total"]["Profiles"] += 1
                             # trace size and time integration
                             reportDict[BC][NTV][TRC]["size"] = self.BCDict[BC][NTV][TRC]["size"]
                             reportDict["Total"]["Size"] += reportDict[BC][NTV][TRC]["size"]
@@ -522,6 +528,7 @@ class BitCode:
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
                                 continue
+                            reportDict["Total"]["Segmented Profiles"] += 1
                             self.BCDict[BC][NTV][TRC]["CAR"]["SUCCESS"] = True
                             reportDict[BC][NTV][TRC]["CARtime"] = self.BCDict[BC][NTV][TRC]["CAR"]["time"]
                             self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] = Util.getCartographerKernels(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"])
@@ -530,7 +537,7 @@ class BitCode:
                             if self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] <= 0:
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"]+" -> 0 Kernels")
                             else:
-                                nonzeroTraces += 1
+                                nonzeroProfiles += 1
 
                             """
                             # accessories
@@ -556,7 +563,7 @@ class BitCode:
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
                             else:
                                 self.BCDict[BC][NTV][TRC]["tik"]["SUCCESS"] = True
-                                reportDict["Total"]["Tik Traces"] += 1
+                                reportDict["Total"]["Tik Profiles"] += 1
                             self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] = Util.getTikKernels(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
                             reportDict[BC][NTV][TRC]["Tik Kernels"] = self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] if self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] > 0 else 0
                             reportDict["Total"]["Tik Kernels"] += reportDict[BC][NTV][TRC]["Tik Kernels"]
@@ -591,13 +598,13 @@ class BitCode:
                                 if reportDict["Total"]["TikSwap Errors"].get(key, None) is None:
                                     reportDict["Total"]["TikSwap Errors"][key] = 0
                                 reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
-        # normalize average kernel size stats to the number of traces because the cartographer gives us per-trace averages
+        # normalize average kernel size stats to the number of Profiles because the cartographer gives us per-trace averages
         # only count the programs that had more than 1 kernel
-        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
-        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
+        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(nonzeroProfiles) if nonzeroProfiles > 0 else 0
+        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(nonzeroProfiles) if nonzeroProfiles > 0 else 0
         return reportDict
 
-    def deleteTraces(self):
+    def deleteProfiles(self):
         """
         """
         for BC in self.BCDict:

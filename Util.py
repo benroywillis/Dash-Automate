@@ -564,7 +564,7 @@ def getLibraries( JD ):
         return ""
         
 ### Reporting
-def getTraceSize(filepath):
+def getProfilesize(filepath):
     try:
         size = os.path.getsize(filepath)
         return size

@@ -34,7 +34,7 @@ class DashAutomate:
         self.log = logging.getLogger("DashAutomate")
         # DB connection object for run-related SQL pushes
         self.DASQL = SQL.DashAutomateSQL(self.rootPath, self.args.previous_id)
-        # tree holds all existing traces in the specified previous runID
+        # tree holds all existing Profiles in the specified previous runID
         self.existingMap = None
         # set to hold project paths that have already had a project built
         self.builtProjects = set()
@@ -52,8 +52,11 @@ class DashAutomate:
         # full report dictionary
         self.FULLREPORT = dict()
         self.FULLREPORT["Full Report"] = dict()
-        self.FULLREPORT["Full Report"]["Traces"] = 0
-        self.FULLREPORT["Full Report"]["Tik Traces"] = 0
+        self.FULLREPORT["Full Report"]["Executables"] = 0
+        self.FULLREPORT["Full Report"]["Profiles"] = 0
+        self.FULLREPORT["Full Report"]["Failed Profiles"] = 0
+        self.FULLREPORT["Full Report"]["Segmented Profiles"] = 0
+        self.FULLREPORT["Full Report"]["Tik Profiles"] = 0
         self.FULLREPORT["Full Report"]["Tik Swaps"] = 0
         self.FULLREPORT["Full Report"]["Tik Compilations"] = 0
         self.FULLREPORT["Full Report"]["Tik Successes"] = 0
@@ -163,8 +166,11 @@ class DashAutomate:
         BCreport = bitcode.report()
 
         # sum FullReport totals
-        self.FULLREPORT["Full Report"]["Traces"] += BCreport["Total"]["Traces"]
-        self.FULLREPORT["Full Report"]["Tik Traces"] += BCreport["Total"]["Tik Traces"]
+        self.FULLREPORT["Full Report"]["Executables"] += BCreport["Total"]["Executables"]
+        self.FULLREPORT["Full Report"]["Profiles"] += BCreport["Total"]["Profiles"]
+        self.FULLREPORT["Full Report"]["Failed Profiles"] += BCreport["Total"]["Failed Profiles"]
+        self.FULLREPORT["Full Report"]["Segmented Profiles"] += BCreport["Total"]["Segmented Profiles"]
+        self.FULLREPORT["Full Report"]["Tik Profiles"] += BCreport["Total"]["Tik Profiles"]
         self.FULLREPORT["Full Report"]["Tik Swaps"] += BCreport["Total"]["Tik Swaps"]
         self.FULLREPORT["Full Report"]["Tik Compilations"] += BCreport["Total"]["Tik Compilations"]
         self.FULLREPORT["Full Report"]["Tik Successes"] += BCreport["Total"]["Tik Successes"]
@@ -179,12 +185,26 @@ class DashAutomate:
             self.FULLREPORT["Full Report"]["Bitcodes with Errors"][bitcode.BC] = BCreport["Errors"]
         self.log.debug("Just completed errors")
 
+        for key in BCreport["Total"]["Cartographer Errors"]:
+            if self.FULLREPORT["Full Report"]["Cartographer Errors"].get(key) is None:
+                self.FULLREPORT["Full Report"]["Cartographer Errors"][key] = 0
+            self.FULLREPORT["Full Report"]["Cartographer Errors"][key] += BCreport["Total"]["Cartographer Errors"][key]
+        for key in BCreport["Total"]["Tik Errors"]:
+            if self.FULLREPORT["Full Report"]["Tik Errors"].get(key) is None:
+                self.FULLREPORT["Full Report"]["Tik Errors"][key] = 0
+            self.FULLREPORT["Full Report"]["Tik Errors"][key] += BCreport["Total"]["Tik Errors"][key]
+        for key in BCreport["Total"]["TikSwap Errors"]:
+            if self.FULLREPORT["Full Report"]["TikSwap Errors"].get(key) is None:
+                self.FULLREPORT["Full Report"]["TikSwap Errors"][key] = 0
+            self.FULLREPORT["Full Report"]["TikSwap Errors"][key] += BCreport["Total"]["TikSwap Errors"][key]
+        self.log.debug("Just added specific error totals")
+
         if self.args.long_report:
             if self.FULLREPORT.get( relPath, None ) is None:
                 self.FULLREPORT[relPath] = dict()
                 self.FULLREPORT[relPath]["Report"] = dict()
-                self.FULLREPORT[relPath]["Report"]["Traces"] = 0
-                self.FULLREPORT[relPath]["Report"]["Tik Traces"] = 0
+                self.FULLREPORT[relPath]["Report"]["Profiles"] = 0
+                self.FULLREPORT[relPath]["Report"]["Tik Profiles"] = 0
                 self.FULLREPORT[relPath]["Report"]["Tik Swaps"] = 0
                 self.FULLREPORT[relPath]["Report"]["Tik Compilations"] = 0
                 self.FULLREPORT[relPath]["Report"]["Tik Successes"] = 0
@@ -201,8 +221,8 @@ class DashAutomate:
                 self.FULLREPORT[relPath]["Report"]["TikSwap Errors"] = dict()
             # sum directory totals
             self.FULLREPORT[relPath][bitcode.BC] = BCreport
-            self.FULLREPORT[relPath]["Report"]["Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Traces"]
-            self.FULLREPORT[relPath]["Report"]["Tik Traces"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Traces"]
+            self.FULLREPORT[relPath]["Report"]["Profiles"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Profiles"]
+            self.FULLREPORT[relPath]["Report"]["Tik Profiles"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Profiles"]
             self.FULLREPORT[relPath]["Report"]["Tik Swaps"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Swaps"]
             self.FULLREPORT[relPath]["Report"]["Tik Compilations"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Compilations"]
             self.FULLREPORT[relPath]["Report"]["Tik Successes"] += self.FULLREPORT[relPath][bitcode.BC]["Total"]["Tik Successes"]
@@ -238,17 +258,17 @@ class DashAutomate:
             self.log.debug("Just calculated FullReport totals")
             nodeSum = 0.0
             blockSum = 0.0
-            # only count the traces that registered kernels, otherwise cartographer failures and other things taint the averages
-            nonzeroTraces = 0
+            # only count the Profiles that registered kernels, otherwise cartographer failures and other things taint the averages
+            nonzeroProfiles = 0
             for bitcodeFile in self.FULLREPORT[relPath]:
                 if bitcodeFile == "Report":
                     continue
                 if self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"] > 0:
-                    nonzeroTraces += 1
+                    nonzeroProfiles += 1
                 nodeSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Nodes)"]
                 blockSum += self.FULLREPORT[relPath][bitcodeFile]["Total"]["Average Kernel Size (Blocks)"]
-            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
-            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroTraces) ) if nonzeroTraces > 0 else 0
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Nodes)"] = float( float(nodeSum) / float(nonzeroProfiles) ) if nonzeroProfiles > 0 else 0
+            self.FULLREPORT[relPath]["Report"]["Average Kernel Size (Blocks)"] = float( float(blockSum) / float(nonzeroProfiles) ) if nonzeroProfiles > 0 else 0
             for key in self.FULLREPORT[relPath][bitcode.BC]["Total"]["Cartographer Errors"]:
                 if self.FULLREPORT[relPath]["Report"]["Cartographer Errors"].get(key) is None:
                     self.FULLREPORT[relPath]["Report"]["Cartographer Errors"][key] = 0
@@ -286,7 +306,7 @@ class DashAutomate:
 
         relPath = Util.getPathDiff(self.rootPath, proj.projectPath)
         ## run from the highest density project from each makefile
-        # this project's traces will be evaluated for the one with highest kernel/time density. That project will be chosen
+        # this project's Profiles will be evaluated for the one with highest kernel/time density. That project will be chosen
         if self.args.nightly_build:
             # nightly builds are supposed to test changes to the TraceAtlas toolchain in a way that verifies the operation of its programs beyond its own test suite
             # It builds at least 1 project from each Makefile, ideally the one that has the highest kernels / (CAR time + trace time) density. 
@@ -349,7 +369,7 @@ class DashAutomate:
                 return onlyNew
 
             ## only new projects
-            # now loop through all bitcodes that were found in the database and compare their traces to what this project has
+            # now loop through all bitcodes that were found in the database and compare their Profiles to what this project has
             # a project trace matches a trace already in the database if the path, BC and (LFLAG,RARG) all match 
             for BC in existingBCs:
                 unfoundCombos = set()
