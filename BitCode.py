@@ -139,6 +139,7 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathpigfile"] = tmpFolder+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathBBfile"] = self.buildPath+"BB_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["dotFileTmpPath"] = tmpFolder+TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Script"] = self.buildPath+"scripts/Cartographer_"+TRCname+".sh"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Log"] = self.buildPath+"logs/Cartographer_"+TRCname+".log"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Command"] = self.makeCartographerCommand(BCpath, NTV, TRCkey)
@@ -192,6 +193,7 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpFolder"] = tmpFolder 
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["buildPath"] = self.buildPath+"DE_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpPath"] = tmpFolder+"DE_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotFileName"] = TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotBuildPath"] = self.buildPath+TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotTmpPath"] = tmpFolder+TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["DE"]["Script"] = self.buildPath+"scripts/DE_"+TRCname+".sh"
@@ -296,17 +298,21 @@ class BitCode:
         @retval     commandList List of commands ready to be put into a bash script.
                     returnFiles Names of each bash script to be made. Indices of each list match each other.
         """
-        #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]] )
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"],self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]] )
+        # files copied from build folder that are required as input
+        profile   = self.BCDict[BC][NTV][TRC]["buildPath"]
+        bitcode   = self.BCDict[BC]["buildPath"]
+        blockfile = self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]
+        # output files copied from tmp folder to build folder
+        dotFile   = self.BCDict[BC][NTV][TRC]["CAR"]["dotFileTmpPath"]
+        outputKF  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
+        # generates header,footer commands for the bash script to move input and output files
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[profile, bitcode, blockfile], suffixFiles=[outputKF ,dotFile] )
         
         TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
         BCfile    = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        command   = "time -p "+self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]#+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -D "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]
-        #if not self.args.no_labeling:
-        #    command += " -L --nb "
-        #else:
-        #    command += " --nb "
+        command   = "time -p "+self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -d "+dotFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
+
         return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], command, "cartographer" ) + suffix
 
     def makeTikCommand(self, BC, NTV, TRC):
