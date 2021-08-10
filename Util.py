@@ -630,8 +630,9 @@ def getCartographerKernels(filepath):
     kernels = 0
     for key in dic:
         if key == "Kernels":
-            for id in dic[key]:
-                kernels+=1
+            if dic[key]:
+                for id in dic[key]:
+                    kernels+=1
     return kernels
 
 def getTikKernels(filepath):
