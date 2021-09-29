@@ -4,6 +4,9 @@ import SQL
 import json
 import os
 
+# number of times a native/profile is run to sample its runtime thoroughly
+SAMPLE_NUMBER = 15
+
 class BitCode:
     def __init__(self, rootPath, path, BC, LFLAGS, RARGS, run, parentID, rtargs):
         """
@@ -102,7 +105,6 @@ class BitCode:
             self.BCDict[BCpath][NTV]["LFLAG"] = LFLAGS[i]
             self.BCDict[BCpath][NTV]["Script"] = self.buildPath + "scripts/makeNative"+NTVname+".sh"
             self.BCDict[BCpath][NTV]["Log"] = self.buildPath+"logs/makeNative"+NTVname+".log"
-            self.BCDict[BCpath][NTV]["Command"] = self.makeNativeCommand(BCpath, NTV)
             self.BCDict[BCpath][NTV]["SUCCESS"] = False
             if len(RARGS) == 0:
                 RARGS.append("")
@@ -122,7 +124,6 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["buildPathBlockFile"] = self.buildPath+self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"]
                 self.BCDict[BCpath][NTV][TRCkey]["tmpPathBlockFile"]   = tmpFolder+     self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"]
                 self.BCDict[BCpath][NTV][TRCkey]["RARG"] = RARGS[j]
-                self.BCDict[BCpath][NTV][TRCkey]["Command"] = self.makeTraceCommand(BCpath, NTV, TRCkey)
                 self.BCDict[BCpath][NTV][TRCkey]["Script"] = self.buildPath+"scripts/makeTrace"+TRCname+".sh"
                 self.BCDict[BCpath][NTV][TRCkey]["Log"] = self.buildPath+"logs/makeTrace"+TRCname+".log"
                 self.BCDict[BCpath][NTV][TRCkey]["time"] = -2
@@ -141,88 +142,10 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathBBfile"] = tmpFolder+"BB_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Script"] = self.buildPath+"scripts/Cartographer_"+TRCname+".sh"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Log"] = self.buildPath+"logs/Cartographer_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Command"] = self.makeCartographerCommand(BCpath, NTV, TRCkey)
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["time"] = []
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Kernels"] = []
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["SUCCESS"] = False
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["ERRORS"] = {}
-                # tik information
-                self.BCDict[BCpath][NTV][TRCkey]["tik"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Name"] = "tik_"+TRCname+".ll"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["buildPath"] = self.buildPath+"tik_"+TRCname+".ll"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["tik"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["tmpPath"] = tmpFolder+"tik_"+TRCname+".ll"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Script"] = self.buildPath+"scripts/tik_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Countlog"] = self.buildPath+"logs/countTik_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Log"] = self.buildPath+"logs/tik_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Command"] = self.makeTikCommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["Kernels"] = -2
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["SUCCESS"] = False
-                self.BCDict[BCpath][NTV][TRCkey]["tik"]["ERRORS"] = {}
-                # tikSwap information
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"] = "tikSwap_"+TRCname+".ll"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["buildPath"] = self.buildPath+"tikSwap_"+TRCname+".ll"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["tmpPath"] = tmpFolder+"tikSwap_"+TRCname+".ll"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["binaryTmpPath"] = tmpFolder+"tikSwap_"+TRCname+".exec"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Script"] = self.buildPath+"scripts/tikSwap_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Log"] = self.buildPath+"logs/tikSwap_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Command"] = self.makeTikSwapCommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["Kernels"] = -2
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["SUCCESS"] = False
-                self.BCDict[BCpath][NTV][TRCkey]["tikSwap"]["ERRORS"] = {}
-                # function annotator information
-                self.BCDict[BCpath][NTV][TRCkey]["function"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["Name"] = "function_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["buildPath"] = self.buildPath+"function_"+TRCname+".json"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["function"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["tmpPath"] = tmpFolder+"function_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["Script"] = self.buildPath+"scripts/function_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["Log"] = self.buildPath+"logs/function_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["Command"] = self.makeDetectorCommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["function"]["SUCCESS"] = False
-                # Dag Extractor information
-                self.BCDict[BCpath][NTV][TRCkey]["DE"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["Name"] = "DE_"+TRCname+".json"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["DE"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["buildPath"] = self.buildPath+"DE_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["tmpPath"] = tmpFolder+"DE_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotBuildPath"] = self.buildPath+TRCname+".dot"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["dotTmpPath"] = tmpFolder+TRCname+".dot"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["Script"] = self.buildPath+"scripts/DE_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["Log"] = self.buildPath+"logs/DE_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["Command"] = self.makeDEcommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["DE"]["SUCCESS"] = False
-                # Working set information
-                self.BCDict[BCpath][NTV][TRCkey]["WS"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["Name"] = "WS_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["buildPath"] = self.buildPath+"WS_"+TRCname+".json"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["WS"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["tmpPath"] = tmpFolder+"WS_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["Script"] = self.buildPath+"scripts/WS_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["Log"] = self.buildPath+"logs/WS_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["Command"] = self.makeWScommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["WS"]["SUCCESS"] = False
-                # Kernel Hasher information
-                self.BCDict[BCpath][NTV][TRCkey]["KH"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["Name"] = "KH_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["buildPath"] = self.buildPath+"KH_"+TRCname+".json"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["KH"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["tmpPath"] = tmpFolder+"KH_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["Script"] = self.buildPath+"scripts/KH_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["Log"] = self.buildPath+"logs/KH_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["Command"] = self.makeKHcommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["KH"]["SUCCESS"] = False
-                # Dictionary for PAPI file information, can only be initialized after # of kernels are known
-                self.BCDict[BCpath][NTV][TRCkey]["PAPI"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["PAPI"]["SUCCESS"] = False
 
     def tmpFileFacility(self, tmpFolder, prefixFiles=[], suffixFiles=[] ):
         """
@@ -259,354 +182,66 @@ class BitCode:
         """
         return "if "+command+"; then\n\techo \"DAStepSuccess: "+step+" command succeeded\"\nelse\n\techo \"DAStepERROR: "+step+" command failed\"\n\trm -rf "+path+"\n\texit 1\nfi ; "
 
-    def makeNativeCommand(self, BC, NTV):
-        """
-        @brief      Creates a bash-ready command to build one native file for this bitcode
-        @retval     command String
-        """
+    def getProfileCommand(self, BC, NTV, TRC):
         if self.args.opt_level[0]:
             optOptString = "-O"+self.args.opt_level[0]
         else:
             optOptString = ""
-
         if self.args.opt_level[1]:
             optClangString = "-O"+self.args.opt_level[1]
         else:
             optClangString = ""
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"]] )
-        #optCommand = self.OPT+" -load "+self.Tracer+" -Markov "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
-        clangPPCommand = self.CXX+" -lz -lpthread "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        #return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
-        return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
 
-    def makeTraceCommand(self, BC, NTV, TRC):
-        """
-        @brief      Creates a bash-ready command that will run the given executable
-        @retval     command     Bash-ready command for running the given NTV executable
-        """
+        #tmpFolder = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]
+        tmpFolder = self.buildPath
+        profileBC = self.BCDict[BC][NTV]["TRAbuild"]
+        NTVfile = tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]+".markov"
+        TRCfile   = tmpFolder+"/"+self.BCDict[BC][NTV][TRC]["Name"]
+        BlockFile = tmpFolder+"/"+self.BCDict[BC][NTV][TRC]["BlockFileName"]
+        BCfile    = tmpFolder+"/"+self.BCDict[BC]["Name"]
+        command = "export MARKOV_FILE="+TRCfile + " BLOCK_FILE="+BlockFile+" ; "
+
+        optCommand = self.OPT+" -load "+self.Tracer+" -Markov "+BCfile+" -o "+profileBC+" "+optOptString
+        clangPPCommand = self.CXX+" -lz -lpthread "+profileBC+" -o "+NTVfile+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
+        command += optCommand + " ; " + clangPPCommand + " ; "
+
+        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
+        samplingProfileCommand = profileCommand * SAMPLE_NUMBER
+        command += samplingProfileCommand
+
+
+        CARcommand   = self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"] + " ; "
+        samplingCARcommand = CARcommand * SAMPLE_NUMBER
+        command += samplingCARcommand
+        return command
+
+
+    def getNativeCommand(self, BC, NTV, TRC):
+        if self.args.opt_level[0]:
+            optOptString = "-O"+self.args.opt_level[0]
+        else:
+            optOptString = ""
+        if self.args.opt_level[1]:
+            optClangString = "-O"+self.args.opt_level[1]
+        else:
+            optClangString = ""
+
+        #tmpFolder = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]
+        tmpFolder = self.buildPath
+        command = ""
+        clangPPCommand = self.CXX+" -lz -lpthread "+tmpFolder+"/"+self.BCDict[BC]["Name"]+" -o "+tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
+        command += clangPPCommand + " ; "
+
         prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
+        envSet = "export MARKOV_FILE="+self.buildPath+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.buildPath+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
+        NTVfile = tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]
+        profileCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
+        samplingProfileCommand = profileCommand * SAMPLE_NUMBER
+        command += envSet + samplingProfileCommand
 
-        envSet = "export MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
-        NTVfile = self.BCDict[BC][NTV][TRC]["tmpFolder"]+self.BCDict[BC][NTV]["Name"]
-        trcCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"]
-        return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tmpFolder"], trcCommand, "trace")+suffix
+        return command
 
-    def makeCartographerCommand(self, BC, NTV, TRC):
-        """
-        @brief      Creates commands that will run the kernel tool on each trace.
-        @retval     commandList List of commands ready to be put into a bash script.
-                    returnFiles Names of each bash script to be made. Indices of each list match each other.
-        """
-        #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"], self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]] )
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["buildPath"], self.BCDict[BC]["buildPath"],self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]] )
-        
-        TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
-        BCfile    = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        command   = "time -p "+self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]#+" -p "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathpigfile"]+" -D "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPathBBfile"]
-        #if not self.args.no_labeling:
-        #    command += " -L --nb "
-        #else:
-        #    command += " --nb "
-        return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], command, "cartographer" ) + suffix
-
-    def makeTikCommand(self, BC, NTV, TRC):
-        """
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tik"]["tmpPath"]] )
-
-        kernelFile = self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        BCfile = self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"]+self.BCDict[BC]["Name"]
-
-        tikCommand = self.tikBinary+" -f LLVM -j "+kernelFile+" -t=LLVM -o "+self.BCDict[BC][NTV][TRC]["tik"]["tmpPath"]+" -S -v 5 -l "+self.BCDict[BC][NTV][TRC]["tik"]["Log"]+" "+BCfile
-        return prefix +self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["tik"]["tmpFolder"], tikCommand, "tik" )+ suffix
-
-    def makeTikSwapCommand(self, BC, NTV, TRC):
-        """
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["tik"]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]] )
-
-        BCfile = self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        tikFile = self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["tik"]["Name"]
-        tikFileCheck = "[ -f "+tikFile+" ]"
-        tikSwapCommand = self.tikSwapBinary+" -t "+tikFile+" -b "+BCfile+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]
-        compilationCommand = self.CXX+" -O3 -lz -lpthread -fuse-ld="+self.LD+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+tikFile+" "+self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpPath"]+" "+self.Backend+" -o "+self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]
-        runCommand = self.BCDict[BC][NTV][TRC]["tikSwap"]["binaryTmpPath"]+" "+self.BCDict[BC][NTV][TRC]["RARG"]
-        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikFileCheck, "tikFileCheck") + \
-                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], tikSwapCommand, "TikSwap") + \
-                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], compilationCommand, "Tik Compilation") + \
-                        self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tikSwap"]["tmpFolder"], runCommand, "Tik Binary") + suffix
-
-    def makeDetectorCommand(self, BC, NTV, TRC):
-        """
-        @brief      Creates commands that facilitate the libDetector tool.
-        @retval     Command in string form. The command assumes its input files are local
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["function"]["tmpPath"]] )
-        
-        BCfile = self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        kernelFile = self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        libDetectorCommand = self.libDetectorBin+" -i "+BCfile +" -k "+kernelFile+" -o "+self.BCDict[BC][NTV][TRC]["function"]["tmpPath"]
-        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["function"]["tmpFolder"], libDetectorCommand, "libDetector") + suffix
-
-    def makeDEcommand(self, BC, NTV, TRC):
-        """
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC][NTV][TRC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"], self.BCDict[BC][NTV][TRC]["DE"]["dotTmpPath"]] )
-        
-        kernelFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        traceFile = self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        DEcommand = self.DagExtractorPath+" -k "+kernelFile+" -t "+traceFile+" -d "+self.BCDict[BC][NTV][TRC]["DE"]["dotTmpPath"]+" -o "+self.BCDict[BC][NTV][TRC]["DE"]["tmpPath"]+" --nb"
-        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["DE"]["tmpFolder"], DEcommand, "DagExtractor") + suffix
-
-    def makeWScommand(self, BC, NTV, TRC):
-        """
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC][NTV][TRC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["WS"]["tmpPath"]] )
-        
-        kernelFile = self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        traceFile = self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        WScommand = self.WStool+" -i "+traceFile+" -k "+kernelFile+" -o "+self.BCDict[BC][NTV][TRC]["WS"]["tmpPath"]+" --nb"
-        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["WS"]["tmpFolder"], WScommand, "WorkingSet") + suffix
-
-    def makeKHcommand(self, BC, NTV, TRC):
-        """
-        """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["KH"]["tmpPath"]] )
-
-        kernelFile = self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        BCfile     = self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        KHcommand  = self.KHtool+" -k "+kernelFile+" -i "+BCfile+" -o "+self.BCDict[BC][NTV][TRC]["KH"]["tmpPath"]
-        return prefix + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["KH"]["tmpFolder"], KHcommand, "KernelHasher") + suffix
-
-    def makeScripts(self):
-        """
-        @brief Creates a script for the given step
-        @param[in] step     Integer index of the 
-        """
-        # list of list of lists of [strings, (tuple of strings)] where each innermost list is a sequence of scripts to be handed to self.Comand
-        # one level outside the innermost is a list of entries for the build flow of each NTV
-        # the outermost level has entries for each BC
-        runQueue = []
-        i = 0
-        for BC in self.BCDict:
-            runQueue.append([])
-            j = 0
-            for NTV in self.BCDict[BC]:
-                if NTV[-6:] == "native":
-                    runQueue[i].append([])
-                    NTVdict = self.BCDict[BC][NTV]
-                    # make natives
-                    runQueue[i][j].append( self.Command.constructBashFile(NTVdict["Script"], NTVdict["Command"], NTVdict["Log"], environment=Util.SourceScript) )
-                    k = 1 # because the first index is the NTV command
-                    for TRC in self.BCDict[BC][NTV]:
-                        if TRC.startswith("TRC"):
-                            runQueue[i][j].append([])
-                            # make traces tied to their native scripts
-                            TRCdict = self.BCDict[BC][NTV][TRC]
-                            runQueue[i][j][k].append( self.Command.constructBashFile(TRCdict["Script"], TRCdict["Command"], TRCdict["Log"], environment=Util.SourceScript) )
-                            # make cartographers tied to their trace scripts
-                            #CARdict = TRCdict["CAR"]
-                            #runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
-                            # tikSwap is tied to tik, therefore it immediately follows tik within brackets
-                            # tik, DE, func, WS, KH all tied to the cartographer script
-                            #ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"], timeLimit=10 ), \
-                                            #[ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"], timeLimit=10 ) ], \
-                                            #self.Command.constructBashFile(TRCdict["DE"]["Script"], TRCdict["DE"]["Command"], TRCdict["DE"]["Log"] ), \
-                                            #self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
-                                            #self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \
-                                            #self.Command.constructBashFile(TRCdict["KH"]["Script"], TRCdict["KH"]["Command"], TRCdict["KH"]["Log"]) )
-                            #runQueue[i][j][k].append(ExtraTuple)
-                            k += 1 # increment TRC counter
-                    j += 1 # increment NTV counter
-            i += 1 # increment BC counter
-        return runQueue
-
-    def run(self):
-        """
-        @brief Runs the configured build flow as described by the input args for this particular bitcode
-        """
-        runQueue = self.makeScripts()
-        for BC in runQueue:
-            for NTV in BC:
-                self.jobID.append( self.Command.run(NTV, dependency=True) )
-
-    def done(self):
-        """
-        """
-        if not self.Command.poll(self.jobID):
-            # get size and times for SQL push
-            self.sizeAndTime()
-            # push to SQL
-            self.BCSQL.push()
-            # delete trace if needed
-            if not self.args.keep_trace:
-                self.deleteTraces()
-            return True
-
-    def sizeAndTime(self):
-        for BC in self.BCDict:
-            for NTV in self.BCDict[BC]:
-                if NTV[-6:] == "native":
-                    for TRC in self.BCDict[BC][NTV]:
-                        if TRC.startswith("TRC"):
-                            self.BCDict[BC][NTV][TRC]["size"] = Util.getTraceSize(self.BCDict[BC][NTV][TRC]["buildPath"])
-                            self.BCDict[BC][NTV][TRC]["time"] = Util.getLogTime(self.BCDict[BC][NTV][TRC]["Log"])
-                            self.BCDict[BC][NTV][TRC]["CAR"]["time"] = Util.getLogTime(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
-
-    def report(self):
-        """
-        """
-        reportDict = dict()
-        reportDict["Errors"] = list()
-        reportDict["Total"] = dict()
-        reportDict["Total"]["Size"] = 0
-        reportDict["Total"]["Traces"] = 0
-        reportDict["Total"]["Tik Traces"] = 0
-        reportDict["Total"]["Tik Swaps"] = 0
-        reportDict["Total"]["Tik Compilations"] = 0
-        reportDict["Total"]["Tik Successes"] = 0
-        reportDict["Total"]["Cartographer Kernels"] = 0
-        reportDict["Total"]["Tik Kernels"] = 0
-        reportDict["Total"]["TikSwap Kernels"] = 0
-        reportDict["Total"]["Tik Compilation Kernels"] = 0
-        reportDict["Total"]["Tik Success Kernels"] = 0
-        reportDict["Total"]["Average Kernel Size (Nodes)"] = 0        
-        reportDict["Total"]["Average Kernel Size (Blocks)"] = 0        
-        reportDict["Total"]["Cartographer Errors"] = dict()
-        reportDict["Total"]["Tik Errors"] = dict()
-        reportDict["Total"]["TikSwap Errors"] = dict()
-        if self.BCDict == None:
-            reportDict["Errors"] += ["Bitcode file not found"]
-            return reportDict
-
-        # keeps track of all traces that had non-zero kernels
-        nonzeroTraces = 0
-        for BC in self.BCDict:
-            reportDict[BC] = dict()
-            for NTV in self.BCDict[BC]:
-                if NTV[-6:] == "native":
-                    reportDict[BC][NTV] = dict()
-                    # if the native failed, don't look at anything else
-                    if Util.findErrors(self.BCDict[BC][NTV]["Log"]):
-                        reportDict["Errors"].append(self.BCDict[BC][NTV]["Log"])
-                        continue
-                    self.BCDict[BC][NTV]["SUCCESS"] = True
-                    for TRC in self.BCDict[BC][NTV]:
-                        if TRC.startswith("TRC"):
-                            # if the trace failed, don't look at anything else
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"])
-                                continue
-                            self.BCDict[BC][NTV][TRC]["SUCCESS"] = True
-
-                            reportDict[BC][NTV][TRC] = dict()
-                            # record the trace
-                            reportDict["Total"]["Traces"] += 1
-                            # trace size and time integration
-                            reportDict[BC][NTV][TRC]["size"] = self.BCDict[BC][NTV][TRC]["size"]
-                            reportDict["Total"]["Size"] += reportDict[BC][NTV][TRC]["size"]
-                            reportDict[BC][NTV][TRC]["TRCtime"] = self.BCDict[BC][NTV][TRC]["time"]
-                            # kernel size stats
-                            reportDict[BC][NTV][TRC]["Average Kernel Size (Nodes)"] = Util.getAvgKSize(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], Nodes=True)
-                            reportDict["Total"]["Average Kernel Size (Nodes)"] += float(reportDict[BC][NTV][TRC]["Average Kernel Size (Nodes)"])
-                            reportDict[BC][NTV][TRC]["Average Kernel Size (Blocks)"] = Util.getAvgKSize(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"], Blocks=True)
-                            reportDict["Total"]["Average Kernel Size (Blocks)"] += float(reportDict[BC][NTV][TRC]["Average Kernel Size (Blocks)"])
-                            # parse cartographer errors
-                            self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"] = Util.getCartographerErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
-                            reportDict[BC][NTV][TRC]["Cartographer Errors"] = self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"]
-                            for key in self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"]:
-                                if reportDict["Total"]["Cartographer Errors"].get(key, None) is None:
-                                    reportDict["Total"]["Cartographer Errors"][key] = 0
-                                reportDict["Total"]["Cartographer Errors"][key] += self.BCDict[BC][NTV][TRC]["CAR"]["ERRORS"][key]
-                            # if the cartographer failed, don't look at anything else
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
-                                continue
-                            self.BCDict[BC][NTV][TRC]["CAR"]["SUCCESS"] = True
-                            reportDict[BC][NTV][TRC]["CARtime"] = self.BCDict[BC][NTV][TRC]["CAR"]["time"]
-                            self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] = Util.getCartographerKernels(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"])
-                            reportDict[BC][NTV][TRC]["Cartographer Kernels"] = self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"]
-                            reportDict["Total"]["Cartographer Kernels"] += reportDict[BC][NTV][TRC]["Cartographer Kernels"]
-                            if self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] <= 0:
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"]+" -> 0 Kernels")
-                            else:
-                                nonzeroTraces += 1
-
-                            """
-                            # accessories
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["DE"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["DE"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["DE"]["SUCCESS"] = True
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["function"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["function"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["function"]["SUCCESS"] = True
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["KH"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["KH"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["KH"]["SUCCESS"] = True
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["WS"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["WS"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["WS"]["SUCCESS"] = True
-                            """
-                            # parse tik information
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["tik"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["tik"]["SUCCESS"] = True
-                                reportDict["Total"]["Tik Traces"] += 1
-                            self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] = Util.getTikKernels(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
-                            reportDict[BC][NTV][TRC]["Tik Kernels"] = self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] if self.BCDict[BC][NTV][TRC]["tik"]["Kernels"] > 0 else 0
-                            reportDict["Total"]["Tik Kernels"] += reportDict[BC][NTV][TRC]["Tik Kernels"]
-                            self.BCDict[BC][NTV][TRC]["tik"]["ERRORS"] = Util.getTikErrors(self.BCDict[BC][NTV][TRC]["tik"]["Log"])
-                            reportDict[BC][NTV][TRC]["Tik Errors"] = self.BCDict[BC][NTV][TRC]["tik"]["ERRORS"]
-                            for key in self.BCDict[BC][NTV][TRC]["tik"]["ERRORS"]:
-                                if reportDict["Total"]["Tik Errors"].get(key, None) is None:
-                                    reportDict["Total"]["Tik Errors"][key] = 0
-                                reportDict["Total"]["Tik Errors"][key] += self.BCDict[BC][NTV][TRC]["tik"]["ERRORS"][key]
-
-                            # parse tikSwap information
-                            if Util.findErrors(self.BCDict[BC][NTV][TRC]["tikSwap"]["Log"]):
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["tikSwap"]["Log"])
-                            else:
-                                self.BCDict[BC][NTV][TRC]["tikSwap"]["SUCCESS"] = True
-                            swaps, comps, successes = Util.parseTikSwapResults(self.BCDict[BC][NTV][TRC]["tikSwap"]["Log"])
-                            reportDict[BC][NTV][TRC]["TikSwap Kernels"] = swaps[0]
-                            reportDict[BC][NTV][TRC]["Tik Swaps"] = swaps[1]
-                            reportDict["Total"]["TikSwap Kernels"] += reportDict[BC][NTV][TRC]["TikSwap Kernels"]
-                            reportDict["Total"]["Tik Swaps"] += reportDict[BC][NTV][TRC]["Tik Swaps"]
-                            reportDict[BC][NTV][TRC]["Tik Compilation Kernels"] = comps[0]
-                            reportDict[BC][NTV][TRC]["Tik Compilations"] = comps[1]
-                            reportDict["Total"]["Tik Compilation Kernels"] += reportDict[BC][NTV][TRC]["Tik Compilation Kernels"]
-                            reportDict["Total"]["Tik Compilations"] += reportDict[BC][NTV][TRC]["Tik Compilations"]
-                            reportDict[BC][NTV][TRC]["Tik Success Kernels"] = successes[0]
-                            reportDict[BC][NTV][TRC]["Tik Successes"] = successes[1]
-                            reportDict["Total"]["Tik Success Kernels"] += reportDict[BC][NTV][TRC]["Tik Success Kernels"]
-                            reportDict["Total"]["Tik Successes"] += reportDict[BC][NTV][TRC]["Tik Successes"]
-                            self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"] = Util.getTikSwapErrors(self.BCDict[BC][NTV][TRC]["tikSwap"]["Log"])
-                            reportDict[BC][NTV][TRC]["TikSwap Errors"] = self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"]
-                            for key in self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"]:
-                                if reportDict["Total"]["TikSwap Errors"].get(key, None) is None:
-                                    reportDict["Total"]["TikSwap Errors"][key] = 0
-                                reportDict["Total"]["TikSwap Errors"][key] += self.BCDict[BC][NTV][TRC]["tikSwap"]["ERRORS"][key]
-        # normalize average kernel size stats to the number of traces because the cartographer gives us per-trace averages
-        # only count the programs that had more than 1 kernel
-        reportDict["Total"]["Average Kernel Size (Nodes)"] = reportDict["Total"]["Average Kernel Size (Nodes)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
-        reportDict["Total"]["Average Kernel Size (Blocks)"] = reportDict["Total"]["Average Kernel Size (Blocks)"] / float(nonzeroTraces) if nonzeroTraces > 0 else 0
-        return reportDict
-
-    def deleteTraces(self):
-        """
-        """
-        for BC in self.BCDict:
-            for NTV in self.BCDict[BC]:
-                if NTV[-6:] == "native":
-                    for TRC in self.BCDict[BC][NTV]:
-                        if TRC.startswith("TRC"):
-                            try:
-                                os.remove(self.BCDict[BC][NTV][TRC]["buildPath"])
-                            except FileNotFoundError:
-                                doNothing = True
+    def getCommand(self, BC, NTV, TRC):
+        ntvCommand = self.getNativeCommand(BC, NTV, TRC)
+        proCommand = self.getProfileCommand(BC, NTV, TRC)
+        return ntvCommand + proCommand

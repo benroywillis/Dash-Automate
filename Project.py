@@ -123,7 +123,7 @@ class Project:
 
         return returnString
 
-    def run(self):
+    def run(self, returnCommand=False):
         """
         @brief Runs the build flow.
 
@@ -136,6 +136,8 @@ class Project:
         self.buildCommand = prefix+self.buildCommand
         # generate script that will build our project and put it in th,e build/scripts folder
         bashfile = self.Command.constructBashFile(self.scriptName, self.buildCommand)
+        if returnCommand:
+            return self.buildCommand
         # run the script and return the process ID or SLURM ID
         self.jobID = self.Command.run(bashfile)
         if self.Command.poll(self.jobID):
@@ -146,21 +148,13 @@ class Project:
         @brief Monitors the project's active build job. If the job has completed, a bitcode map for the project, specifying the LFLAGS and RARGS for each one is generated.
         @retval Returns False if an active job is still active, True if there are no active jobs and all housekeeping has been taken care of
         """
-        if self.Command.poll(self.jobID):
-            return False
+        time.sleep(0.1)        
+        bitcodes = Util.getLocalFiles(self.projectPath, suffix=[".bc",".o"])
+        if len(bitcodes) > 0:
+            self.parseBitcodes( bitcodes )
+            self.Command.moveFiles(bitcodes, self.projectPath, self.buildPath)
         else:
-            time.sleep(0.1)        
-            bitcodes = Util.getLocalFiles(self.projectPath, suffix=[".bc",".o"])
-            if len(bitcodes) > 0:
-                self.parseBitcodes( bitcodes )
-                self.Command.moveFiles(bitcodes, self.projectPath, self.buildPath)
-                self.parseErrors()
-                self.PSQL.push()
-                self.ID = self.PSQL.ID
-            else:
-                self.parseErrors()
-                
-            return True
+            self.parseErrors()
 
     def parseBitcodes(self, bitcodes):
         """
