@@ -206,12 +206,12 @@ class BitCode:
         command += optCommand + " ; " + clangPPCommand + " ; "
 
         profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
-        samplingProfileCommand = profileCommand * SAMPLE_NUMBER
+        samplingProfileCommand = profileCommand * self.args.samples
         command += samplingProfileCommand
 
 
         CARcommand   = self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"] + " ; "
-        samplingCARcommand = CARcommand * SAMPLE_NUMBER
+        samplingCARcommand = CARcommand * self.args.samples
         command += samplingCARcommand
         return command
 
@@ -239,7 +239,7 @@ class BitCode:
 
         #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
         profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
-        samplingProfileCommand = profileCommand * SAMPLE_NUMBER
+        samplingProfileCommand = profileCommand * self.args.samples
         command += samplingProfileCommand
 
         return command

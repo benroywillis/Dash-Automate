@@ -9,16 +9,30 @@ import logging
 import json
 import sys
 import subprocess as sp
-import time
 import statistics as st
 import re
 
+class tupleHash(tuple):
+    def __new__(self, str1, str2):
+        return tuple.__new__(tupleHash, (str1, str2))
+
+    def __key(self):
+        return (self[0])
+
+    def __hash__(self):
+        return hash(self.__key())
+
+    def __eq__(self, other):
+        if isinstance(other, tupleHash):
+            return self.__key() == other.__key()
+        return NotImplemented        
+
+# name of output data file
+TimeMapFile = "TimeMap.json"
+
 # maximum number of bitcode buildflows that are allowed to run at once
-MAX_PROCESSES=15
-# number of samples for each category we should get
-# Used to sample the space so we get an accurate read on the timing of each step and program
-# This number should match SAMPLE_NUMBER in Bitcode.py
-SAMPLE_ITERATIONS = 15
+MAX_PROCESSES=20
+
 # Environment of each bash script
 SourceScript = "export " +\
     "CC='clang-9 -flto -DENABLE_TRACING' " +\
@@ -33,42 +47,53 @@ SourceScript = "export " +\
     "RANLIB='/bin/true' " +\
     "READELF='llvm-readelf-9' ; "
 
-def getExecutionTimes(log):
+def getExecutionTimes(log, args):
     natives = []
     profiles = []
     printTimes = []
     segs = []
-    with open(log,"r") as f:
+
+    i = 0
+    while i in range(3):
         try:
-            for line in f:
-                newNative = re.findall("NATIVE_TIME:\s\d+\.\d+",line)
-                newProfile = re.findall("PROFILETIME:\s\d+\.\d+",line)
-                newFilePrint = re.findall("HASHTABLEPRINTTIME:\s\d+\.\d+",line)
-                newSeg = re.findall("Cartographer\sEvaluation\sTime:\s\d+\.\d+",line)
-                if (len(newNative) == 1):
-                    numberString = newNative[0].replace("NATIVE_TIME: ","")
-                    time = float(numberString)
-                    natives.append( time )
-                elif len(newProfile) == 1:
-                    numberString = newProfile[0].replace("PROFILETIME: ","")
-                    time = float(numberString)
-                    profiles.append( time )
-                elif len(newFilePrint) == 1:
-                    numberString = newFilePrint[0].replace("HASHTABLEPRINTTIME: ","")
-                    time = float(numberString)
-                    printTimes.append( time )
-                elif len(newSeg) == 1:
-                    numberString = newSeg[0].replace("Cartographer Evaluation Time: ","")
-                    time = float(numberString)
-                    segs.append( time )
-            totalTimes = len(natives) + len(profiles) + len(printTimes) + len(segs)
-            if totalTimes != SAMPLE_ITERATIONS * 4:
-                print("Did not find the correct number of samples for all four categories! Sample lengths were: natives "+str(len(natives))+", profiles: "+str(len(profiles))+", filePrints: "+str(len(printTimes))+", segmentations: "+str(len(segs)))
+            f =  open(log,"r")
+            break
+        except:
+            time.sleep(2**i)
+            i += 1
+            if i > 3:
+                print("Could not open file "+str(log)+" for reading")
                 return [], [], [], []
-            return natives, profiles, printTimes, segs
-        except Exception as e:
-            print("Exception while reading through logFile "+log+": "+str(e))
+    try:
+        for line in f:
+            newNative = re.findall("NATIVE_TIME:\s\d+\.\d+",line)
+            newProfile = re.findall("PROFILETIME:\s\d+\.\d+",line)
+            newFilePrint = re.findall("HASHTABLEPRINTTIME:\s\d+\.\d+",line)
+            newSeg = re.findall("Cartographer\sEvaluation\sTime:\s\d+\.\d+",line)
+            if (len(newNative) == 1):
+                numberString = newNative[0].replace("NATIVE_TIME: ","")
+                runTime = float(numberString)
+                natives.append( runTime )
+            elif len(newProfile) == 1:
+                numberString = newProfile[0].replace("PROFILETIME: ","")
+                runTime = float(numberString)
+                profiles.append( runTime )
+            elif len(newFilePrint) == 1:
+                numberString = newFilePrint[0].replace("HASHTABLEPRINTTIME: ","")
+                runTime = float(numberString)
+                printTimes.append( runTime )
+            elif len(newSeg) == 1:
+                numberString = newSeg[0].replace("Cartographer Evaluation Time: ","")
+                runTime = float(numberString)
+                segs.append( runTime )
+        totalTimes = len(natives) + len(profiles) + len(printTimes) + len(segs)
+        if totalTimes != args.samples * 4:
+            print("Did not find the correct number of samples for all four categories! Sample lengths were: natives "+str(len(natives))+", profiles: "+str(len(profiles))+", filePrints: "+str(len(printTimes))+", segmentations: "+str(len(segs)))
             return [], [], [], []
+        return natives, profiles, printTimes, segs
+    except Exception as e:
+        print("Exception while reading through logFile "+log+": "+str(e))
+        return [], [], [], []
 
 def buildBashCommand(command, buildFilePath, logFile, scriptFile):
     # if not set, set environment to init parameter
@@ -172,14 +197,13 @@ class DashAutomate:
         waitingProjects = set()
         for proj in self.projects:
             if proj.Valid:
-                waitingProjects.add( (proj, buildBashCommand( proj.run(returnCommand=True), proj.buildPath, proj.logFile, proj.scriptName )) )
+                waitingProjects.add( tupleHash(proj, buildBashCommand( proj.run(returnCommand=True), proj.buildPath, proj.logFile, proj.scriptName )) )
         for proj in waitingProjects:
-            self.buildingProjects.add( ( proj[0], runBashCommand( proj[1] ) ) )                    
+            self.buildingProjects.add( tupleHash( proj[0], runBashCommand( proj[1] ) ) )                    
             time.sleep(0.01)
 
         doneProjects = set()
         waitingBitcodes = set()
-        bitLogFiles = set()
         while len(self.buildingProjects):
             for tup in self.buildingProjects:
                 proj = tup[0]
@@ -195,8 +219,9 @@ class DashAutomate:
                                     if NTV[-6:] == "native":
                                         for PROkey in newBC.BCDict[BCPath][NTV]:
                                             if PROkey.startswith("TRC"):
-                                                bitLogFiles.add(newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"])
-                                                waitingBitcodes.add( buildBashCommand( newBC.getCommand(BCPath, NTV, PROkey), newBC.buildPath, newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"].split("/")[-1], newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Script"].split("/")[-1] ) )
+                                                waitingBitcodes.add( tupleHash( newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"], buildBashCommand( newBC.getCommand(BCPath, NTV, PROkey), newBC.buildPath, newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"].split("/")[-1], newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Script"].split("/")[-1] ) ) )
+                        else:
+                            self.log.error("Found errors in bitcode "+newBC.projectPath)
                     self.log.info("Project "+proj.projectPath+" is done.")
             oldSize = len(self.buildingProjects)
             self.buildingProjects -= doneProjects
@@ -208,33 +233,66 @@ class DashAutomate:
         doneBitcodes = set()
         for bit in waitingBitcodes:
             if processes < MAX_PROCESSES:
-                self.buildingBitcodes.add( runBashCommand( bit ) )
+                print("Launching bitcode "+bit[0])
+                self.buildingBitcodes.add( tupleHash(bit[0], runBashCommand( bit[1] ) ) )
                 processes += 1
                 time.sleep(0.01)
             else:
-                while len(self.buildingBitcodes) > MAX_PROCESSES:
-                    for bit in self.buildingBitcodes:
-                        if bit.poll() is not None:
+                while processes > MAX_PROCESSES:
+                    for bit2 in self.buildingBitcodes:
+                        if bit2[1].poll() is not None:
                             doneBitcodes.add(bit)
                             processes -= 1
                             print(str(processes)+" active jobs")
                             time.sleep(0.1)
                     self.buildingBitcodes -= doneBitcodes
+                print("Launching bitcode "+bit[0])
+                self.buildingBitcodes.add( tupleHash(bit[0], runBashCommand( bit[1] ) ) )
+                processes += 1
+
+        TimeMap = {}
         while len(self.buildingBitcodes):
             for bit in self.buildingBitcodes:
-                if bit.poll() is not None:
+                if bit[1].poll() is not None:
                     doneBitcodes.add(bit)
                     processes -= 1
-                    self.log.info("Bitcode job "+str(bit.pid)+" is done.")
+                    # update TimeMap file                        
+                    natives, profiles, filePrints, segs = getExecutionTimes(bit[0], self.args)
+                    totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
+                    bitLogFile = Util.getPathDiff(self.rootPath, "/".join(bit[0].split("/")[-1:]), build=False)
+                    try:
+                        TimeMap[bitLogFile] = { "Natives":       { "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
+                                            "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
+                                            "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
+                                            "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
+                                            "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
+                        TimeMap[bitLogFile]["Profiles"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Profiles"]["Dilations"] )
+                        TimeMap[bitLogFile]["Profiles"]["Median"] = st.median( TimeMap[bitLogFile]["Profiles"]["Dilations"] )
+                        TimeMap[bitLogFile]["Profiles"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Profiles"]["Dilations"] )
+                        TimeMap[bitLogFile]["FilePrints"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
+                        TimeMap[bitLogFile]["FilePrints"]["Median"] = st.median( TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
+                        TimeMap[bitLogFile]["FilePrints"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
+                        TimeMap[bitLogFile]["Segmentations"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
+                        TimeMap[bitLogFile]["Segmentations"]["Median"] = st.median( TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
+                        TimeMap[bitLogFile]["Segmentations"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
+                        TimeMap[bitLogFile]["Total"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Total"]["Dilations"] )
+                        TimeMap[bitLogFile]["Total"]["Median"] = st.median( TimeMap[bitLogFile]["Total"]["Dilations"] )
+                        TimeMap[bitLogFile]["Total"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Total"]["Dilations"] )
+                    except Exception as e:
+                        self.log.error("Failed to calculate statistics for "+bit[0]+": "+str(e))
+                    self.log.info("Bitcode job "+str(bit[1].pid)+" is done.")
             oldSize = len(self.buildingBitcodes)
             self.buildingBitcodes -= doneBitcodes
             if len(self.buildingBitcodes) < oldSize:
                 self.log.info("There are "+str(len(self.buildingBitcodes))+" remaining.")
+            with open(TimeMapFile, "w+") as f:
+                json.dump(TimeMap, f, indent=4)
+
             time.sleep(0.1)
         self.log.info("Bitcodes done.")
 
         # search through all bitcode logs and find their times
-        TimeMap = {}
+        """TimeMap = {}
         for bit in bitLogFiles:
             natives, profiles, filePrints, segs = getExecutionTimes(bit)
             totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
@@ -256,6 +314,7 @@ class DashAutomate:
             TimeMap[bit]["Total"]["Median"] = st.median( TimeMap[bit]["Segmentations"]["Dilations"] )
             TimeMap[bit]["Total"]["stdev"]  = st.pstdev( TimeMap[bit]["Segmentations"]["Dilations"] )
         print(TimeMap)
+        """
 
 def main():
     if sys.version_info[0] != 3:

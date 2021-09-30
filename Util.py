@@ -140,6 +140,8 @@ def argumentParse():
     arg_parser.add_argument("-tt", "--trace-type", default="EncodedTrace", help="Specify the type of compression a trace has. Default is EncodedTrace.")
     # cartographer configuration
     arg_parser.add_argument("-ci", "--cartographer-intermediate", action="store_true", help="Enable the intermediate csv in Cartographer.")
+    # sampling configuration
+    arg_parser.add_argument("-s", "--samples", default=15, help="Specify number of trials to sample the runtime of a given executable")
     # SLURM flag
     arg_parser.add_argument("-p", "--partition", nargs='+', default=['Dash'], help="Specify SLURM partition to use. Can be a whitespace-separated list of multiple partitions. Options: Spade (should only be used for cad tools), Dash (default value).")
     # database flags
@@ -157,6 +159,8 @@ def argumentParse():
     args.log_level = int(args.log_level)
     if not args.project_prefix.endswith("/"):
         args.project_prefix+= "/"
+
+    args.samples = int(args.samples)
 
     # a nightly build AND only new build is not possible in one run
     if args.nightly_build and args.only_new:
