@@ -198,7 +198,10 @@ class DashAutomate:
                                                 bitLogFiles.add(newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"])
                                                 waitingBitcodes.add( buildBashCommand( newBC.getCommand(BCPath, NTV, PROkey), newBC.buildPath, newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Log"].split("/")[-1], newBC.BCDict[BCPath][NTV][PROkey]["CAR"]["Script"].split("/")[-1] ) )
                     self.log.info("Project "+proj.projectPath+" is done.")
+            oldSize = len(self.buildingProjects)
             self.buildingProjects -= doneProjects
+            if len(self.buildingProjects) < oldSize:
+                self.log.info("There are "+str(len(self.buildingProjects))+" remaining.")
             time.sleep(0.1)
         self.log.info("Projects complete.")
 
@@ -209,18 +212,25 @@ class DashAutomate:
                 processes += 1
                 time.sleep(0.01)
             else:
-                while len(self.buildingBitcodes) > MAX_PROCESSES/2:
+                while len(self.buildingBitcodes) > MAX_PROCESSES:
                     for bit in self.buildingBitcodes:
                         if bit.poll() is not None:
                             doneBitcodes.add(bit)
-                    processes = len(self.buildingBitcodes) - len(doneBitcodes)
+                            processes -= 1
+                            print(str(processes)+" active jobs")
+                            time.sleep(0.1)
                     self.buildingBitcodes -= doneBitcodes
         while len(self.buildingBitcodes):
             for bit in self.buildingBitcodes:
                 if bit.poll() is not None:
                     doneBitcodes.add(bit)
-            processes = len(self.buildingBitcodes) - len(doneBitcodes)
+                    processes -= 1
+                    self.log.info("Bitcode job "+str(bit.pid)+" is done.")
+            oldSize = len(self.buildingBitcodes)
             self.buildingBitcodes -= doneBitcodes
+            if len(self.buildingBitcodes) < oldSize:
+                self.log.info("There are "+str(len(self.buildingBitcodes))+" remaining.")
+            time.sleep(0.1)
         self.log.info("Bitcodes done.")
 
         # search through all bitcode logs and find their times
