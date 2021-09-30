@@ -226,11 +226,11 @@ class DashAutomate:
         # search through all bitcode logs and find their times
         TimeMap = {}
         for bit in bitLogFiles:
-            natives, profiles, fileprints, segs = getExecutionTimes(bit)
+            natives, profiles, filePrints, segs = getExecutionTimes(bit)
             totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
             TimeMap[bit] = { "Natives":       { "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
                                   "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
-                                  "FilePrints":    { "Dilations": [fileprints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
+                                  "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
                                   "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
                                   "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
             TimeMap[bit]["Profiles"]["Mean"]   = st.mean(   TimeMap[bit]["Profiles"]["Dilations"] )
@@ -242,7 +242,9 @@ class DashAutomate:
             TimeMap[bit]["Segmentations"]["Mean"]   = st.mean(   TimeMap[bit]["Segmentations"]["Dilations"] )
             TimeMap[bit]["Segmentations"]["Median"] = st.median( TimeMap[bit]["Segmentations"]["Dilations"] )
             TimeMap[bit]["Segmentations"]["stdev"]  = st.pstdev( TimeMap[bit]["Segmentations"]["Dilations"] )
-            
+            TimeMap[bit]["Total"]["Mean"]   = st.mean(   TimeMap[bit]["Segmentations"]["Dilations"] )
+            TimeMap[bit]["Total"]["Median"] = st.median( TimeMap[bit]["Segmentations"]["Dilations"] )
+            TimeMap[bit]["Total"]["stdev"]  = st.pstdev( TimeMap[bit]["Segmentations"]["Dilations"] )
         print(TimeMap)
 
 def main():

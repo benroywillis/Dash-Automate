@@ -228,16 +228,19 @@ class BitCode:
 
         #tmpFolder = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]
         tmpFolder = self.buildPath
+        BCfile = tmpFolder+"/"+self.BCDict[BC]["Name"]
+        timingBC = self.BCDict[BC][NTV]["TRAbuild"]+".timing"
+        NTVfile = tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]+".timing"
         command = ""
-        clangPPCommand = self.CXX+" -lz -lpthread "+tmpFolder+"/"+self.BCDict[BC]["Name"]+" -o "+tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        command += clangPPCommand + " ; "
 
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
-        envSet = "export MARKOV_FILE="+self.buildPath+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.buildPath+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
-        NTVfile = tmpFolder+"/"+self.BCDict[BC][NTV]["Name"]
-        profileCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
+        optCommand = self.OPT+" -load "+self.Tracer+" -Timing "+BCfile+" -o "+timingBC+" "+optOptString
+        clangPPCommand = self.CXX+" -lz -lpthread "+timingBC+" -o "+NTVfile+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
+        command += optCommand + " ; " + clangPPCommand + " ; "
+
+        #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
+        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
         samplingProfileCommand = profileCommand * SAMPLE_NUMBER
-        command += envSet + samplingProfileCommand
+        command += samplingProfileCommand
 
         return command
 
