@@ -4,9 +4,6 @@ import SQL
 import json
 import os
 
-# number of times a native/profile is run to sample its runtime thoroughly
-SAMPLE_NUMBER = 15
-
 class BitCode:
     def __init__(self, rootPath, path, BC, LFLAGS, RARGS, run, parentID, rtargs):
         """
@@ -205,12 +202,12 @@ class BitCode:
         clangPPCommand = self.CXX+" -lz -lpthread "+profileBC+" -o "+NTVfile+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
         command += optCommand + " ; " + clangPPCommand + " ; "
 
-        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
+        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; sleep 1 ; "
         samplingProfileCommand = profileCommand * self.args.samples
         command += samplingProfileCommand
 
 
-        CARcommand   = self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"] + " ; "
+        CARcommand   = self.Cartographer+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"] + " ; sleep 1 ; "
         samplingCARcommand = CARcommand * self.args.samples
         command += samplingCARcommand
         return command
@@ -238,7 +235,7 @@ class BitCode:
         command += optCommand + " ; " + clangPPCommand + " ; "
 
         #prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
-        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; "
+        profileCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"] + " ; sleep 1 ; "
         samplingProfileCommand = profileCommand * self.args.samples
         command += samplingProfileCommand
 
