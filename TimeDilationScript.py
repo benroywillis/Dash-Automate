@@ -101,13 +101,13 @@ def buildBashCommand(command, buildFilePath, logFile, scriptFile):
 
     bashString = "#!/bin/bash\n"
     bashString += "export "+SourceScript+"\n"
-
-    bashString += command+"\n"
+    bashString += "touch "+logFile + "\n"
+    bashString += command.replace(" ; ","\n")+"\n"
 
     bashFile = buildFilePath+"scripts/"+scriptFile
     with open(bashFile, "w") as f:
         f.write(bashString)
-    return "cd "+buildFilePath+"/scripts/ ; chmod +x "+bashFile+" ; "+bashFile+ " 2> " + logFile + " 1> " + logFile
+    return "cd "+buildFilePath+"/scripts/ ; chmod +x "+bashFile+" ; "+bashFile+ " | tee -ia " + logFile
 
 def runBashCommand( scriptCommand ):
     return sp.Popen(scriptCommand, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)    
@@ -230,7 +230,6 @@ class DashAutomate:
             time.sleep(0.1)
         self.log.info("Projects complete.")
 
-        doneBitcodes = set()
         for bit in waitingBitcodes:
             if processes < MAX_PROCESSES:
                 print("Launching bitcode "+bit[0])
@@ -241,16 +240,15 @@ class DashAutomate:
                 while processes > MAX_PROCESSES:
                     for bit2 in self.buildingBitcodes:
                         if bit2[1].poll() is not None:
-                            doneBitcodes.add(bit)
                             processes -= 1
                             print(str(processes)+" active jobs")
                             time.sleep(0.1)
-                    self.buildingBitcodes -= doneBitcodes
                 print("Launching bitcode "+bit[0])
                 self.buildingBitcodes.add( tupleHash(bit[0], runBashCommand( bit[1] ) ) )
                 processes += 1
 
         TimeMap = {}
+        doneBitcodes = set()
         while len(self.buildingBitcodes):
             for bit in self.buildingBitcodes:
                 if bit[1].poll() is not None:
@@ -261,7 +259,7 @@ class DashAutomate:
                     totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
                     bitLogFile = Util.getPathDiff(self.rootPath, "/".join(bit[0].split("/")[-1:]), build=False)
                     try:
-                        TimeMap[bitLogFile] = { "Natives":       { "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
+                        TimeMap[bitLogFile] = { "Natives":   { "Times": natives, "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
                                             "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
                                             "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
                                             "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
@@ -330,5 +328,4 @@ def main():
 
     DA = DashAutomate( args )
     DA.run()
-
 main()
