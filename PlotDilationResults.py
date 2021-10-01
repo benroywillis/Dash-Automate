@@ -19,17 +19,23 @@ def appendTimeMap(path):
 		print("JSON file not valid: "+rootPath+path+"/TimeMap.json. Skipping...")
 
 def plotDilationResults():
+	axisFont  = 10
+	axisLabelFont  = 10
+	titleFont = 16
+	xtickRotation = 90
 	colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
                ( 255./255, 127./255, 15./255 , 127./255 ),
            	   ( 214./255, 39./255 , 40./255 , 127./255 ),
                ( 121./255, 154./255, 134./255, 127./255 ),
                ( 198./255, 195./255, 71./255 , 127./255 ),
                ( 1.      , 1.      , 1.      , 127./255 ),
-               ( 0.8     , 0.8     , 0.8     , 127./255 )]
+               ( 0.8     , 0.8     , 0.8     , 127./255 ),
+               ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 	markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 	# sort TimeMap by block count (starting block count
 	applicationMap = {}
-	sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Median"] )
+#	sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Median"] )
+	sortedKeys = sorted( TimeMap )
 	# 2D list of data points, for each entry Profile, FilePrint and 
 	Dilations = []
 	for i in range( len(sortedKeys) ):
@@ -38,20 +44,39 @@ def plotDilationResults():
 		Dilations[i].append( TimeMap[sortedKeys[i]]["FilePrints"]["Median"] )
 		Dilations[i].append( TimeMap[sortedKeys[i]]["Segmentations"]["Median"] )
 
+	# construct xtick labels
+	xtickLabels = [""]*len(sortedKeys)
+	last = ""
+	for i in range( len(sortedKeys) ):
+		directory = sortedKeys[i].split("/")[0]
+		if last != directory:
+			xtickLabels[i] = directory
+			last = directory
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("white")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
 	for i in range( len(Dilations[0]) ):
 		ax.scatter([x for x in range( len(Dilations) )], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
-	ax.set_title("Time Dilation")
-	ax.set_ylabel("Factor")
+	ax.set_title("Time Dilation", fontsize=titleFont)
+	ax.set_ylabel("Factor", fontsize=axisLabelFont)
 	ax.legend(["Profiles","FilePrints","Segmentations"], frameon=False)
+	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	#ax.tick_params(axis='x', colors='white')
+	VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6]
+	plt.yticks(VTicks, fontsize=axisFont)
+	ax.set_yticks(VTicks)
+	plt.hlines(VTicks, 0, len(xtickLabels), linestyle="dashed", colors=colors[-1])
+	vLineLocs = []
+	for i in range(len(xtickLabels)):
+		if xtickLabels[i] != "":
+			vLineLocs.append(i)
+	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
 	#ax.set_xscale("log")
 	ax.set_yscale("log")
 	plt.savefig("ProfileTimeDilation.svg",format="svg")
+	plt.savefig("ProfileTimeDilation.png",format="png")
 	plt.show()
 
 # import timemaps we are interested in
