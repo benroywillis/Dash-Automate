@@ -259,11 +259,11 @@ class DashAutomate:
                     totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
                     bitLogFile = Util.getPathDiff(self.rootPath, "/".join(bit[0].split("/")[-1:]), build=False)
                     try:
-                        TimeMap[bitLogFile] = { "Natives":   { "Times": natives, "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
-                                            "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
-                                            "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
-                                            "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
-                                            "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
+                        TimeMap[bitLogFile] = { "Natives":       { "Times": natives, "Nodes": -1, "Edges": -1, "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
+                                                "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
                         TimeMap[bitLogFile]["Profiles"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Profiles"]["Dilations"] )
                         TimeMap[bitLogFile]["Profiles"]["Median"] = st.median( TimeMap[bitLogFile]["Profiles"]["Dilations"] )
                         TimeMap[bitLogFile]["Profiles"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Profiles"]["Dilations"] )
