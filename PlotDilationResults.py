@@ -83,13 +83,14 @@ def plotDilationResults():
 appendTimeMap("Unittests") # have all the data we need (spade 10)
 appendTimeMap("Dhry_and_whetstone") # have all the data we need (spade 11)
 appendTimeMap("Armadillo") # lots of data, probably all done (spade 11)
-appendTimeMap("GSL") # lots of data but probably not completely done (spade 10)
-appendTimeMap("CortexSuite") # one last application (multi_ncut) (spade 07)
+appendTimeMap("GSL") # lots of data, probably not done (spade 03)
+appendTimeMap("CortexSuite") # (spade 07)
 appendTimeMap("FFmpeg") # doesn't appear to be done (spade 06)
 appendTimeMap("FEC") # doesn't appear to be done (spade 05)
 appendTimeMap("FFTV") # not quite done, but we have data (spade 04)
 appendTimeMap("Artisan") # appears to be done, may be missing some (spade 09)
-appendTimeMap("FEC") # still working, nearly done (spade 05)
+appendTimeMap("PERFECT") # (spade 10)
+
 ## data processing
 # get rid of outliers
 for key in TimeMap:
