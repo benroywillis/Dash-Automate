@@ -47,11 +47,17 @@ SourceScript = "export " +\
     "RANLIB='/bin/true' " +\
     "READELF='llvm-readelf-9' ; "
 
-def getExecutionTimes(log, args):
+def parseLogFileInfo(log, args):
     natives = []
     profiles = []
     printTimes = []
     segs = []
+    nodeCount = []
+    edgeCount = []
+    startEntropies = []
+    endEntropies = []
+    startTotalEntropies = []
+    endTotalEntropies = []
 
     i = 0
     while i in range(3):
@@ -63,14 +69,20 @@ def getExecutionTimes(log, args):
             i += 1
             if i > 3:
                 print("Could not open file "+str(log)+" for reading")
-                return [], [], [], []
+                return [], [], [], [], [], [], [], [], [], []
     try:
         for line in f:
             newNative = re.findall("NATIVE_TIME:\s\d+\.\d+",line)
             newProfile = re.findall("PROFILETIME:\s\d+\.\d+",line)
             newFilePrint = re.findall("HASHTABLEPRINTTIME:\s\d+\.\d+",line)
             newSeg = re.findall("Cartographer\sEvaluation\sTime:\s\d+\.\d+",line)
-            if (len(newNative) == 1):
+            newNode = re.findall("HASHTABLENODES:\s\d+",line)
+            newEdge = re.findall("HASHTABLEEDGES:\s\d+",line)
+            newStartEntropy = re.findall("STARTENTROPY:\s\d+.\d+",line)
+            newEndEntropy = re.findall("ENDENTROPY:\s\d+.\d+",line)
+            newStartTotalEntropy = re.findall("STARTTOTALENTROPY:\s\d+.\d+",line)
+            newEndTotalEntropy = re.findall("ENDTOTALENTROPY:\s\d+.\d+",line)
+            if len(newNative) == 1:
                 numberString = newNative[0].replace("NATIVE_TIME: ","")
                 runTime = float(numberString)
                 natives.append( runTime )
@@ -86,14 +98,38 @@ def getExecutionTimes(log, args):
                 numberString = newSeg[0].replace("Cartographer Evaluation Time: ","")
                 runTime = float(numberString)
                 segs.append( runTime )
+            elif len(newNode) == 1:
+                numberString = newNode[0].replace("HASHTABLENODES: ","")
+                number = int(numberString)
+                nodeCount.append( number )
+            elif len(newEdge) == 1:
+                numberString = newEdge[0].replace("HASHTABLEEDGES: ","")
+                number = int(numberString)
+                edgeCount.append( number )            
+            elif len(newStartEntropy) == 1:
+                numberString = newStartEntropy[0].replace("STARTENTROPY: ","")
+                number = float(numberString)
+                startEntropies.append( number )
+            elif len(newEndEntropy) == 1:
+                numberString = newEndEntropy[0].replace("ENDENTROPY: ","")
+                number = float(numberString)
+                endEntropies.append( number )
+            elif len(newStartTotalEntropy) == 1:
+                numberString = newStartTotalEntropy[0].replace("STARTTOTALENTROPY: ","")
+                number = float(numberString)
+                startTotalEntropies.append( number )
+            elif len(newEndTotalEntropy) == 1:
+                numberString = newEndTotalEntropy[0].replace("ENDTOTALENTROPY: ","")
+                number = float(numberString)
+                endTotalEntropies.append( number )
         totalTimes = len(natives) + len(profiles) + len(printTimes) + len(segs)
         if totalTimes != args.samples * 4:
             print("Did not find the correct number of samples for all four categories! Sample lengths were: natives "+str(len(natives))+", profiles: "+str(len(profiles))+", filePrints: "+str(len(printTimes))+", segmentations: "+str(len(segs)))
-            return [], [], [], []
-        return natives, profiles, printTimes, segs
+            return [], [], [], [], [], [], [], [], [], []
+        return natives, profiles, printTimes, segs, nodeCount, edgeCount, startEntropies, endEntropies, startTotalEntropies, endTotalEntropies
     except Exception as e:
         print("Exception while reading through logFile "+log+": "+str(e))
-        return [], [], [], []
+        return [], [], [], [], [], [], [], [], [], []
 
 def buildBashCommand(command, buildFilePath, logFile, scriptFile):
     # if not set, set environment to init parameter
@@ -107,7 +143,8 @@ def buildBashCommand(command, buildFilePath, logFile, scriptFile):
     bashFile = buildFilePath+"scripts/"+scriptFile
     with open(bashFile, "w") as f:
         f.write(bashString)
-    return "cd "+buildFilePath+"/scripts/ ; chmod +x "+bashFile+" ; "+bashFile+ " | tee -ia " + logFile
+    #return "cd "+buildFilePath+"/scripts/ ; chmod +x "+bashFile+" ; "+bashFile+ " | tee -ia " + logFile
+    return "cd "+buildFilePath+"/scripts/ ; chmod +x "+bashFile+" ; "+bashFile
 
 def runBashCommand( scriptCommand ):
     return sp.Popen(scriptCommand, stdout=sp.PIPE, stderr=sp.PIPE, shell=True)    
@@ -209,6 +246,8 @@ class DashAutomate:
                 proj = tup[0]
                 job  = tup[1]
                 if job.poll() is not None:
+                    with open(proj.buildPath+"logs/"+proj.logFile, "w") as f:
+                        f.write(job.stdout.read().decode("utf-8"))
                     proj.done()
                     doneProjects.add(tup)
                     for BC in proj.Bitcodes:
@@ -249,20 +288,24 @@ class DashAutomate:
 
         TimeMap = {}
         doneBitcodes = set()
+        oldMapSize = len(TimeMap)
         while len(self.buildingBitcodes):
             for bit in self.buildingBitcodes:
                 if bit[1].poll() is not None:
+                    with open(bit[0], "w") as f:
+                        f.write(bit[1].stdout.read().decode("utf-8"))
                     doneBitcodes.add(bit)
                     processes -= 1
                     # update TimeMap file                        
-                    natives, profiles, filePrints, segs = getExecutionTimes(bit[0], self.args)
+                    natives, profiles, filePrints, segs, nodes, edges, startEntropy, endEntropy, startTotalEntropy, endTotalEntropy = parseLogFileInfo(bit[0], self.args)
                     totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
                     bitLogFile = Util.getPathDiff(self.rootPath, "/".join(bit[0].split("/")[-1:]), build=False)
+                    self.log.info("Updatimg TimeMap with bitcode "+bit[0])
                     try:
-                        TimeMap[bitLogFile] = { "Natives":       { "Times": natives, "Nodes": -1, "Edges": -1, "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
-                                                "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
-                                                "FilePrints":    { "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
-                                                "Segmentations": { "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
+                        TimeMap[bitLogFile] = { "Natives":       { "Times": natives, "Nodes": st.median(nodes), "Edges": st.median(edges), "StartEntropy": st.median(startEntropy), "EndEntropy": st.median(endEntropy), "StartTotalEntropy": st.median(startTotalEntropy), "EndTotalEntropy": st.median(endTotalEntropy), "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
+                                                "Profiles":      { "Times": profiles, "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "FilePrints":    { "Times": filePrints, "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "Segmentations": { "Times": segs, "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
                                                 "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
                         TimeMap[bitLogFile]["Profiles"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Profiles"]["Dilations"] )
                         TimeMap[bitLogFile]["Profiles"]["Median"] = st.median( TimeMap[bitLogFile]["Profiles"]["Dilations"] )
@@ -283,8 +326,11 @@ class DashAutomate:
             self.buildingBitcodes -= doneBitcodes
             if len(self.buildingBitcodes) < oldSize:
                 self.log.info("There are "+str(len(self.buildingBitcodes))+" remaining.")
-            with open(TimeMapFile, "w+") as f:
-                json.dump(TimeMap, f, indent=4)
+            if len(TimeMap) > oldMapSize:
+                self.log.info("Writing TimeMap to file...")
+                oldMapSize = len(TimeMap)
+                with open(TimeMapFile, "w+") as f:
+                    json.dump(TimeMap, f, indent=4)
 
             time.sleep(0.1)
         self.log.info("Bitcodes done.")
@@ -292,7 +338,7 @@ class DashAutomate:
         # search through all bitcode logs and find their times
         """TimeMap = {}
         for bit in bitLogFiles:
-            natives, profiles, filePrints, segs = getExecutionTimes(bit)
+            natives, profiles, filePrints, segs, nodes, edges = parseLogFileInfo(bit)
             totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
             TimeMap[bit] = { "Natives":       { "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
                                   "Profiles":      { "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
