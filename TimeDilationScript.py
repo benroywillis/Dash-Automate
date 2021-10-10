@@ -48,9 +48,12 @@ SourceScript = "export " +\
     "READELF='llvm-readelf-9' ; "
 
 def parseLogFileInfo(log, args):
+    # 14 metrics
     natives = []
     profiles = []
     printTimes = []
+    kernels = []
+    transforms = []
     segs = []
     nodeCount = []
     endNodeCount = []
@@ -71,13 +74,15 @@ def parseLogFileInfo(log, args):
             i += 1
             if i > 3:
                 print("Could not open file "+str(log)+" for reading")
-                return [], [], [], [], [], [], [], [], [], [], [], []
+                return [], [], [], [], [], [], [], [], [], [], [], [], [], []
     try:
         for line in f:
             newNative = re.findall("NATIVE_TIME:\s\d+\.\d+",line)
             newProfile = re.findall("PROFILETIME:\s\d+\.\d+",line)
             newFilePrint = re.findall("HASHTABLEPRINTTIME:\s\d+\.\d+",line)
-            newSeg = re.findall("Cartographer\sEvaluation\sTime:\s\d+\.\d+",line)
+            newKernel = re.findall("CARTOGRAPHERKERNELS:\s\d+",line)
+            newTransform = re.findall("CARTOGRAPHERTRANSFORMTIME:\s\d+\.\d+",line)
+            newSeg = re.findall("CARTOGRAPHERSEGMENTATIONTIME:\s\d+\.\d+",line)
             newNode = re.findall("HASHTABLENODES:\s\d+",line)
             newEndNode = re.findall("TRANSFORMEDNODES:\s\d+",line)
             newEdge = re.findall("HASHTABLEEDGES:\s\d+",line)
@@ -98,8 +103,16 @@ def parseLogFileInfo(log, args):
                 numberString = newFilePrint[0].replace("HASHTABLEPRINTTIME: ","")
                 runTime = float(numberString)
                 printTimes.append( runTime )
+            elif len(newKernel) == 1:
+                numberString = newKernel[0].replace("CARTOGRAPHERKERNELS: ","")
+                count = int(numberString)
+                kernels.append( count )
+            elif len(newTransform) == 1:
+                numberString = newTransform[0].replace("CARTOGRAPHERTRANSFORMTIME: ","")
+                runTime = float(numberString)
+                transforms.append( runTime )
             elif len(newSeg) == 1:
-                numberString = newSeg[0].replace("Cartographer Evaluation Time: ","")
+                numberString = newSeg[0].replace("CARTOGRAPHERSEGMENTATIONTIME: ","")
                 runTime = float(numberString)
                 segs.append( runTime )
             elif len(newNode) == 1:
@@ -137,11 +150,11 @@ def parseLogFileInfo(log, args):
         totalTimes = len(natives) + len(profiles) + len(printTimes) + len(segs)
         if totalTimes != args.samples * 4:
             print("Did not find the correct number of samples for all four categories! Sample lengths were: natives "+str(len(natives))+", profiles: "+str(len(profiles))+", filePrints: "+str(len(printTimes))+", segmentations: "+str(len(segs)))
-            return [], [], [], [], [], [], [], [], [], [], [], []
-        return natives, profiles, printTimes, segs, nodeCount, endNodeCount, edgeCount, endEdgeCount, startEntropies, endEntropies, startTotalEntropies, endTotalEntropies
+            return [], [], [], [], [], [], [], [], [], [], [], [], [], []
+        return natives, profiles, printTimes, kernels, transforms, segs, nodeCount, endNodeCount, edgeCount, endEdgeCount, startEntropies, endEntropies, startTotalEntropies, endTotalEntropies
     except Exception as e:
         print("Exception while reading through logFile "+log+": "+str(e))
-        return [], [], [], [], [], [], [], [], [], [], [], []
+        return [], [], [], [], [], [], [], [], [], [], [], [], [], []
 
 def buildBashCommand(command, buildFilePath, logFile, scriptFile):
     # if not set, set environment to init parameter
@@ -309,14 +322,15 @@ class DashAutomate:
                     doneBitcodes.add(bit)
                     processes -= 1
                     # update TimeMap file                        
-                    natives, profiles, filePrints, segs, nodes, endNodes, edges, endEdges, startEntropy, endEntropy, startTotalEntropy, endTotalEntropy = parseLogFileInfo(bit[0], self.args)
+                    natives, profiles, filePrints, kernels, transforms, segs, nodes, endNodes, edges, endEdges, startEntropy, endEntropy, startTotalEntropy, endTotalEntropy = parseLogFileInfo(bit[0], self.args)
                     totals = [profiles[i]+filePrints[i]+segs[i] for i in range(len(natives))]
                     bitLogFile = Util.getPathDiff(self.rootPath, "/".join(bit[0].split("/")[-1:]), build=False)
-                    self.log.info("Updatimg TimeMap with bitcode "+bit[0])
+                    self.log.info("Updating TimeMap with bitcode "+bit[0])
                     try:
-                        TimeMap[bitLogFile] = { "Natives":       { "Times": natives, "Nodes": st.median(nodes), "EndNodes": st.median(endNodes), "Edges": st.median(edges), "endEdges": st.median(endEdges), "StartEntropy": st.median(startEntropy), "EndEntropy": st.median(endEntropy), "StartTotalEntropy": st.median(startTotalEntropy), "EndTotalEntropy": st.median(endTotalEntropy), "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
+                        TimeMap[bitLogFile] = { "Natives":       { "Times": natives, "Nodes": st.median(nodes), "Kernels": st.median(kernels), "EndNodes": st.median(endNodes), "Edges": st.median(edges), "endEdges": st.median(endEdges), "StartEntropy": st.median(startEntropy), "EndEntropy": st.median(endEntropy), "StartTotalEntropy": st.median(startTotalEntropy), "EndTotalEntropy": st.median(endTotalEntropy), "Mean": st.mean(natives), "Median": st.median(natives), "stdev": st.pstdev(natives) },\
                                                 "Profiles":      { "Times": profiles, "Dilations": [profiles[i]/natives[i] for i in range(len(natives))],   "Mean": -1, "Median": -1, "stdev": -1 },\
                                                 "FilePrints":    { "Times": filePrints, "Dilations": [filePrints[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
+                                                "Transforms":    { "Times": transforms, "Dilations": [transforms[i]/natives[i] for i in range(len(natives))], "Mean": -1, "Median": -1, "stdev": -1 },\
                                                 "Segmentations": { "Times": segs, "Dilations": [segs[i]/natives[i] for i in range(len(natives))],       "Mean": -1, "Median": -1, "stdev": -1 },\
                                                 "Total":         { "Dilations": [totals[i]/natives[i] for i in range(len(natives))],     "Mean": -1, "Median": -1, "stdev": -1 } }
                         TimeMap[bitLogFile]["Profiles"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Profiles"]["Dilations"] )
@@ -325,6 +339,9 @@ class DashAutomate:
                         TimeMap[bitLogFile]["FilePrints"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
                         TimeMap[bitLogFile]["FilePrints"]["Median"] = st.median( TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
                         TimeMap[bitLogFile]["FilePrints"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["FilePrints"]["Dilations"] )
+                        TimeMap[bitLogFile]["Transforms"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Transforms"]["Dilations"] )
+                        TimeMap[bitLogFile]["Transforms"]["Median"] = st.median( TimeMap[bitLogFile]["Transforms"]["Dilations"] )
+                        TimeMap[bitLogFile]["Transforms"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Transforms"]["Dilations"] )                        
                         TimeMap[bitLogFile]["Segmentations"]["Mean"]   = st.mean(   TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
                         TimeMap[bitLogFile]["Segmentations"]["Median"] = st.median( TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
                         TimeMap[bitLogFile]["Segmentations"]["stdev"]  = st.pstdev( TimeMap[bitLogFile]["Segmentations"]["Dilations"] )
