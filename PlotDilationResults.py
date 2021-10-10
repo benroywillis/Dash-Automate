@@ -102,9 +102,12 @@ def plotSegmentationResults():
 	for i in range( len(sortedKeys) ):
 		Dilations.append( [] )
 #		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndNodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["endEdges"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndEntropy"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndNodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["endEdges"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndEntropy"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/(TimeMap[sortedKeys[i]]["Natives"]["Kernels"]*TimeMap[sortedKeys[i]]["Natives"]["EndNodes"]) for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Edges"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
 
 	# construct xtick labels
 	xtickLabels = [""]*len(sortedKeys)
@@ -124,7 +127,7 @@ def plotSegmentationResults():
 		ax.scatter([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
 	ax.set_title("Dilation", fontsize=titleFont)
 	ax.set_ylabel("Factor", fontsize=axisLabelFont)
-	ax.legend(["EndBlocks","EndEdges","EndEntropy"], frameon=False)
+	ax.legend(["EndBlocks*Kernels","Transforms v Nodes","Transforms v Edges"], frameon=False)
 	# for sorting x axis by directoryplt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	#ax.tick_params(axis='x', colors='white')
 	VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6]
@@ -147,16 +150,16 @@ def plotSegmentationResults():
 	plt.show()
 
 # import timemaps we are interested in
-appendTimeMap("Unittests") # have all the data we need (spade 10)
 #appendTimeMap("Dhry_and_whetstone") # have all the data we need (spade 11)
 #appendTimeMap("Armadillo") # lots of data, probably all done (spade 11)
-#appendTimeMap("GSL") # lots of data, probably not done (spade 03)
+appendTimeMap("Unittests") # have all the data we need (spade 11)
+appendTimeMap("PERFECT") # currently working, through some of the ffts(spade 10)
+appendTimeMap("Artisan") # done with projects (spade 09)
 #appendTimeMap("CortexSuite") # (spade 07)
 #appendTimeMap("FFmpeg") # doesn't appear to be done (spade 06)
 #appendTimeMap("FEC") # doesn't appear to be done (spade 05)
 #appendTimeMap("FFTV") # not quite done, but we have data (spade 04)
-#appendTimeMap("Artisan") # appears to be done, may be missing some (spade 09)
-#appendTimeMap("PERFECT") # (spade 10)
+#appendTimeMap("GSL") # lots of data, probably not done (spade 03)
 
 ## data processing
 # get rid of outliers
@@ -193,6 +196,11 @@ for key in TimeMap:
 		TimeMap[key]["FilePrints"]["Mean"] = st.mean(TimeMap[key]["FilePrints"]["Dilations"])
 		TimeMap[key]["FilePrints"]["Mean"] = st.median(TimeMap[key]["FilePrints"]["Dilations"])
 		TimeMap[key]["FilePrints"]["Mean"] = st.pstdev(TimeMap[key]["FilePrints"]["Dilations"])
+		del TimeMap[key]["Transforms"]["Times"][badIndices[i] - i]
+		del TimeMap[key]["Transforms"]["Dilations"][badIndices[i] - i]
+		TimeMap[key]["Transforms"]["Mean"] = st.mean(TimeMap[key]["Transforms"]["Dilations"])
+		TimeMap[key]["Transforms"]["Mean"] = st.median(TimeMap[key]["Transforms"]["Dilations"])
+		TimeMap[key]["Transforms"]["Mean"] = st.pstdev(TimeMap[key]["Transforms"]["Dilations"])
 		del TimeMap[key]["Segmentations"]["Times"][badIndices[i] - i]
 		del TimeMap[key]["Segmentations"]["Dilations"][badIndices[i] - i]
 		TimeMap[key]["Segmentations"]["Mean"] = st.mean(TimeMap[key]["Segmentations"]["Dilations"])
