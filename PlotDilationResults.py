@@ -151,15 +151,15 @@ def plotSegmentationResults():
 
 # import timemaps we are interested in
 #appendTimeMap("Dhry_and_whetstone") # have all the data we need (spade 11)
-#appendTimeMap("Armadillo") # lots of data, probably all done (spade 11)
-appendTimeMap("Unittests") # have all the data we need (spade 11)
-appendTimeMap("PERFECT") # currently working, through some of the ffts(spade 10)
-appendTimeMap("Artisan") # done with projects (spade 09)
-#appendTimeMap("CortexSuite") # (spade 07)
-#appendTimeMap("FFmpeg") # doesn't appear to be done (spade 06)
-#appendTimeMap("FEC") # doesn't appear to be done (spade 05)
-#appendTimeMap("FFTV") # not quite done, but we have data (spade 04)
-#appendTimeMap("GSL") # lots of data, probably not done (spade 03)
+appendTimeMap("Armadillo") # 103 bitcodes remaining (spade 11)
+appendTimeMap("Unittests") # done (spade 11)
+appendTimeMap("PERFECT") # 2 bitcodes remaining (spade 10)
+appendTimeMap("Artisan") # 27 bitcodes remaining (spade 09)
+appendTimeMap("CortexSuite") # 9 bitcodes remaining (spade 07)
+appendTimeMap("FFmpeg") # projects done (spade 06)
+appendTimeMap("FEC") # 6 bitcodes remaining (spade 05)
+appendTimeMap("FFTV") # 40 bitcodes remaining (spade 04)
+appendTimeMap("GSL") # 114 bitcodes remaining (spade 03)
 
 ## data processing
 # get rid of outliers
