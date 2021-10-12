@@ -18,7 +18,7 @@ def appendTimeMap(path):
 	except json.decoder.JSONDecodeError:
 		print("JSON file not valid: "+rootPath+path+"/TimeMap.json. Skipping...")
 
-def plotDilationResults():
+def plotProfileDilationResults():
 	axisFont  = 10
 	axisLabelFont  = 10
 	titleFont = 16
@@ -33,7 +33,6 @@ def plotDilationResults():
                ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 	markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 	# sort TimeMap by block count (starting block count
-	applicationMap = {}
 #	sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Median"] )
 	sortedKeys = sorted( TimeMap )
 	# 2D list of data points, for each entry Profile, FilePrint and 
@@ -42,7 +41,6 @@ def plotDilationResults():
 		Dilations.append( [] )
 		Dilations[i].append( TimeMap[sortedKeys[i]]["Profiles"]["Median"] )
 		Dilations[i].append( TimeMap[sortedKeys[i]]["FilePrints"]["Median"] )
-		Dilations[i].append( TimeMap[sortedKeys[i]]["Segmentations"]["Median"] )
 
 	# construct xtick labels
 	xtickLabels = [""]*len(sortedKeys)
@@ -59,10 +57,11 @@ def plotDilationResults():
 		ax.scatter([x for x in range( len(Dilations) )], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
 	ax.set_title("Time Dilation", fontsize=titleFont)
 	ax.set_ylabel("Factor", fontsize=axisLabelFont)
-	ax.legend(["Profiles","FilePrints","Segmentations"], frameon=False)
+	ax.legend(["Profiles","FilePrints"], frameon=False)
+	ax.set_yscale("log")
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	#ax.tick_params(axis='x', colors='white')
-	VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6]
+	VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**1, 10**2, 10**4]
 	plt.yticks(VTicks, fontsize=axisFont)
 	ax.set_yticks(VTicks)
 	plt.hlines(VTicks, 0, len(xtickLabels), linestyle="dashed", colors=colors[-1])
@@ -73,10 +72,69 @@ def plotDilationResults():
 	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	#ax.set_xscale("log")
-	ax.set_yscale("log")
 	plt.savefig("ProfileTimeDilation.svg",format="svg")
 	plt.savefig("ProfileTimeDilation.png",format="png")
+	plt.show()
+
+def plotSegmentationVTransformResults():
+	axisFont  = 10
+	axisLabelFont  = 10
+	titleFont = 16
+	xtickRotation = 90
+	colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
+               ( 255./255, 127./255, 15./255 , 127./255 ),
+           	   ( 214./255, 39./255 , 40./255 , 127./255 ),
+               ( 121./255, 154./255, 134./255, 127./255 ),
+               ( 198./255, 195./255, 71./255 , 127./255 ),
+               ( 1.      , 1.      , 1.      , 127./255 ),
+               ( 0.8     , 0.8     , 0.8     , 127./255 ),
+               ( 0.0     , 0.0     , 0.0     , 127./255 ),]
+	markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
+	# sort TimeMap by block count (starting block count
+	#sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Nodes"] )
+	sortedKeys = sorted( TimeMap )
+	# 2D list of data points, for each entry a list of dilations based on a given metric
+	Dilations = []
+	for i in range( len(sortedKeys) ):
+		Dilations.append( [] )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+
+	# construct xtick labels
+	xtickLabels = [""]*len(sortedKeys)
+	last = ""
+	for i in range( len(sortedKeys) ):
+		directory = sortedKeys[i].split("/")[0]
+		if last != directory:
+			xtickLabels[i] = directory
+			last = directory
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("white")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
+	for i in range( len(Dilations[0]) ):
+		ax.scatter([x for x in range( len(Dilations) )], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		#ax.scatter([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+	ax.set_title("Transform vs Segmentation", fontsize=titleFont)
+	ax.set_ylabel("Factor", fontsize=axisLabelFont)
+	#ax.set_xlabel("", fontsize=axisLabelFont)
+	ax.legend(["Transform", "Segmentation"], frameon=False)
+	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
+	#ax.set_xscale("log")
+	ax.set_yscale("log")
+	#ax.tick_params(axis='x', colors='white')
+	VTicks = [10**-6, 10**-4, 10**-2, 10**0]
+	plt.yticks(VTicks, fontsize=axisFont)
+	plt.hlines(VTicks, 0, len(xtickLabels), linestyle="dashed", colors=colors[-1])
+	ax.set_yticks(VTicks)
+	vLineLocs = []
+	for i in range(len(xtickLabels)):
+		if xtickLabels[i] != "":
+			vLineLocs.append(i)
+	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
+	#ax.yaxis.label.set_color('white')
+	#ax.xaxis.label.set_color('white')
+	plt.savefig("SegmentationVsTransformsDilationFigure.svg",format="svg")
+	plt.savefig("SegmentationVsTransformsDilationFigure.png",format="png")
 	plt.show()
 
 def plotSegmentationResults():
@@ -94,60 +152,108 @@ def plotSegmentationResults():
                ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 	markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 	# sort TimeMap by block count (starting block count
-	applicationMap = {}
 	sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Nodes"] )
 	#sortedKeys = sorted( TimeMap )
 	# 2D list of data points, for each entry a list of dilations based on a given metric
 	Dilations = []
 	for i in range( len(sortedKeys) ):
 		Dilations.append( [] )
-#		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
 		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndNodes"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
 		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["endEdges"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["EndEntropy"] for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/(TimeMap[sortedKeys[i]]["Natives"]["Kernels"]*TimeMap[sortedKeys[i]]["Natives"]["EndNodes"]) for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
-		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Edges"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/(TimeMap[sortedKeys[i]]["Natives"]["Kernels"]) for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Segmentations"]["Times"][j]/(TimeMap[sortedKeys[i]]["Natives"]["Kernels"]*TimeMap[sortedKeys[i]]["Natives"]["endEdges"]*TimeMap[sortedKeys[i]]["Natives"]["EndNodes"]) for j in range( len(TimeMap[sortedKeys[i]]["Segmentations"]["Times"] ) )]) )
 
 	# construct xtick labels
 	xtickLabels = [""]*len(sortedKeys)
-	""" for sorting x axis by directory
-	last = ""
-	for i in range( len(sortedKeys) ):
-		directory = sortedKeys[i].split("/")[0]
-		if last != directory:
-			xtickLabels[i] = directory
-			last = directory
-	"""
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("white")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
 	for i in range( len(Dilations[0]) ):
-		#ax.scatter([x for x in range( len(Dilations) )], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
-		ax.scatter([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		#ax.scatter([TimeMap[key]["Natives"]["EndNodes"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		#ax.scatter([TimeMap[key]["Natives"]["endEdges"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		#ax.scatter([TimeMap[key]["Natives"]["Kernels"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		ax.scatter([TimeMap[key]["Natives"]["EndNodes"]*TimeMap[key]["Natives"]["endEdges"]*TimeMap[key]["Natives"]["Kernels"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
 	ax.set_title("Dilation", fontsize=titleFont)
 	ax.set_ylabel("Factor", fontsize=axisLabelFont)
-	ax.legend(["EndBlocks*Kernels","Transforms v Nodes","Transforms v Edges"], frameon=False)
-	# for sorting x axis by directoryplt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
-	#ax.tick_params(axis='x', colors='white')
-	VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**2, 10**4, 10**6]
-	plt.yticks(VTicks, fontsize=axisFont)
-	ax.set_yticks(VTicks)
-	plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
-	"""for sorting x axis by directory
-	vLineLocs = []
-	for i in range(len(xtickLabels)):
-		if xtickLabels[i] != "":
-			vLineLocs.append(i)
-	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
-	"""
-	#ax.yaxis.label.set_color('white')
-	#ax.xaxis.label.set_color('white')
+	#ax.set_xlabel("Vertices", fontsize=axisLabelFont)
+	#ax.set_xlabel("Edges", fontsize=axisLabelFont)
+	#ax.set_xlabel("Kernels", fontsize=axisLabelFont)
+	ax.set_xlabel("Vertices*Edges*Kernels", fontsize=axisLabelFont)
+	#ax.legend(["EndBlocks*Kernels","Transforms v Nodes","Transforms v Edges"], frameon=False)
 	ax.set_xscale("log")
 	ax.set_yscale("log")
-	plt.savefig("SegmentationDilationFigure.svg",format="svg")
-	plt.savefig("SegmentationDilationFigure.png",format="png")
+	#VTicks = [10**-4, 10**-3, 10**-2, 10**-1, 10**-0]
+	#VTicks = [10**-4, 10**-3, 10**-2, 10**-1, 10**-0]
+	#VTicks = [10**-4, 10**-3, 10**-2, 10**-1, 10**-0]
+	VTicks = [10**-8, 10**-7, 10**-6, 10**-5, 10**-4, 10**-3, 10**-2]
+	plt.yticks(VTicks, fontsize=axisFont)
+	ax.set_yticks(VTicks)
+	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["EndNodes"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["endEdges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Kernels"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["EndNodes"]*TimeMap[key]["Natives"]["Kernels"]*TimeMap[key]["Natives"]["endEdges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	#plt.savefig("SegmentationDilationFigure.svg",format="svg")
+	#plt.savefig("SegmentationDilationFigure_Vertices.png",format="png")
+	#plt.savefig("SegmentationDilationFigure_Edges.png",format="png")
+	#plt.savefig("SegmentationDilationFigure_Kernels.png",format="png")
+	plt.savefig("SegmentationDilationFigure_VerticesEdgesKernels.png",format="png")
 	plt.show()
+
+def plotTransformDilationResults():
+	axisFont  = 10
+	axisLabelFont  = 10
+	titleFont = 16
+	xtickRotation = 90
+	colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
+               ( 255./255, 127./255, 15./255 , 127./255 ),
+           	   ( 214./255, 39./255 , 40./255 , 127./255 ),
+               ( 121./255, 154./255, 134./255, 127./255 ),
+               ( 198./255, 195./255, 71./255 , 127./255 ),
+               ( 1.      , 1.      , 1.      , 127./255 ),
+               ( 0.8     , 0.8     , 0.8     , 127./255 ),
+               ( 0.0     , 0.0     , 0.0     , 127./255 ),]
+	markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
+	# sort TimeMap by block count (starting block count
+	sortedKeys = sorted( TimeMap, key = lambda Name: TimeMap[Name]["Natives"]["Nodes"] )
+	# 2D list of data points, for each entry a list of dilations based on a given metric
+	Dilations = []
+	for i in range( len(sortedKeys) ):
+		Dilations.append( [] )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Nodes"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+		#Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/TimeMap[sortedKeys[i]]["Natives"]["Edges"] for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+		Dilations[i].append( st.median([TimeMap[sortedKeys[i]]["Transforms"]["Times"][j]/(TimeMap[sortedKeys[i]]["Natives"]["Nodes"]*TimeMap[sortedKeys[i]]["Natives"]["Edges"]) for j in range( len(TimeMap[sortedKeys[i]]["Transforms"]["Times"] ) )]) )
+
+	# construct xtick labels
+	xtickLabels = [""]*len(sortedKeys)
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("white")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
+	for i in range( len(Dilations[0]) ):
+		#ax.scatter([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		#ax.scatter([TimeMap[key]["Natives"]["Edges"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+		ax.scatter([TimeMap[key]["Natives"]["Nodes"]*TimeMap[key]["Natives"]["Edges"] for key in TimeMap], list(zip(*Dilations))[i], color = colors[i], marker = markers[i])
+	ax.set_title("Dilation", fontsize=titleFont)
+	ax.set_ylabel("Factor", fontsize=axisLabelFont)
+	#ax.set_xlabel("Vertices", fontsize=axisLabelFont)
+	#ax.set_xlabel("Edges", fontsize=axisLabelFont)
+	ax.set_xlabel("Vertices*Edges", fontsize=axisLabelFont)
+	#ax.legend(["Vertices"], frameon=False)
+	ax.set_xscale("log")
+	ax.set_yscale("log")
+	#VTicks = [10**-6, 10**-4, 10**-2]
+	#VTicks = [10**-6, 10**-4, 10**-2]
+	VTicks = [10**-8, 10**-6, 10**-4]
+	plt.yticks(VTicks, fontsize=axisFont)
+	ax.set_yticks(VTicks)
+	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Edges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Nodes"]*TimeMap[key]["Natives"]["Edges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
+	#plt.savefig("TransformDilationFigure.svg",format="svg")
+	#plt.savefig("TransformDilationFigure_Vertices.png",format="png")
+	#plt.savefig("TransformDilationFigure_Edges.png",format="png")
+	plt.savefig("TransformDilationFigure_VerticesEdges.png",format="png")
+	plt.show()
+
 
 # import timemaps we are interested in
 #appendTimeMap("Dhry_and_whetstone") # have all the data we need (spade 11)
@@ -210,5 +316,7 @@ for key in TimeMap:
 #	json.dump(TimeMap, f, indent=4)
 
 # plot
-#plotDilationResults()
-plotSegmentationResults()
+#plotProfileDilationResults()
+plotSegmentationVTransformResults()
+#plotSegmentationResults()
+#plotTransformDilationResults()
