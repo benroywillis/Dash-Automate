@@ -135,6 +135,7 @@ def argumentParse():
     arg_parser.add_argument("-P", "--project-prefix", default=os.getcwd(), help="Set path prefix to the project root folder.")
     arg_parser.add_argument("-lp", "--long-report", action='store_true', help="Include reports about individual projects and bitcodes in the FULLREPORT file.")
     # toolchain configuration
+    arg_parser.add_argument("-ho", "--hotcode_detection", action="store_true", help="Enable hotcode detection in the program segmentation step.")
     arg_parser.add_argument("-cs", "--compiler-suffix", default="-9", help="Set suffix for binaries in system LLVM install.")
     arg_parser.add_argument("-tp", "--toolchain-prefix", default="/mnt/nobackup-09/Dash/Sources/", help="Specify path to the TraceAtlas toolchain installation.")
     # tracing configuration
