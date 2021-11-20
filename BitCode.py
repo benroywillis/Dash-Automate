@@ -43,10 +43,10 @@ class BitCode:
         # will hold the entire script dependency tree
         self.jobID = []
         # configure build tools
-        self.CC                 = "clang"+self.args.compiler_suffix
-        self.CXX                = "clang++"+self.args.compiler_suffix
-        self.LD                 = "lld"+self.args.compiler_suffix
-        self.OPT                = "opt"+self.args.compiler_suffix
+        self.CC                 = "/mnt/heorot-10/bwilli46/LLVM9/install-release/bin/clang"
+        self.CXX                = "/mnt/heorot-10/bwilli46/LLVM9/install-release/bin/clang++"
+        self.LD                 = "/mnt/heorot-10/bwilli46/LLVM9/install-release/bin/ld.lld"
+        self.OPT                = "/mnt/heorot-10/bwilli46/LLVM9/install-release/bin/opt"
         self.Tracer             = self.args.toolchain_prefix+"lib/AtlasPasses.so"
         self.Backend            = self.args.toolchain_prefix+"lib/libAtlasBackend.a"
         self.Cartographer       = self.args.toolchain_prefix+"bin/newCartographer"
@@ -278,7 +278,9 @@ class BitCode:
         prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"]] )
         optCommand = self.OPT+" -load "+self.Tracer+" -Markov "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
         clangPPCommand = self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["TRAtmp"]+" -o "+self.BCDict[BC][NTV]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
+        scopCommand = "/mnt/heorot-10/bwilli46/LLVM9/install-release/bin/opt -polly-canonicalize --basicaa -polly-allow-nonaffine -polly-process-unprofitable -polly-use-llvm-names -polly-ast -polly-export-jscop "+self.BCDict[BC]["tmpPath"] + " -o "+self.BCDict[BC]["Name"]+"_polly"
+        #return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
+        return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], scopCommand, "scop")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
 
     def makeTraceCommand(self, BC, NTV, TRC):
         """
@@ -407,22 +409,22 @@ class BitCode:
                     k = 1 # because the first index is the NTV command
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
-                            runQueue[i][j].append([])
+                            #runQueue[i][j].append([])
                             # make Profiles tied to their native scripts
-                            TRCdict = self.BCDict[BC][NTV][TRC]
-                            runQueue[i][j][k].append( self.Command.constructBashFile(TRCdict["Script"], TRCdict["Command"], TRCdict["Log"], environment=Util.SourceScript) )
+                            #TRCdict = self.BCDict[BC][NTV][TRC]
+                            #runQueue[i][j][k].append( self.Command.constructBashFile(TRCdict["Script"], TRCdict["Command"], TRCdict["Log"], environment=Util.SourceScript) )
                             # make cartographers tied to their trace scripts
-                            CARdict = TRCdict["CAR"]
-                            runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
+                            #CARdict = TRCdict["CAR"]
+                            #runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
                             # tikSwap is tied to tik, therefore it immediately follows tik within brackets
                             # tik, DE, func, WS, KH all tied to the cartographer script
-                            ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"], timeLimit=10 ), \
-                                            [ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"], timeLimit=10 ) ], \
+                            #ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"], timeLimit=10 ), \
+                                            #[ self.Command.constructBashFile(TRCdict["tikSwap"]["Script"], TRCdict["tikSwap"]["Command"], TRCdict["tikSwap"]["Log"], timeLimit=10 ) ], \
                                             #self.Command.constructBashFile(TRCdict["DE"]["Script"], TRCdict["DE"]["Command"], TRCdict["DE"]["Log"] ), \
                                             #self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
                                             #self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \
-                                            self.Command.constructBashFile(TRCdict["KH"]["Script"], TRCdict["KH"]["Command"], TRCdict["KH"]["Log"]) )
-                            runQueue[i][j][k].append(ExtraTuple)
+                                            #self.Command.constructBashFile(TRCdict["KH"]["Script"], TRCdict["KH"]["Command"], TRCdict["KH"]["Log"]) )
+                            #runQueue[i][j][k].append(ExtraTuple)
                             k += 1 # increment TRC counter
                     j += 1 # increment NTV counter
             i += 1 # increment BC counter
@@ -505,17 +507,20 @@ class BitCode:
                     self.BCDict[BC][NTV]["SUCCESS"] = True
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
+                            """
                             # if the trace failed, don't look at anything else
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"])
                                 reportDict["Total"]["Failed Profiles"] += 1
                                 continue
+                            """
                             self.BCDict[BC][NTV][TRC]["SUCCESS"] = True
 
                             reportDict[BC][NTV][TRC] = dict()
                             # record the trace
                             reportDict["Total"]["Profiles"] += 1
                             # trace size and time integration
+                            """
                             reportDict[BC][NTV][TRC]["size"] = self.BCDict[BC][NTV][TRC]["size"]
                             reportDict["Total"]["Size"] += reportDict[BC][NTV][TRC]["size"]
                             reportDict[BC][NTV][TRC]["TRCtime"] = self.BCDict[BC][NTV][TRC]["time"]
@@ -535,17 +540,17 @@ class BitCode:
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["CAR"]["Log"]):
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["CAR"]["Log"])
                                 continue
+                            """
                             reportDict["Total"]["Segmented Profiles"] += 1
                             self.BCDict[BC][NTV][TRC]["CAR"]["SUCCESS"] = True
                             reportDict[BC][NTV][TRC]["CARtime"] = self.BCDict[BC][NTV][TRC]["CAR"]["time"]
-                            self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] = Util.getCartographerKernels(self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"])
+                            self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] = Util.getSCOPs(self.BCDict[BC][NTV]["Log"])
                             reportDict[BC][NTV][TRC]["Cartographer Kernels"] = self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"]
                             reportDict["Total"]["Cartographer Kernels"] += reportDict[BC][NTV][TRC]["Cartographer Kernels"]
                             if self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] <= 0:
                                 reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"]+" -> 0 Kernels")
                             else:
                                 nonzeroProfiles += 1
-
                             """
                             # accessories
                             if Util.findErrors(self.BCDict[BC][NTV][TRC]["DE"]["Log"]):

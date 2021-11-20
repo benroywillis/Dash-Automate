@@ -18,7 +18,7 @@ SourceScript = "export " +\
     "CXX='clang++-9 -flto -DENABLE_TRACING -g3 -O0' " +\
     "DASH_DATA='/mnt/nobackup-09/Dash/Data/' " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
-    "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
+    "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm -Xclang -disable-O0-optnone' " +\
     "LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
     "LD_LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
     "AR='llvm-ar-9' " +\
@@ -635,6 +635,26 @@ def getCartographerKernels(filepath):
                 for id in dic[key]:
                     kernels+=1
     return kernels
+
+def getSCOPs(filepath):
+    try:
+        logfile = open(filepath, "r")
+    except:
+        globLog.error("Could not parse scop log "+filepath)
+        return 0
+
+    count = 0
+    errors = 0
+    try:
+    	for line in logfile:
+            count += len(re.findall("Writing\sJScop\s", line))
+            errors += len(re.findall("DAStepError", line))
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return 0
+    if errors > 0:
+        return 0
+    return count
 
 def getTikKernels(filepath):
     try:
