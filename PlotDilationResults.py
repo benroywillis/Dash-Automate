@@ -73,6 +73,8 @@ def plotProfileDilationResults():
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
 	plt.savefig("ProfileTimeDilation.svg",format="svg")
+	plt.savefig("ProfileTimeDilation.eps",format="eps")
+	plt.savefig("ProfileTimeDilation.pdf",format="pdf")
 	plt.savefig("ProfileTimeDilation.png",format="png")
 	plt.show()
 
@@ -134,6 +136,8 @@ def plotSegmentationVTransformResults():
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
 	plt.savefig("SegmentationVsTransformsDilationFigure.svg",format="svg")
+	plt.savefig("SegmentationVsTransformsDilationFigure.eps",format="eps")
+	plt.savefig("SegmentationVsTransformsDilationFigure.pdf",format="pdf")
 	plt.savefig("SegmentationVsTransformsDilationFigure.png",format="png")
 	plt.show()
 
@@ -251,6 +255,9 @@ def plotTransformDilationResults():
 	#plt.savefig("TransformDilationFigure.svg",format="svg")
 	#plt.savefig("TransformDilationFigure_Vertices.png",format="png")
 	#plt.savefig("TransformDilationFigure_Edges.png",format="png")
+	plt.savefig("TransformDilationFigure_VerticesEdges.svg",format="svg")
+	plt.savefig("TransformDilationFigure_VerticesEdges.eps",format="eps")
+	plt.savefig("TransformDilationFigure_VerticesEdges.pdf",format="pdf")
 	plt.savefig("TransformDilationFigure_VerticesEdges.png",format="png")
 	plt.show()
 
@@ -316,7 +323,7 @@ for key in TimeMap:
 #	json.dump(TimeMap, f, indent=4)
 
 # plot
-#plotProfileDilationResults()
+plotProfileDilationResults()
 plotSegmentationVTransformResults()
-#plotSegmentationResults()
-#plotTransformDilationResults()
+plotSegmentationResults()
+plotTransformDilationResults()
