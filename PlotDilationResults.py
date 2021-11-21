@@ -297,33 +297,60 @@ for key in TimeMap:
 	for i in range( len(badIndices) ):
 		del TimeMap[key]["Natives"]["Times"][badIndices[i] - i]
 		TimeMap[key]["Natives"]["Mean"] = st.mean(TimeMap[key]["Natives"]["Times"])
-		TimeMap[key]["Natives"]["Mean"] = st.median(TimeMap[key]["Natives"]["Times"])
-		TimeMap[key]["Natives"]["Mean"] = st.pstdev(TimeMap[key]["Natives"]["Times"])
+		TimeMap[key]["Natives"]["Median"] = st.median(TimeMap[key]["Natives"]["Times"])
+		TimeMap[key]["Natives"]["stdev"] = st.pstdev(TimeMap[key]["Natives"]["Times"])
 		del TimeMap[key]["Profiles"]["Times"][badIndices[i] - i]
 		del TimeMap[key]["Profiles"]["Dilations"][badIndices[i] - i]
 		TimeMap[key]["Profiles"]["Mean"] = st.mean(TimeMap[key]["Profiles"]["Dilations"])
-		TimeMap[key]["Profiles"]["Mean"] = st.median(TimeMap[key]["Profiles"]["Dilations"])
-		TimeMap[key]["Profiles"]["Mean"] = st.pstdev(TimeMap[key]["Profiles"]["Dilations"])
+		TimeMap[key]["Profiles"]["Median"] = st.median(TimeMap[key]["Profiles"]["Dilations"])
+		TimeMap[key]["Profiles"]["stdev"] = st.pstdev(TimeMap[key]["Profiles"]["Dilations"])
 		del TimeMap[key]["FilePrints"]["Times"][badIndices[i] - i]
 		del TimeMap[key]["FilePrints"]["Dilations"][badIndices[i] - i]
 		TimeMap[key]["FilePrints"]["Mean"] = st.mean(TimeMap[key]["FilePrints"]["Dilations"])
-		TimeMap[key]["FilePrints"]["Mean"] = st.median(TimeMap[key]["FilePrints"]["Dilations"])
-		TimeMap[key]["FilePrints"]["Mean"] = st.pstdev(TimeMap[key]["FilePrints"]["Dilations"])
+		TimeMap[key]["FilePrints"]["Median"] = st.median(TimeMap[key]["FilePrints"]["Dilations"])
+		TimeMap[key]["FilePrints"]["stdev"] = st.pstdev(TimeMap[key]["FilePrints"]["Dilations"])
 		del TimeMap[key]["Transforms"]["Times"][badIndices[i] - i]
 		del TimeMap[key]["Transforms"]["Dilations"][badIndices[i] - i]
 		TimeMap[key]["Transforms"]["Mean"] = st.mean(TimeMap[key]["Transforms"]["Dilations"])
-		TimeMap[key]["Transforms"]["Mean"] = st.median(TimeMap[key]["Transforms"]["Dilations"])
-		TimeMap[key]["Transforms"]["Mean"] = st.pstdev(TimeMap[key]["Transforms"]["Dilations"])
+		TimeMap[key]["Transforms"]["Median"] = st.median(TimeMap[key]["Transforms"]["Dilations"])
+		TimeMap[key]["Transforms"]["stdev"] = st.pstdev(TimeMap[key]["Transforms"]["Dilations"])
 		del TimeMap[key]["Segmentations"]["Times"][badIndices[i] - i]
 		del TimeMap[key]["Segmentations"]["Dilations"][badIndices[i] - i]
 		TimeMap[key]["Segmentations"]["Mean"] = st.mean(TimeMap[key]["Segmentations"]["Dilations"])
-		TimeMap[key]["Segmentations"]["Mean"] = st.median(TimeMap[key]["Segmentations"]["Dilations"])
-		TimeMap[key]["Segmentations"]["Mean"] = st.pstdev(TimeMap[key]["Segmentations"]["Dilations"])
+		TimeMap[key]["Segmentations"]["Median"] = st.median(TimeMap[key]["Segmentations"]["Dilations"])
+		TimeMap[key]["Segmentations"]["stdev"] = st.pstdev(TimeMap[key]["Segmentations"]["Dilations"])
 #with open("TimeMap_Processed.json","w") as f:
 #	json.dump(TimeMap, f, indent=4)
 
 # plot
+"""
 plotProfileDilationResults()
 plotSegmentationVTransformResults()
 plotSegmentationResults()
 plotTransformDilationResults()
+"""
+# downsample TimeMap to a map of directories (unfiltered it is a map of individual applications)
+DirectoryMap = {}
+for app in TimeMap:
+	dir = app.split("/")[0]
+	if DirectoryMap.get(dir) is None:
+		DirectoryMap[dir] = { "Apps": [], "Mean": 0.0, "Median": 0.0, "Stdev": 0.0 }
+	appEntry = TimeMap[app]["Profiles"]
+	DirectoryMap[dir]["Apps"].append( (appEntry["Mean"], appEntry["Median"], appEntry["stdev"]) )
+
+for dir in DirectoryMap:
+	DirectoryMap[dir]["Mean"] = st.median( [x[0] for x in DirectoryMap[dir]["Apps"]] )
+	DirectoryMap[dir]["Median"] = st.median( [x[1] for x in DirectoryMap[dir]["Apps"]] )
+	DirectoryMap[dir]["Stdev"] = st.median( [x[2] for x in DirectoryMap[dir]["Apps"]] )
+DirectoryMap["Total"] = { "Mean": 0.0, "Median": 0.0, "Stdev": 0.0 }
+DirectoryMap["Total"]["Mean"] = st.median( [DirectoryMap[dir]["Mean"] for dir in DirectoryMap] )
+DirectoryMap["Total"]["Median"] = st.median( [DirectoryMap[dir]["Median"] for dir in DirectoryMap] )
+DirectoryMap["Total"]["Stdev"] = st.median( [DirectoryMap[dir]["Stdev"] for dir in DirectoryMap] )
+
+# make a latex table of the results
+latexString = "Directory & Median & Mean & Stdev \\\\\n\hline\n"
+for dir in DirectoryMap:
+	latexString += dir+" & {:.2f} & {:.2f} & {:.2f} \\\\\n".format(DirectoryMap[dir]["Median"],DirectoryMap[dir]["Mean"],DirectoryMap[dir]["Stdev"])
+
+with open("ProfileDilationDirectoryStats.tex","w") as f:
+	f.write(latexString)
