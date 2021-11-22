@@ -343,9 +343,9 @@ for dir in DirectoryMap:
 	DirectoryMap[dir]["Median"] = st.median( [x[1] for x in DirectoryMap[dir]["Apps"]] )
 	DirectoryMap[dir]["Stdev"] = st.median( [x[2] for x in DirectoryMap[dir]["Apps"]] )
 DirectoryMap["Total"] = { "Mean": 0.0, "Median": 0.0, "Stdev": 0.0 }
-DirectoryMap["Total"]["Mean"] = st.median( [DirectoryMap[dir]["Mean"] for dir in DirectoryMap] )
-DirectoryMap["Total"]["Median"] = st.median( [DirectoryMap[dir]["Median"] for dir in DirectoryMap] )
-DirectoryMap["Total"]["Stdev"] = st.median( [DirectoryMap[dir]["Stdev"] for dir in DirectoryMap] )
+DirectoryMap["Total"]["Mean"] = st.mean( [DirectoryMap[dir]["Mean"] for dir in DirectoryMap] )
+DirectoryMap["Total"]["Median"] = st.mean( [DirectoryMap[dir]["Median"] for dir in DirectoryMap] )
+DirectoryMap["Total"]["Stdev"] = st.mean( [DirectoryMap[dir]["Stdev"] for dir in DirectoryMap] )
 
 # make a latex table of the results
 latexString = "Directory & Median & Mean & Stdev \\\\\n\hline\n"
