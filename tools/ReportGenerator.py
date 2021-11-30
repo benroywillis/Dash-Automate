@@ -26,24 +26,26 @@ def readKernelFile(kf, log):
 	for id in hj["Kernels"]:
 		if hj["Kernels"][id].get("Blocks") is not None:
 			kernelBlocks = kernelBlocks.union(set(hj["Kernels"][id]["Blocks"]))
-	return { "Kernels": len(hj["Kernels"]), "KernelBlocks": list(kernelBlocks), "ValidBlocks": hj["ValidBlocks"] }
+	#return { "Kernels": len(hj["Kernels"]), "KernelBlocks": list(kernelBlocks), "ValidBlocks": hj["ValidBlocks"] }
+	return { "Kernels": len(hj["Kernels"]), "KernelBlocks": len(list(kernelBlocks)) }
 
 def readScops(log):
-    scops = -1
-    try:
-        logFile = open(log, "r")
-    except Exception as e:
-        print("Could not find logfile "+log+": "+str(e))
-        return scops
+	return {}
+	scops = -1
+	try:
+		logFile = open(log, "r")
+	except Exception as e:
+		print("Could not find logfile "+log+": "+str(e))
+		return scops
 
-    try:
-        for line in logFile:
-            scops += len(re.findall("Writing\sJScop\s", line))
-    except Exception as e:
-        print("Could not parse a line of "+log+": "+str(e))
-        return scops
+	try:
+		for line in logFile:
+			scops += len(re.findall("Writing\sJScop\s", line))
+	except Exception as e:
+		print("Could not parse a line of "+log+": "+str(e))
+		return scops
 
-    return scops
+	return scops
 
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
 def findProject(path):
@@ -92,17 +94,18 @@ def recurseIntoFolder(path, BuildNames, stepStrings, dataMap):
 					break
 
 			if dataMap[projectName].get(keyName) is None:
-				dataMap[projectName][keyName] = dict()
-				dataMap[projectName][keyName][currentFolder] = (-1,0.0)
+				dataMap[projectName][keyName] = { "HC": {}, "2DMarkov": {} }
 			if "HC" in currentFolder:
 				print("Hotcode: "+kernelFileName)
-				dataMap[projectName][keyName][currentFolder] = readKernelFile(path+kernelFileName, path+"/logs/"+logFileName)
+				dataMap[projectName][keyName]["HC"] = readKernelFile(path+kernelFileName, path+"/logs/"+logFileName)
 			elif "2DMarkov" in currentFolder:
 				print("2DMarkov: "+kernelFileName)
-				dataMap[projectName][keyName][currentFolder] = readKernelFile(path+kernelFileName, path+"/logs/"+logFileName)
+				dataMap[projectName][keyName]["2DMarkov"] = readKernelFile(path+kernelFileName, path+"/logs/"+logFileName)
+			#elif "Polly" in currentFolder:
+			#	print("Scops: "+logFileName)
+			#	dataMap[projectName][keyName]["Scops"] = readScops(path+"/logs/"+logFileName)
 			else:
-				print("Scops: "+logFileName)
-				dataMap[projectName][keyName][currentFolder] = (readScops(path+"/logs/"+logFileName), 0.0)
+				print("Could not categorize this directory: "+dir)
 		
 	directories = []
 	for f in os.scandir(path):
@@ -122,29 +125,24 @@ def retrieveData(buildFolders):
 		recurseIntoFolder(CorpusFolder, buildFolders, ["Cartographer_"], dataMap)
 		#pft.recurseIntoFolder("/mnt/heorot-10/Dash/Dash-Corpus/Unittests", buildFolders, ["makeNative","Cartographer_"], dataMap)
 		# sort the data into categories by build folder (we use abbreviations "HC" and "2DMarkov" to correspond to the build folder names)
-		sortedDataMap = { "HC": {}, "2DMarkov": {} }
+		sortedDataMap = {}
 		for project in dataMap:
-			if sortedDataMap["HC"].get(project) is None:
-				sortedDataMap["HC"][project] = {}
-			if sortedDataMap["2DMarkov"].get(project) is None:
-				sortedDataMap["2DMarkov"][project] = {}
-			#if sortedDataMap["Scops"].get(project) is None:
-				#sortedDataMap["Scops"][project] = 0
+			if sortedDataMap.get(project) is None:
+				sortedDataMap[project] = {}
 			for keyName in dataMap[project]:
-				if sortedDataMap["HC"][project].get(keyName) is None:
-					sortedDataMap["HC"][project][keyName] = {}
-				if sortedDataMap["2DMarkov"][project].get(keyName) is None:
-					sortedDataMap["2DMarkov"][project][keyName] = {}
+				if sortedDataMap[project].get(keyName) is None:
+					sortedDataMap[project][keyName] = { "HC": -1, "2DMarkov": -1 }
 				d = dataMap[project][keyName]
-				for dir in d:
-					if "HC" in dir:
-						sortedDataMap["HC"][project][keyName][dir] = d[dir]
-					elif "2DMarkov" in dir:
-						sortedDataMap["2DMarkov"][project][keyName][dir] = d[dir]
-					elif "Polly" in dir:
-						sortedDataMap["Polly"][project][keyName][dir] = d[dir]
-					else:
-						print("Could not categorize this directory: "+dir)
+				if sortedDataMap[project][keyName]["HC"] != -1:
+					print("Keyname "+keyName+" already exists in project "+project)
+				sortedDataMap[project][keyName]["HC"] = d["HC"]
+				if sortedDataMap[project][keyName]["2DMarkov"] != -1:
+					print("Keyname "+keyName+" already exists in project "+project)
+				sortedDataMap[project][keyName]["2DMarkov"] = d["2DMarkov"]
+				#if sortedDataMap[project][keyName]["Polly"] != -1:
+				#	print("Keyname "+keyName+" already exists in project "+project)
+				#sortedDataMap[project][keyName]["Polly"] = d[dir]
+
 		with open(CorpusFolder+"CollectedData.json","w") as f:
 			json.dump(dataMap, f, indent=4)
 	return dataMap
@@ -168,34 +166,41 @@ def PlotKernelSizeCorrelation(dataMap):
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
 	HCList = []
 	MarkovList = []
-	for project in dataMap["HC"]:
-		for entry in dataMap["HC"][project]:
-			HCList.append(len(dataMap["HC"][project][entry]["KernelBlocks"]))
-			MarkovList.append(len(dataMap["2DMarkov"][project][entry]["KernelBlocks"]))
+	for project in dataMap:
+		for entry in dataMap[project]:
+			if dataMap[project][entry].get("HC") is None:
+				raise KeyError("Entry not found in hot code category: "+str(entry))
+			if dataMap[project][entry].get("2DMarkov") is None:
+				raise KeyError("Entry not found in 2DMarkov category: "+str(entry))
+			HCList.append(dataMap[project][entry]["HC"]["KernelBlocks"])
+			MarkovList.append(dataMap[project][entry]["2DMarkov"]["KernelBlocks"])
 #[ [ [ x for x in dataMap["HC"][z][y]] for y in dataMap["HC"][z]] for z in dataMap["HC"] ]
-	print(HCList)
-	print(MarkovList)
 	ax.scatter( HCList, MarkovList, color = colors[0], marker = markers[0])
-	ax.set_title("Time Dilation", fontsize=titleFont)
-	ax.set_ylabel("Factor", fontsize=axisLabelFont)
-	#ax.set_yscale("log")
+	ax.set_aspect("equal")
+	ax.set_title("Block Coverage Correlation", fontsize=titleFont)
+	ax.set_ylabel("PaMul Blocks", fontsize=axisLabelFont)
+	ax.set_xlabel("HotCode Blocks", fontsize=axisLabelFont)
+	ax.set_yscale("log")
+	ax.set_xscale("log")
 	#plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	#ax.tick_params(axis='x', colors='white')
-	#VTicks = [10**(-6), 10**-4, 10**-2, 10**0, 10**1, 10**2, 10**4]
-	#plt.yticks(VTicks, fontsize=axisFont)
+	VTicks = [10**0, 10**1, 10**3, 10**2, 10**4]
+	plt.yticks(VTicks, fontsize=axisFont)
+	HTicks = [10**0, 10**1, 10**3, 10**2, 10**4]
+	plt.xticks(HTicks, fontsize=axisFont)
 	#ax.set_yticks(VTicks)
 	#plt.hlines(VTicks, 0, len(xtickLabels), linestyle="dashed", colors=colors[-1])
-	vLineLocs = []
+	#vLineLocs = []
 	#for i in range(len(xtickLabels)):
 #		if xtickLabels[i] != "":
 #			vLineLocs.append(i)
 #	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	#plt.savefig("ProfileTimeDilation.svg",format="svg")
-	#plt.savefig("ProfileTimeDilation.eps",format="eps")
+	plt.savefig("ProfileTimeDilation.svg",format="svg")
+	plt.savefig("ProfileTimeDilation.eps",format="eps")
 	#plt.savefig("ProfileTimeDilation.pdf",format="pdf")
-	#plt.savefig("ProfileTimeDilation.png",format="png")
+	plt.savefig("ProfileTimeDilation.png",format="png")
 	plt.show()
 
 def reportCompliant(project, keyName, dir, dic):
@@ -226,56 +231,21 @@ def reportNonCompliant(project, keyName, dir, dic, log=None):
 
 def pairData(dataMap, buildFolders):
 	# pairs all types together
-	matchedData = { "HC": {}, "2DMarkov": {}, "Scops": {} }
-	# tracks "compliance"
-	# compliance is defined as producing a result (any result) for a project
-	compliance = { "HC": {}, "2DMarkov": {}, "Scops": {} }
-	HCfound = 0
-	M2Dfound = 0
-	Scopsfound = 0
+	matchedData = {}
 	for project in dataMap:
 		for keyName in dataMap[project]:
 			# keys: directory information comes from, value: tuple( kernels, blockCoverage )
 			d = dataMap[project][keyName]
-			allFound = (set(d.keys()) == buildFolders) 
-			for dir in d:
-				if d[dir].get("Kernels") is None:
+			allFound = True
+			for key in d:
+				if d[key].get("Kernels") is None:
 					allFound = False
-					reportNonCompliant(project, keyName, dir, compliance)
-				elif "HC" in dir:
-					HCfound += 1
-					reportCompliant(project, keyName, dir, compliance)
-				elif "2DMarkov" in dir:
-					M2Dfound += 1
-					reportCompliant(project, keyName, dir, compliance)
-				elif "Polly" in dir:
-					Scopsfound += 1
-					reportCompliant(project, keyName, dir, compliance)
-				else:
-					print("Could not categorize this directory: "+dir)
-
 			if allFound:
-				if matchedData["HC"].get(project) is None:
-					matchedData["HC"][project] = dict()
-				if matchedData["HC"][project].get(keyName) is None:
+				if matchedData.get(project) is None:
+					matchedData[project] = dict()
 					# first index kernels, second index static block coverage
-					matchedData["HC"][project][keyName] = dict() 
-				if matchedData["2DMarkov"].get(project) is None:
-					matchedData["2DMarkov"][project] = dict()
-				if matchedData["2DMarkov"][project].get(keyName) is None:
-					# first index kernels, second index static block coverage
-					matchedData["2DMarkov"][project][keyName] = dict() 
-				for dir in d:
-					if "HC" in dir:
-						matchedData["HC"][project][keyName] = d[dir]
-					elif "2DMarkov" in dir:
-						matchedData["2DMarkov"][project][keyName] = d[dir]
-					elif "Polly" in dir:
-						matchedData["Scops"][project][keyName] = d[dir]
-					else:
-						print("Could not categorize this directory: "+dir)
-
-	print("HC: "+str(HCfound)+" , 2DMarkov: "+str(M2Dfound)+" , Scops: "+str(Scopsfound))
+				#matchedData[project][keyName] = { "HC": d["HC"], "2DMarkov": d["2DMarkov"], "Scops": d["Scops"] }
+				matchedData[project][keyName] = { "HC": d["HC"], "2DMarkov": d["2DMarkov"] }
 
 	with open("MatchedData.json","w") as f:
 		json.dump(matchedData, f, indent=4)
@@ -329,8 +299,9 @@ def outputDirectoryKernels(matchedData):
 		f.write(latexString)
 
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/OpenCV/"
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/OpenCV/"
 #CorpusFolder = "/home/bwilli46/Dash/Dash-Automate/testing/"
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
 #buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21", "buildPollyScops11-20-21" }
 buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21" }
 #buildFolders = { "buildHC", "build2DMarkov" }
