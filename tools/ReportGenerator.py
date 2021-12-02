@@ -175,7 +175,13 @@ def PlotKernelSizeCorrelation(dataMap):
 			HCList.append(dataMap[project][entry]["HC"]["KernelBlocks"])
 			MarkovList.append(dataMap[project][entry]["2DMarkov"]["KernelBlocks"])
 #[ [ [ x for x in dataMap["HC"][z][y]] for y in dataMap["HC"][z]] for z in dataMap["HC"] ]
-	ax.scatter( HCList, MarkovList, color = colors[0], marker = markers[0])
+	for i in range( len( HCList ) ):
+		if HCList[i] > MarkovList[i]:
+			ax.scatter( HCList[i], MarkovList[i], color = colors[2], marker = markers[0])
+		elif HCList[i] == MarkovList[i]:
+			ax.scatter( HCList[i], MarkovList[i], color = colors[1], marker = markers[0])
+		else:
+			ax.scatter( HCList[i], MarkovList[i], color = colors[0], marker = markers[0])
 	ax.set_aspect("equal")
 	ax.set_title("Block Coverage Correlation", fontsize=titleFont)
 	ax.set_ylabel("PaMul Blocks", fontsize=axisLabelFont)
