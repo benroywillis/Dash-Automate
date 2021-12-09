@@ -172,6 +172,10 @@ def PlotKernelSizeCorrelation(dataMap):
 				raise KeyError("Entry not found in hot code category: "+str(entry))
 			if dataMap[project][entry].get("2DMarkov") is None:
 				raise KeyError("Entry not found in 2DMarkov category: "+str(entry))
+			if dataMap[project][entry]["HC"]["KernelBlocks"] > dataMap[project][entry]["2DMarkov"]["KernelBlocks"]:
+				print("{}/{} had more hot code blocks than PaMul".format(project,entry))
+			elif dataMap[project][entry]["HC"]["KernelBlocks"] > dataMap[project][entry]["2DMarkov"]["KernelBlocks"]:
+				print("{}/{} had equal hot code blocks to PaMul".format(project,entry))
 			HCList.append(dataMap[project][entry]["HC"]["KernelBlocks"])
 			MarkovList.append(dataMap[project][entry]["2DMarkov"]["KernelBlocks"])
 #[ [ [ x for x in dataMap["HC"][z][y]] for y in dataMap["HC"][z]] for z in dataMap["HC"] ]
