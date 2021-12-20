@@ -117,6 +117,7 @@ def recurseIntoFolder(path, BuildNames, stepStrings, dataMap):
 	return dataMap
 
 def retrieveData(buildFolders):
+	# maps project to application name to type (HC or 2DMarkov) to kernels
 	dataMap = {}
 	try:
 		with open(CorpusFolder+"CollectedData.json","r") as f:
