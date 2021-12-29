@@ -316,14 +316,13 @@ class DashAutomateSQL(SQLDataBase):
         return traceMap
 
 class ProjectSQL(SQLDataBase):
-    def __init__(self, rootpath, abspath, inputdict):
+    def __init__(self, relativePath, inputdict):
         """
         @brief Facilitates pushing to the Root table in Dash-Ontology database
-        @param[in] rootpath     Absolute path to the root directory of the corpus being built. Should be the Dash-Corpus install prefix.
-        @param[in] abspath      Absolute path to the specific directory within the corpus.
+        @param[in] abspath      Relative path from the root build directory to the specific directory of this project within the corpus.
         @param[in] inputdict    Input JSON file containing User information
         """
-        self.relPath = Util.getPathDiff(rootpath, abspath, build=False)
+        self.relPath = relativePath
         self.author = Util.getAuthor(inputdict)
         self.libraries = Util.getLibraries(inputdict)
         self.ID = -1
@@ -414,7 +413,7 @@ class BitcodeSQL(SQLDataBase):
                             try:
                                 DAGfile = open(self.BCD[BC][NTV][TRC]["DE"]["buildPath"], "r")
                             except FileNotFoundError:
-                                self.logger.warn("Could not find DAG file: "+self.BCD[BC][NTV][TRC]["DE"]["buildPath"])
+                                #self.logger.warn("Could not find DAG file: "+self.BCD[BC][NTV][TRC]["DE"]["buildPath"])
                                 DAGfile = None
                             if DAGfile is not None:
                                 DAGdata = "'"+DAGfile.read()+"'"
@@ -474,13 +473,13 @@ class BitcodeSQL(SQLDataBase):
                             try:
                                 FD = json.load( open( self.BCD[BC][NTV][TRC]["function"]["buildPath"],"r" ) )
                             except:
-                                self.logger.warn("Could not find function annotation file: "+self.BCD[BC][NTV][TRC]["function"]["buildPath"])
+                                #self.logger.warn("Could not find function annotation file: "+self.BCD[BC][NTV][TRC]["function"]["buildPath"])
                                 FD = None
                             # pig file
                             try:
                                 PD = json.load( open( self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"],"r" ) )
                             except:
-                                self.logger.warn("Could not find pig file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"])
+                                #self.logger.warn("Could not find pig file: "+self.BCD[BC][NTV][TRC]["CAR"]["buildPathpigfile"])
                                 PD = None
 
                             # push per-kernel data
@@ -500,7 +499,7 @@ class BitcodeSQL(SQLDataBase):
                                         DagId = self.DAGID
                                         Hash = Util.getKernelHash(KHD, str(index))
                                         TikId = self.tikID
-                                        pigIDs = self.pushPigData(PD, str(index))
+                                        pigIDs = self.pushPigData(KD, str(index))
                                         PigId = pigIDs[0]
                                         CpigId = pigIDs[1]
                                         Labels = Util.getKernelLabels(KD, str(index))                                            
@@ -536,7 +535,7 @@ class BitcodeSQL(SQLDataBase):
                                         finalData    += [FlowId, BowId, DagId, Hash, TikId, PigId, CpigId]
                                         if Labels is not None:
                                             finalColumns += ["Labels"]
-                                            finalData    += ["'"+Labels+"'"]
+                                            finalData    += ["'"+";".join(x for x in Labels)+"'"]
                                         finalColumns += ["EPigId","ECPigId"]
                                         finalData    += [EPigId, ECPigId]
                                         
@@ -554,17 +553,22 @@ class BitcodeSQL(SQLDataBase):
                             else:
                                 self.logger.warn("Kernel file was not a dictionary.")
 
-    def pushPigData(self, PD, index):
+    def pushPigData(self, KD, index):
         """
         @brief      Pushes Performance Intrinsics Data: static (pig), dynamic(cpig), cross-product static(epig), cross-product dynamic(ecpig)
-        @param[in]  PD     Dictionary of PIG data
-        @param[in]  index  Kernel index to push. Needs to be a sting.
+        @param[in]  PD     Dictionary of kernel data
+        @param[in]  index  Index (string) of the kernel ID
         @retval     IDs    List of 4 push IDs [pigID, cpigID, epigID, ecpigID]
         """
         IDs = [-1,-1,-1,-1]
         # read in file
-        if PD is None:
+        if KD.get("Kernels") is None:
             return IDs
+        if KD["Kernels"].get(index) is None:
+            return IDs
+        if KD["Kernels"][index].get("Performance Intrinsics") is None:
+            return IDs
+        PD = KD["Kernels"][index]["Performance Intrinsics"]
         
         # dictionaries hold all columns of each respective SQL table
         pigD = dict.fromkeys(["typeVoid", "typeFloat", "typeInt", "typeArray", "typeVector", "typePointer", "instructionCount", "addCount",
@@ -580,37 +584,35 @@ class BitcodeSQL(SQLDataBase):
 
         # pig push
         if PD.get("Pig", None) is not None:
-            if PD["Pig"].get(index, None) is not None:
-                push = True
-                for inst in PD["Pig"][index].keys():
-                    found = False
-                    for column in pigD.keys():
-                        if inst == column:
-                            found = True
-                            pigD[column] = PD["Pig"][index][inst]
-                    if not found:
-                        self.logger.critical("Found this field: {}, in the pig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
-                        push = False
-                if push:
-                    super().command("INSERT INTO pig ("+",".join(x for x in list(pigD.keys()))+") VALUES ("+",".join(str(x) for x in list(pigD.values()))+");")
-                    IDs[0] = super().getLastID()
+            push = True
+            for inst in PD["Pig"].keys():
+                found = False
+                for column in pigD.keys():
+                    if inst == column:
+                        found = True
+                        pigD[column] = PD["Pig"][inst]
+                if not found:
+                    self.logger.critical("Found this field: {}, in the pig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                    push = False
+            if push:
+                super().command("INSERT INTO pig ("+",".join(x for x in list(pigD.keys()))+") VALUES ("+",".join(str(x) for x in list(pigD.values()))+");")
+                IDs[0] = super().getLastID()
 
         # cpig push
         if PD.get("CPig", None) is not None:
-            if PD["CPig"].get(index, None) is not None:
-                push = True
-                for inst in PD["CPig"][index].keys():
-                    found = False
-                    for column in cpigD.keys():
-                        if inst == column:
-                            found = True
-                            cpigD[column] = PD["CPig"][index][inst]
-                    if not found:
-                        self.logger.critical("Found this field: {}, in the cpig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
-                        push = False
-                if push:
-                    super().command("INSERT INTO cpig ("+",".join(x for x in list(cpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(cpigD.values()))+");")
-                    IDs[1] = super().getLastID()
+            push = True
+            for inst in PD["CPig"].keys():
+                found = False
+                for column in cpigD.keys():
+                    if inst == column:
+                        found = True
+                        cpigD[column] = PD["CPig"][inst]
+                if not found:
+                    self.logger.critical("Found this field: {}, in the cpig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                    push = False
+            if push:
+                super().command("INSERT INTO cpig ("+",".join(x for x in list(cpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(cpigD.values()))+");")
+                IDs[1] = super().getLastID()
 
         epigD = dict.fromkeys(["instructionCount", "fnegtypeInt", "fnegtypeFloat", "fnegtypeVoid", "fnegtypeArray", "fnegtypeVector", "fnegtypePointer", "addtypeInt",
                                 "addtypeFloat", "addtypeVoid", "addtypeArray", "addtypeVector", "addtypePointer", "faddtypeInt", "faddtypeFloat", "faddtypeVoid", "faddtypeArray",
@@ -661,36 +663,34 @@ class BitcodeSQL(SQLDataBase):
 
         # epig push
         if PD.get("EPig", None) is not None:
-            if PD["EPig"].get(index, None) is not None:
-                push = True
-                for inst in PD["EPig"][index].keys():
-                    found = False
-                    for column in epigD.keys():
-                        if inst == column:
-                            found = True
-                            epigD[column] = PD["EPig"][index][inst]
-                    if not found:
-                        self.logger.critical("Found this field: {}, in the EPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
-                        push = False
-                if push:
-                    super().command("INSERT INTO epig ("+",".join(x for x in list(epigD.keys()))+") VALUES ("+",".join(str(x) for x in list(epigD.values()))+");")
-                    IDs[2] = super().getLastID()
+            push = True
+            for inst in PD["EPig"].keys():
+                found = False
+                for column in epigD.keys():
+                    if inst == column:
+                        found = True
+                        epigD[column] = PD["EPig"][inst]
+                if not found:
+                    self.logger.critical("Found this field: {}, in the EPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                    push = False
+            if push:
+                super().command("INSERT INTO epig ("+",".join(x for x in list(epigD.keys()))+") VALUES ("+",".join(str(x) for x in list(epigD.values()))+");")
+                IDs[2] = super().getLastID()
 
         # ecpig push
         if PD.get("ECPig", None) is not None:
-            if PD["ECPig"].get(index, None) is not None:
-                push = True
-                for inst in PD["ECPig"][index].keys():
-                    found = False
-                    for column in ecpigD.keys():
-                        if inst == column:
-                            found = True
-                            ecpigD[column] = PD["ECPig"][index][inst]
-                    if not found:
-                        self.logger.critical("Found this field: {}, in the ECPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
-                        push = False
-                if push:
-                    super().command("INSERT INTO ecpig ("+",".join(x for x in list(ecpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(ecpigD.values()))+");")
-                    IDs[3] = super().getLastID()
+            push = True
+            for inst in PD["ECPig"].keys():
+                found = False
+                for column in ecpigD.keys():
+                    if inst == column:
+                        found = True
+                        ecpigD[column] = PD["ECPig"][inst]
+                if not found:
+                    self.logger.critical("Found this field: {}, in the ECPig data dictionary that did not exist in the pushing dictionary. Exiting and please fix the bug.".format(inst))
+                    push = False
+            if push:
+                super().command("INSERT INTO ecpig ("+",".join(x for x in list(ecpigD.keys()))+") VALUES ("+",".join(str(x) for x in list(ecpigD.values()))+");")
+                IDs[3] = super().getLastID()
 
         return IDs

@@ -9,6 +9,35 @@ import re
 MemSize = 4000
 
 logger = logging.getLogger("Command")
+def clean():
+    """
+    @brief Cancels all jobs with label "DependencyNeverSatisfied" on the SLURM queue
+    """
+    logger.debug("Starting queue clean!")
+    check = sp.Popen("squeue --noheader -O jobid,userid,reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
+    user = os.geteuid()
+    output = ""
+    logger.debug("Checking queue contents!")
+    # first acquire the queue to look for jobs whose dependencies have not been satisfied
+    while check.poll() is None:
+        output += check.stdout.read().decode("utf-8")
+    jobs   = output.split("\n")
+    numbers = re.findall("(\d+)", output)
+    # even indices are jobIDs, odd are user IDs
+    jobIDs = numbers[0::2]
+    users  = [int(x) for x in numbers[1::2]]
+    # find all indices in jobIDs that have "DependencyNeverSatis" as their reason
+    indices = []
+    for i in range( len(jobIDs) ):
+        if ("DependencyNeverSatis" in jobs[i]) and (users[i] == user):
+            indices.append(i)
+    
+    if len(indices):
+        logger.debug("Killing dead jobs!")
+        killIDs = " ".join(str(jobIDs[i]) for i in indices)
+        cancel = sp.Popen("scancel "+killIDs, shell=True)
+        cancel.wait()
+    logger.debug("Done!")
 
 """
 @brief Class facilitating the generation of bash scripts and commands
@@ -131,7 +160,7 @@ class Command:
         """
         @brief Polls a job queue for the jobId given.
         @param[in] jobId  Structure of jobIds to look inside the running jobs list for. Input is flattened (if iterable).
-        @retval           Returns true if the jobId was found, false otherwise
+        @retval           Returns true if any jobId(s) were found, false otherwise
         """
         # turn the input into integers
         if self.SLURM:
@@ -141,28 +170,17 @@ class Command:
                 output += check.stdout.read().decode("utf-8")
             activeIDs = re.findall("(\d+)", output)
             activeIDs = [int(x) for x in activeIDs]
+            if len(activeIDs) == 0:
+               logging.debug("Could not find any active IDs in the SLURM queue")
+               return False
 
-            # flag indicates whether a job (any from the input arg) is still in the queue
-            jobFound = False
-            # list to keep all jobs whose dependencies have failed
-            cancelJobs = []
-            # flatten the input data
+            # flatten the input data and check whether all entries are still in the queue or not
+            logging.debug("Checking for jobs "+",".join(str(x) for x in activeIDs))
             for strjob in Util.flatten(jobId):
                 job = int(strjob)
                 if job in activeIDs:
-                    jobFound = True
-                    if checkDependencies:
-                        # our job is present, check its state and dependencies
-                        depjob = sp.Popen("squeue --noheader -j "+str(job)+" -O Reason", stdout=sp.PIPE, stderr=sp.PIPE, shell=True)
-                        depstring = ""
-                        while depjob.poll() is None:
-                            depstring += depjob.stdout.read().decode("utf-8")
-                        if "DependencyNeverSatis" in depstring:
-                            logger.error("Cancelling job "+str(job)+" because its dependencies were never satisified.")
-                            cancelJobs.append(job)
-            if len(cancelJobs) > 0:
-                self.cancel(cancelJobs)
-            return jobFound
+                    return True
+            return False
         else:
             # only supports SLURM for now
             logging.critical("In Command.poll()\n\tCan only handle dependency jobId lists from SLURM!")

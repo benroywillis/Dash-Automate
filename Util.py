@@ -10,10 +10,12 @@ import ctypes
 
 globLog = logging.getLogger("Util")
 
+    #"DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
+    #"DASH_ROOT='/home/bwilli46/DashLibraries/debug/' " +\
 ### Global Definitions
 SourceScript = "export " +\
-    "CC='clang-9 -flto -DENABLE_TRACING' " +\
-    "CXX='clang++-9 -flto -DENABLE_TRACING' " +\
+    "CC='clang-9 -flto -DENABLE_TRACING -g3 -O0' " +\
+    "CXX='clang++-9 -flto -DENABLE_TRACING -g3 -O0' " +\
     "DASH_DATA='/mnt/nobackup-09/Dash/Data/' " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
     "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
@@ -131,7 +133,9 @@ def argumentParse():
     #arg_parser.add_argument("-np", "--no-papi", action="store_true", help="Disable the PAPI step of the tool.")
     arg_parser.add_argument("-kt", "--keep-trace", action="store_true", help="Don't delete the trace during build flow.")
     arg_parser.add_argument("-P", "--project-prefix", default=os.getcwd(), help="Set path prefix to the project root folder.")
+    arg_parser.add_argument("-lp", "--long-report", action='store_true', help="Include reports about individual projects and bitcodes in the FULLREPORT file.")
     # toolchain configuration
+    arg_parser.add_argument("-ho", "--hotcode_detection", action="store_true", help="Enable hotcode detection in the program segmentation step.")
     arg_parser.add_argument("-cs", "--compiler-suffix", default="-9", help="Set suffix for binaries in system LLVM install.")
     arg_parser.add_argument("-tp", "--toolchain-prefix", default="/mnt/nobackup-09/Dash/Sources/", help="Specify path to the TraceAtlas toolchain installation.")
     # tracing configuration
@@ -561,7 +565,7 @@ def getLibraries( JD ):
         return ""
         
 ### Reporting
-def getTraceSize(filepath):
+def getProfilesize(filepath):
     try:
         size = os.path.getsize(filepath)
         return size
@@ -603,20 +607,19 @@ def getLogTime(filepath):
                             seconds = re.findall("\d+\.", entry)
 
                 if len(days) != 0:
-                    totalseconds = totalseconds+86400*int(days[0][:-1])
+                    totalseconds += totalseconds+86400*int(days[0][:-1])
                 if len(hours) != 0:
-                    totalseconds = totalseconds+3600*int(hours[0][:-1])
+                    totalseconds += totalseconds+3600*int(hours[0][:-1])
                 if len(minutes) != 0:
-                    totalseconds = totalseconds+60*int(minutes[0][:-1])
+                    totalseconds += totalseconds+60*int(minutes[0][:-1])
                 if len(seconds) != 0:
-                    totalseconds = totalseconds+int(seconds[0][:-1])
+                    totalseconds += totalseconds+int(seconds[0][:-1])
 
                 return totalseconds
 
     except Exception as e:
         globLog.error("Could not parse log file for time: "+filepath)
         return 0
-
 
     return 0
 
@@ -628,8 +631,9 @@ def getCartographerKernels(filepath):
     kernels = 0
     for key in dic:
         if key == "Kernels":
-            for id in dic[key]:
-                kernels+=1
+            if dic[key]:
+                for id in dic[key]:
+                    kernels+=1
     return kernels
 
 def getTikKernels(filepath):
@@ -641,13 +645,13 @@ def getTikKernels(filepath):
 
     count = 0
     errors = 0
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             errors += len(re.findall(".*DAStepERROR:\stik\scommand\sfailed.*", line))
             count += len(re.findall(".*Successfully\sconverted\skernel.*", line))
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file "+filepath)
-            return 0
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return 0
     if errors > 0:
         return 0
     return count
@@ -687,6 +691,69 @@ def parseTikSwapResults(filepath):
 
     return ( (tikSwapKernels, tikSwapBinaries), (tikCompilationKernels, tikCompilationBinaries), (tikBinarySuccessKernels, tikBinarySuccess) )
 
+def getAvgKSize(kernelPath, Nodes=False, Blocks=False):
+    """
+    Returns the average kernel size, either in GraphNodes or basic blocks (from the original source bitcode), of the kernels in kernelPath
+    """
+    # read in kernel file
+    # parse average kernel size number (in either nodes or blocks)
+    # return the float
+    avg = 0.0
+    try:
+        dic = json.load( open(kernelPath, "r") )
+    except:
+        return avg
+
+    if Nodes:
+        if dic.get("Average Kernel Size (Nodes)") is not None:
+            return dic["Average Kernel Size (Nodes)"]
+    else:
+        if dic.get("Average Kernel Size (Blocks)") is not None:
+            return dic["Average Kernel Size (Blocks)"]
+
+def getCartographerErrors(filepath):
+    reportDict = dict()
+    try:
+        logfile = open(filepath, "r")
+    except:
+        globLog.error("Could not parse tik log "+filepath)
+        return reportDict
+
+    errorList = []
+    try:
+    	for line in logfile:
+            reasons = re.findall(".*\[error\].*", line)
+            reasons += re.findall(".*\[critical\].*", line)
+            segFaults = re.findall("Segmentation.*", line)
+            errorList += segFaults + reasons  # + errors
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return reportDict
+
+    for entry in errorList:
+        entry = entry.lower()
+        segs = re.findall(".*segmentation.*", entry)
+        if len(segs) == 0:
+            lineNumber = re.findall("\.cpp\:\d+\:", entry)
+            critical = re.findall(".*\[critical\].*", entry)
+            if len(lineNumber) > 0:
+                if reportDict.get(str(lineNumber[0]), None) is not None:
+                    reportDict[str(lineNumber[0])] = reportDict[str(lineNumber[0])] + 1
+                else:
+                    reportDict[str(lineNumber[0])] = 1
+            if len(critical) > 0:
+                if reportDict.get("ModuleErrors", None) is not None:
+                    reportDict["ModuleErrors"] = reportDict["ModuleErrors"] + 1
+                else:
+                    reportDict["ModuleErrors"] = 1
+
+        else:
+            if reportDict.get("Segmentation Faults", None) is not None:
+                reportDict["Segmentation Faults"] = reportDict["Segmentation Faults"] + 1
+            else:
+                reportDict["Segmentation Faults"] = 1
+    return reportDict
+
 def getTikErrors(filepath):
     reportDict = dict()
     try:
@@ -696,15 +763,15 @@ def getTikErrors(filepath):
         return reportDict
 
     errorList = []
-    for line in logfile:
-        try:
+    try:
+    	for line in logfile:
             reasons = re.findall(".*\[error\].*", line)
             reasons += re.findall(".*\[critical\].*", line)
             segFaults = re.findall("Segmentation.*", line)
             errorList += segFaults + reasons  # + errors
-        except Exception as e:
-            globLog.error("Could not parse line in tik log file "+filepath)
-            return reportDict
+    except Exception as e:
+        globLog.error("Could not parse line in tik log file "+filepath)
+        return reportDict
 
     for entry in errorList:
         entry = entry.lower()
@@ -891,8 +958,8 @@ def getKernelLabels(KD, index):
     if isinstance(KD, dict):
         if KD.get("Kernels", None) is not None:
             if KD["Kernels"].get(index, None) is not None:
-                if KD["Kernels"][index].get("Label", None) is not None:
-                    label = KD["Kernels"][index]["Label"]
+                if KD["Kernels"][index].get("Labels", None) is not None:
+                    label = KD["Kernels"][index]["Labels"]
                     if len(label) > 256:
                         # truncate, database only allows 256 characters or less
                         label = label[0:255]

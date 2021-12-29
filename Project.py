@@ -13,10 +13,10 @@ Each project has a build flow (either GNU Makefile or CMake) and produces bitcod
 Special flags and commands are specified in the project's input JSON file.
 """
 class Project:
-    def __init__(self, rootpath, path, buildFolder, jsonName):
+    def __init__(self, rootPath, path, buildFolder, jsonName):
         """
         @brief Configures command object
-        @param[in] rootpath     Absolute path to the root directory of the corpus build
+        @param[in] rootPath     Absolute path to the root directory of the corpus build
         @param[in] path         Absolute path to the project folder (the folder where the buildflow file exists)
         @param[in] buildFolder  Name of the build folder for the project. 
         """
@@ -24,9 +24,11 @@ class Project:
         self.Valid = True
         # Absolute path to the project directory
         self.projectPath = path if path.endswith("/") else path+"/"
+        # relative path to the project from the root build folder
+        self.relPath = Util.getPathDiff(rootPath, path, build=False)
         # Absolute path to the project build folder
         self.buildPath = self.projectPath+buildFolder+"/"
-        self.logger = logging.getLogger("Project: "+Util.getPathDiff(rootpath, self.projectPath))
+        self.logger = logging.getLogger("Project: "+Util.getPathDiff(rootPath, self.projectPath))
         # Name of the input JSON file
         self.jsonName = jsonName
         # Dictionary of the projects input JSON file
@@ -50,7 +52,7 @@ class Project:
         # Flag indicating whether or not this project is currently building
         self.building = False
         # SQL pushing object
-        self.PSQL = SQL.ProjectSQL(rootpath, self.projectPath, self.compileJSON)
+        self.PSQL = SQL.ProjectSQL(self.relPath, self.compileJSON)
         # SQL ID assigned to entry
         self.ID = -1
         # Flag indicating errors in the build flow
@@ -146,9 +148,7 @@ class Project:
         @brief Monitors the project's active build job. If the job has completed, a bitcode map for the project, specifying the LFLAGS and RARGS for each one is generated.
         @retval Returns False if an active job is still active, True if there are no active jobs and all housekeeping has been taken care of
         """
-        if self.Command.poll(self.jobID):
-            return False
-        else:
+        if not self.Command.poll(self.jobID, checkDependencies=False):
             time.sleep(0.1)        
             bitcodes = Util.getLocalFiles(self.projectPath, suffix=[".bc",".o"])
             if len(bitcodes) > 0:
@@ -159,8 +159,9 @@ class Project:
                 self.ID = self.PSQL.ID
             else:
                 self.parseErrors()
-                
             return True
+
+        return False
 
     def parseBitcodes(self, bitcodes):
         """
