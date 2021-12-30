@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
 
 # for testing
-CorpusFolder = "/home/bwilli46/Dash/Dash-Automate/testing/"
-buildFolders = {"build2DMarkov", "buildHC"}
+#CorpusFolder = "/home/bwilli46/Dash/Dash-Automate/testing/"
+#buildFolders = {"build2DMarkov", "buildHC"}
 
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/OpenCV/"
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
 #buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21", "buildPollyScops11-20-21" }
-#buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21" }
+buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21" }
 #buildFolders = { "buildHC", "build2DMarkov" }
 
 # most recent build
@@ -21,7 +21,7 @@ buildFolders = {"build2DMarkov", "buildHC"}
 #buildFolders = {"buildQPR13_12-20-21"}
 
 # maps build folder names to hotcode, hotloop, pamul
-NameMap = { "build2DMarkov": "2DMarkov", "buildHC": "HC" }
+NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
 
 # plot parameters
 axisFont  = 10
@@ -80,7 +80,7 @@ def PlotKernelCorrespondence(dataMap):
 	for project in dataMap:
 		for entry in dataMap[project]:
 			for t in dataMap[project][entry]:
-				if t == "HC":
+				if NameMap[t] == "HC":
 					HC = HC.union( Uniquify(project, entry, "HC", dataMap[project][entry][t]["Kernels"]) )
 				else:
 					PaMul = PaMul.union( Uniquify(project, entry, "2DMarkov", dataMap[project][entry][t]["Kernels"]) )
@@ -238,7 +238,30 @@ def retrieveData(buildFolders):
 
 	return dataMap
 
+def matchData(dataMap, buildFolders):
+	# pairs all types together
+	matchedData = {}
+	for project in dataMap:
+		for keyName in dataMap[project]:
+			# keys: directory information comes from, value: tuple( kernels, blockCoverage )
+			d = dataMap[project][keyName]
+			allFound = True
+			for key in d:
+				if d[key].get("Kernels") is None:
+					allFound = False
+			if allFound:
+				if matchedData.get(project) is None:
+					matchedData[project] = dict()
+					# first index kernels, second index static block coverage
+				if matchedData[project].get(keyName) is None:
+					matchedData[project][keyName] = {}
+				for bf in buildFolders:
+					matchedData[project][keyName][bf] = dataMap[project][keyName][bf]
+
+	with open("MatchedData.json","w") as f:
+		json.dump(matchedData, f, indent=4)
+	return matchedData
 
 dataMap = retrieveData(buildFolders)
-print(dataMap)
-PlotKernelCorrespondence(dataMap)
+matchedData = matchData(dataMap, buildFolders)
+PlotKernelCorrespondence(matchedData)
