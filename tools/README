@@ -5,7 +5,7 @@ DirectoryStats.py: collects kernel stats of a specific automation run and collec
  - contains mappings from crude project names to refined ones
  - mechanism for retrieving all kernel files is similar to ReportGenerator.py, but the system is generalized beyond HC, 2DMarkov and Scops
 
-PlotKernelCoverageStats.py: Reads "matched" data (data where all three tools, HC, PaMul and llvm polly scops have good results) and plots the coverage of the kernels, meaning the % of the program static basic blocks that have been covered by each respective tool
+PlotKernelCoverageStats.py: Reads "matched" data produced by ReportGenerator.py (data where all three tools, HC, PaMul and llvm polly scops have good results) and plots the coverage of the kernels, meaning the % of the program static basic blocks that have been covered by each respective tool
 
 TimeDilationScript.py: mini version of Dash-Automate that collects information about timing (high precision, does not use SLURM), profile size, input graph nodes and edges, etc
  - must be run on individual projects, not the whole corpus (uses bash, can't overload one machine or else this will bias the data)
@@ -17,3 +17,9 @@ PlotDilationResults.py: plots information produced by TimeDilationScript.py runs
 
 TransformationStats.py: contains plotting code for transformation stats (change in nodes, edges, entropy) before and after transforms
 
+BasicBlockCorrespondence.py: Venn diagram of the static basic blocks covered by each of the structuring techniques (Hotcode, Hotloops, PaMul)
+
+BasicBlockCoverageBars.py: Stacked bar chart of the static basic block % covered by each technique
+ - x axis is applications
+ - y axis is % of coverage of static blocks
+ - stacked bars is the union of the coverage of all techniques. The lowest coverage technique is the bottom bar, 2nd is the middle bar, most coverage is the top bar
