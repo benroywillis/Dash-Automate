@@ -20,7 +20,7 @@ SourceScript = "export " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
     "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
     "LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
-    "LD_LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
+    "LD_LIBRARY_PATH='/mnt/heorot-10/bwilli46/Installs/TraceAtlas/devb_relwithdebinfo/lib/' " +\
     "AR='llvm-ar-9' " +\
     "NM='llvm-nm-9' " +\
     "RANLIB='/bin/true' " +\
@@ -136,8 +136,9 @@ def argumentParse():
     arg_parser.add_argument("-lp", "--long-report", action='store_true', help="Include reports about individual projects and bitcodes in the FULLREPORT file.")
     # toolchain configuration
     arg_parser.add_argument("-ho", "--hotcode_detection", action="store_true", help="Enable hotcode detection in the program segmentation step.")
-    arg_parser.add_argument("-cs", "--compiler-suffix", default="-9", help="Set suffix for binaries in system LLVM install.")
-    arg_parser.add_argument("-tp", "--toolchain-prefix", default="/mnt/nobackup-09/Dash/Sources/", help="Specify path to the TraceAtlas toolchain installation.")
+    arg_parser.add_argument("-cs", "--compiler-suffix", default="", help="Set suffix for binaries in system LLVM install.")
+    arg_parser.add_argument("-cp", "--compiler-toolchain-prefix", default="/mnt/heorot-10/bwilli46/Installs/LLVM12/install-release/", help="Specify path to the LLVM toolchain installation.")
+    arg_parser.add_argument("-tp", "--toolchain-prefix", default="/mnt/heorot-10/bwilli46/TraceAtlas/devb_relwithdebinfo/", help="Specify path to the TraceAtlas toolchain installation.")
     # tracing configuration
     arg_parser.add_argument("-tc", "--trace-compression", default=9, help="Specify zlib compression level when tracing.")
     arg_parser.add_argument("-O", "--opt-level", nargs='+', default=[None,None], help="Specify string following the '-O' optimizer flag in project build flow. Enter as a whitespace-separated list: opt command flag first, clang command flag second.")
