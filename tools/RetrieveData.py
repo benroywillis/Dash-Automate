@@ -1,14 +1,15 @@
 import json
 import os
 
-def readKernelFile(kf, log):
+def readKernelFile(kf, justBlocks=True):
 	returnDict = {}
 	# first open the log to verify that the step ran 
-	try:
+	"""try:
 		log = open(log,"r")
 	except Exception as e:
 		print("Could not open "+log+": "+str(e))
 		return returnDict
+	"""
 	try:
 		hj = json.load( open(kf, "r") )
 	except Exception as e:
@@ -24,12 +25,28 @@ def readKernelFile(kf, log):
 		if hj["Kernels"][k].get("Blocks") is None:
 			returnDict["Kernels"][k] = {}
 		else:
-			returnDict["Kernels"][k] = list(hj["Kernels"][k]["Blocks"])
+			if justBlocks:
+				returnDict["Kernels"][k] = list(hj["Kernels"][k]["Blocks"])
+			else:
+				returnDict["Kernels"][k] = hj["Kernels"][k]
 	return returnDict
 
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
-def findProject(path):
-	project = ""
+def findOffset(path, basePath):
+	b = set(basePath.split("/"))
+	b.remove("")
+	p = set(path.split("/"))
+	p.remove("")
+	offset = p - p.intersection(b)
+	# now reconstruct the ordering
+	orderedOffset = []
+	while len(offset) > 0:
+		for entry in path.split("/"):
+			if entry in offset:
+				orderedOffset.append(entry)
+				offset.remove(entry)
+	return "/".join(x for x in orderedOffset)
+	"""	
 	l = path.split("/")
 	i = 0
 	while i < len(l):
@@ -42,11 +59,10 @@ def findProject(path):
 			project += l[i]+"/"
 		elif( l[i] == "Dash-Corpus" ):
 			idx_DC = i
-	print(path)
-	print(project)
 	return project
+	"""
 
-def recurseIntoFolder(path, BuildNames, folderMap):
+def recurseIntoFolder(path, BuildNames, basePath, folderMap):
 	"""
 	@brief 	   recursive algorithm to search through all branches of a directory tree for directories containing files of interest
 
@@ -61,11 +77,10 @@ def recurseIntoFolder(path, BuildNames, folderMap):
 	BuildNames = set(BuildNames)
 	currentFolder = path.split("/")[-1]
 	path += "/"
-	projectName   = findProject(path)
+	offset = findOffset(path, basePath)
 	if currentFolder in BuildNames:
-		if folderMap.get(projectName) is None:
-			folderMap[projectName] = dict()
-		folderMap[projectName][currentFolder] = {}
+		if folderMap.get(offset) is None:
+			folderMap[offset] = dict()
 	
 	directories = []
 	for f in os.scandir(path):
@@ -73,7 +88,7 @@ def recurseIntoFolder(path, BuildNames, folderMap):
 			directories.append(f)
 
 	for d in directories:
-		folderMap = recurseIntoFolder(d.path, BuildNames, folderMap)
+		folderMap = recurseIntoFolder(d.path, BuildNames, basePath, folderMap)
 	return folderMap
 
 def getTargetFilePaths(directoryMap, baseDir, offset = "", prefix = "", suffix = ""):
@@ -89,12 +104,11 @@ def getTargetFilePaths(directoryMap, baseDir, offset = "", prefix = "", suffix =
 	# list of absolute paths to target files
 	targetFiles = []
 	for project in directoryMap:
-		for bf in directoryMap[project]:
-			bfPath = baseDir+"/"+project+"/"+bf+"/"+offset+"/"
-			for f in os.scandir(bfPath):
-				filePath = bfPath+"/"
-				if f.name.startswith(prefix) and f.name.endswith(suffix):
-					targetFiles.append(filePath+f.name)
+		bfPath = baseDir+"/"+project+"/"+offset+"/"
+		for f in os.scandir(bfPath):
+			filePath = bfPath+"/"
+			if f.name.startswith(prefix) and f.name.endswith(suffix):
+				targetFiles.append(filePath+f.name)
 	return targetFiles
 
 def parseKernelData(k):
@@ -126,40 +140,51 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, findOld=True):
 			print("Could not find an existing {}, generating a new one".format(CorpusFolder+dataFileName))
 			generateData = True
 	if generateData:
-		recurseIntoFolder(CorpusFolder, buildFolders, directoryMap)
-		kernelTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix=".json")
-		HCTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix="_HotCode.json")
-		HLTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix="_HotLoop.json")
+		recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+#		kernelTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix=".json")
+		kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
+		HCTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotCode.json")
+		HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
 		for k in kernelTargets:
-			dataMap[k] = parseKernelData(k)
+			dataMap[k] = readKernelFile(k)#parseKernelData(k)
 
 		with open(CorpusFolder+"allKernelData.json","w") as f:
 			json.dump(dataMap, f, indent=4)
 
 	return dataMap
 
-def matchData(dataMap, buildFolders):
-	# pairs all types together
+def refineBlockData(dataMap):
+	"""
+	@brief 	Finds all entries in the map that are not valid ie the entry is -1 and removes them
+	"""
+	refinedMap = {}
+	for file in dataMap:
+		if dataMap[file] == -1:
+			continue
+		refinedMap[file] = {}
+		for k in dataMap[file]:
+			refinedMap[file][k] = dataMap[file][k]
+	return refinedMap
+
+def matchData(dataMap):
+	# here we need to look for three kinds of the same project: PaMul, hotcode and hotloop
+	projects = {}
 	matchedData = {}
 	for project in dataMap:
-		for keyName in dataMap[project]:
-			# keys: directory information comes from, value: tuple( kernels, blockCoverage )
-			d = dataMap[project][keyName]
-			allFound = True
-			for key in d:
-				if d[key].get("Kernels") is None:
-					allFound = False
-			if allFound:
-				if matchedData.get(project) is None:
-					matchedData[project] = dict()
-					# first index kernels, second index static block coverage
-				if matchedData[project].get(keyName) is None:
-					matchedData[project][keyName] = {}
-				for bf in buildFolders:
-					matchedData[project][keyName][bf] = dataMap[project][keyName][bf]
+		name = project.split("/")[-1].split(".")[0]
+		if name not in set(projects.keys()):
+			projects[name] = { "HotCode": -1, "HotLoop": -1, "PaMul": -1 }
+			# find out if its a PaMul, hotcode or hotloop
+		if "HotCode" in project:
+			projects[name]["HotCode"] = project
+		elif "HotLoop" in project:
+			projects[name]["HotLoop"] = project
+		else:
+			projects[name]["PaMul"] = project
 
-	with open("MatchedData.json","w") as f:
-		json.dump(matchedData, f, indent=4)
+	for project in dataMap:
+		name = name = project.split("/")[-1].split(".")[0]
+		if projects[name].get("HotCode") and projects[name].get("HotLoop") and projects[name].get("PaMul"):
+			matchedData[project] = dataMap[project]
+	print(matchedData)
 	return matchedData
-
-
