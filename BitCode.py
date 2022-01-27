@@ -131,10 +131,16 @@ class BitCode:
                 # Cartographer information
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"] = "kernel_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPath"] = self.buildPath+"kernel_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HCName"] = self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"]+"_HotCode.json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HLName"] = self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"]+"_HotLoop.json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPath"] = self.buildPath+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"]
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPath_HC"] = self.buildPath+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HCName"]
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPath_HL"] = self.buildPath+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HLName"]
                 tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"].split(".")[0]+"/"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPath"] = tmpFolder+"kernel_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPath"] = tmpFolder+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"]
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPath_HC"] = tmpFolder+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HCName"]
+                self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPath_HL"] = tmpFolder+self.BCDict[BCpath][NTV][TRCkey]["CAR"]["HLName"]
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathpigfile"] = self.buildPath+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["tmpPathpigfile"] = tmpFolder+"pig_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["buildPathBBfile"] = self.buildPath+"BB_"+TRCname+".json"
@@ -307,8 +313,10 @@ class BitCode:
         # output files copied from tmp folder to build folder
         dotFile   = self.BCDict[BC][NTV][TRC]["CAR"]["dotFileTmpPath"]
         outputKF  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
+        outputHC  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath_HC"]
+        outputHL  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath_HL"]
         # generates header,footer commands for the bash script to move input and output files
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[profile, bitcode, blockfile], suffixFiles=[outputKF ,dotFile] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[profile, bitcode, blockfile], suffixFiles=[outputKF,dotFile,outputHC,outputHL] if self.args.hotcode_detection else [outputKF, dotFile] )
         
         TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
