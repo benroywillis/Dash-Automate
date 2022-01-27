@@ -186,5 +186,4 @@ def matchData(dataMap):
 		name = name = project.split("/")[-1].split(".")[0]
 		if projects[name].get("HotCode") and projects[name].get("HotLoop") and projects[name].get("PaMul"):
 			matchedData[project] = dataMap[project]
-	print(matchedData)
 	return matchedData

@@ -4,20 +4,21 @@ import re
 import statistics as st
 import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
+import RetrieveData
+
+# dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
+dataFileName = "BasicBlockCorrespondence_data.json"
 
 # for testing
-#CorpusFolder = "/home/bwilli46/Dash/Dash-Automate/testing/"
-#buildFolders = {"build2DMarkov", "buildHC"}
-
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+#buildFolders = {"buildTest"}
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/OpenCV/"
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21", "buildPollyScops11-20-21" }
-buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21" }
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
 #buildFolders = { "buildHC", "build2DMarkov" }
 
 # most recent build
-#CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/"
+CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+buildFolders = { "build1-27-2022" }
 #buildFolders = {"buildQPR13_12-20-21"}
 
 # maps build folder names to hotcode, hotloop, pamul
@@ -41,27 +42,28 @@ markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 UniqueIDMap = {}
 UniqueID = 0
 
-def Uniquify(project, app, t, kernels):
+def Uniquify(project, kernels):
 	"""
 	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
 	"""
+	# project processing, the project name will be the stuff between kernel_ and the first ., indicating the trace name
+	traceName = project.split(".")[0].split("kernel_")[1]
 	global UniqueID
 	mappedBlocks = set()
-	if UniqueIDMap.get(project) is None:
-		UniqueIDMap[project] = {}
-	if UniqueIDMap[project].get(app) is None:
-		UniqueIDMap[project][app] = {}
+	if UniqueIDMap.get(traceName) is None:
+		UniqueIDMap[traceName] = {}
 	for k in kernels:
+		#for block in kernels[k]["Blocks"]:
 		for block in kernels[k]:
 			mappedID = -1
-			if UniqueIDMap[project][app].get(block) is None:
-				UniqueIDMap[project][app][block] = UniqueID
+			if UniqueIDMap[traceName].get(block) is None:
+				UniqueIDMap[traceName][block] = UniqueID
 				mappedID = UniqueID
 				UniqueID += 1
 			else:
-				mappedID = UniqueIDMap[project][app][block]
+				mappedID = UniqueIDMap[traceName][block]
 			if mappedID == -1:
-				raise Exception("Could not map the block ID for {},{},{}!".format(project,app,block))
+				raise Exception("Could not map the block ID for {},{}!".format(traceName,block))
 			mappedBlocks.add(mappedID)
 	return mappedBlocks
 
@@ -76,15 +78,17 @@ def PlotKernelCorrespondence(dataMap):
 	# 3. throw these sets into the venn3 call and see what happens
 
 	HC = set()
+	HL = set()
 	PaMul = set()
-	for project in dataMap:
-		for entry in dataMap[project]:
-			for t in dataMap[project][entry]:
-				if NameMap[t] == "HC":
-					HC = HC.union( Uniquify(project, entry, "HC", dataMap[project][entry][t]["Kernels"]) )
-				else:
-					PaMul = PaMul.union( Uniquify(project, entry, "2DMarkov", dataMap[project][entry][t]["Kernels"]) )
-	pltv.venn2([HC, PaMul], ("HC", "PaMul"))
+	for file in dataMap:
+		if "HotCode" in file:
+			HC = HC.union( Uniquify(file, dataMap[file]) )
+		elif "HotLoop" in file:
+			HL = HL.union( Uniquify(file, dataMap[file]) )
+		else:
+			PaMul = PaMul.union( Uniquify(file, dataMap[file]) )
+	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
+	#pltv.legend(["HC","HL","PaMul"])
 	"""
 	ax.set_aspect("equal")
 	ax.set_title("Block Coverage Correlation", fontsize=titleFont)
@@ -114,154 +118,7 @@ def PlotKernelCorrespondence(dataMap):
 	plt.savefig("BasicBlockCorrespondence.png",format="png")
 	plt.show()
 
-def readKernelFile(kf, log):
-	returnDict = {}
-	# first open the log to verify that the step ran 
-	try:
-		log = open(log,"r")
-	except Exception as e:
-		print("Could not open "+log+": "+str(e))
-		return returnDict
-	try:
-		hj = json.load( open(kf, "r") )
-	except Exception as e:
-		print("Could not open "+kf+": "+str(e))
-		return returnDict
-	
-	if hj.get("Kernels") is None:
-		return returnDict
-	if hj.get("ValidBlocks") is None:
-		return returnDict
-	returnDict["Kernels"] = {}
-	for k in hj["Kernels"]:
-		if hj["Kernels"][k].get("Blocks") is None:
-			returnDict["Kernels"][k] = {}
-		else:
-			returnDict["Kernels"][k] = list(hj["Kernels"][k]["Blocks"])
-	return returnDict
-
-# the functions in this file only work if the file tree project has Dash-Corpus in its root path
-def findProject(path):
-	project = ""
-	l = path.split("/")
-	i = 0
-	while i < len(l):
-		if l[i] == "":
-			del l[i]
-		i += 1
-	for i in range(len(l)):
-		if (i+1 < len(l)) and (l[i] == "Dash-Corpus"):
-			project = l[i+1]
-	return project
-
-def recurseIntoFolder(path, BuildNames, stepStrings, dataMap):
-	"""
-	@brief 	   recursive algorithm to search through all branches of a directory tree for directories containing files of interest
-	@param[in] path			Absolute path to a directory of interest. Initial call should be to to the root of the tree to be searched
-	@param[in] BuildNames	Folder names that are being sought after. Likely build folder names
-	@param[in] stepString   List of step descriptor substrings to match to log file name strings. This essentially dictates which pipeline steps you are interested in (for example, ["makeNative","Cartographer"])
-	@param[in] dataMap      Hash of the data being processed. Contains [project][logFileName][Folder] key and 
-	Steps:
-	For the profiled builds
-	1.) Find each profile log in the build folder (use its name to index dataMap
-	2.) Regex the log for the profile time
-	3.) Fill in the relevant category in the kernel map (either profiled or unprofiled time) for that project/profile combo
-	Then do the same thing for the unprofiled builds, but make sure that for each new unprofiled entry there is a profiled entry (otherwise this profile did not work with the backend)
-	"""
-	BuildNames = set(BuildNames)
-	currentFolder = path.split("/")[-1]
-	path += "/"
-	projectName   = findProject(path)
-	if currentFolder in BuildNames:
-		if dataMap.get(projectName) is None:
-			dataMap[projectName] = dict()
-		logFiles = []
-		logs = path+"/logs/"
-		files = os.scandir(logs)
-		for stepString in stepStrings:
-			for f in files:
-				if f.name.startswith(stepString):
-					logFiles.append(f.path)
-		for log in logFiles:
-			logFileName = log.split("/")[-1]
-			refinedLogFileName = logFileName
-			kernelFileName = "kernel_"+"_".join(x for x in refinedLogFileName.split("_")[1:]).split(".")[0]+".json"
-			keyName     = ""
-			for step in stepStrings:
-				if logFileName.startswith(step):
-					keyName = log.split("/")[-1].replace(step, "")
-					break
-
-			if dataMap[projectName].get(keyName) is None:
-				dataMap[projectName][keyName] = {}
-				for bf in BuildNames:
-					dataMap[projectName][keyName][bf] = {}
-			dataMap[projectName][keyName][currentFolder] = readKernelFile(path+kernelFileName, path+"/logs/"+logFileName)
-		
-	directories = []
-	for f in os.scandir(path):
-		if f.is_dir():
-			directories.append(f)
-
-	for d in directories:
-		dataMap = recurseIntoFolder(d.path, BuildNames, stepStrings, dataMap)
-	return dataMap
-
-def retrieveData(buildFolders):
-	# maps project to application name to type (HC or 2DMarkov) to kernels
-	dataMap = {}
-	try:
-		with open(CorpusFolder+"BasicBlockData.json","r") as f:
-			dataMap = json.load( f )
-
-	except FileNotFoundError:
-		recurseIntoFolder(CorpusFolder, buildFolders, ["Cartographer_"], dataMap)
-		#pft.recurseIntoFolder("/mnt/heorot-10/Dash/Dash-Corpus/Unittests", buildFolders, ["makeNative","Cartographer_"], dataMap)
-		# sort the data into categories by build folder (we use abbreviations "HC" and "2DMarkov" to correspond to the build folder names)
-		sortedDataMap = {}
-		for project in dataMap:
-			if sortedDataMap.get(project) is None:
-				sortedDataMap[project] = {}
-			for keyName in dataMap[project]:
-				if sortedDataMap[project].get(keyName) is None:
-					sortedDataMap[project][keyName] = {}
-				for f in buildFolders:
-					if sortedDataMap[project][keyName].get(f) is None:
-						sortedDataMap[project][keyName][f] = -1
-					d = dataMap[project][keyName]
-					if sortedDataMap[project][keyName][f] != -1:
-						print("Keyname "+keyName+" already exists in project "+project)
-					sortedDataMap[project][keyName][f] = d[f]
-
-		with open(CorpusFolder+"BasicBlockData.json","w") as f:
-			json.dump(sortedDataMap, f, indent=4)
-
-	return dataMap
-
-def matchData(dataMap, buildFolders):
-	# pairs all types together
-	matchedData = {}
-	for project in dataMap:
-		for keyName in dataMap[project]:
-			# keys: directory information comes from, value: tuple( kernels, blockCoverage )
-			d = dataMap[project][keyName]
-			allFound = True
-			for key in d:
-				if d[key].get("Kernels") is None:
-					allFound = False
-			if allFound:
-				if matchedData.get(project) is None:
-					matchedData[project] = dict()
-					# first index kernels, second index static block coverage
-				if matchedData[project].get(keyName) is None:
-					matchedData[project][keyName] = {}
-				for bf in buildFolders:
-					matchedData[project][keyName][bf] = dataMap[project][keyName][bf]
-
-	with open("MatchedData.json","w") as f:
-		json.dump(matchedData, f, indent=4)
-	return matchedData
-
-dataMap = retrieveData(buildFolders)
-matchedData = matchData(dataMap, buildFolders)
-PlotKernelCorrespondence(matchedData)
+dataMap = RetrieveData.retrieveKernelData(buildFolders, CorpusFolder, dataFileName)
+refined = RetrieveData.refineBlockData(dataMap)
+matched = RetrieveData.matchData(refined)
+PlotKernelCorrespondence(refined)
