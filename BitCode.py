@@ -92,11 +92,14 @@ class BitCode:
             NTVname = NTV.split(".")[0]
             self.BCDict[BCpath][NTV] = dict()
             self.BCDict[BCpath][NTV]["Name"] = NTV
+            self.BCDict[BCpath][NTV]["LoopFileName"] = "Loops_"+NTVname+".json"
             self.BCDict[BCpath][NTV]["buildPath"] = self.buildPath+NTV
+            self.BCDict[BCpath][NTV]["LFbuildPath"] = self.buildPath+self.BCDict[BCpath][NTV]["LoopFileName"]
             tmpFolder = self.tmpPath[:-1]+NTVname+"/"
             self.BCDict[BCpath]["tmpPath"] = tmpFolder+self.BC
             self.BCDict[BCpath][NTV]["tmpFolder"] = tmpFolder 
             self.BCDict[BCpath][NTV]["tmpPath"] = tmpFolder+NTV
+            self.BCDict[BCpath][NTV]["LFtmpPath"] = tmpFolder+self.BCDict[BCpath][NTV]["LoopFileName"]
             self.BCDict[BCpath][NTV]["TRAbuild"] = self.buildPath+NTVname+".tra"
             self.BCDict[BCpath][NTV]["TRAtmp"] = tmpFolder+NTVname+".tra"
             self.BCDict[BCpath][NTV]["LFLAG"] = LFLAGS[i]
@@ -281,8 +284,9 @@ class BitCode:
             optClangString = "-O"+self.args.opt_level[1]
         else:
             optClangString = ""
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"]] )
-        optCommand = self.OPT+" -load "+self.Tracer+" -Markov "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"],self.BCDict[BC][NTV]["LFtmpPath"]] )
+        LOOP_FILE="LOOP_FILE="+self.BCDict[BC][NTV]["LoopFileName"]+" "
+        optCommand = LOOP_FILE+self.OPT+" -load "+self.Tracer+" -Markov "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
         clangPPCommand = self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["TRAtmp"]+" -o "+self.BCDict[BC][NTV]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
         #scopCommand = self.OPT+" -polly-canonicalize --basic-aa -polly-allow-nonaffine -polly-process-unprofitable -polly-use-llvm-names -polly-ast -polly-export-jscop "+self.BCDict[BC]["tmpPath"] + " -o "+self.BCDict[BC]["Name"]+"_polly"
         return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
@@ -310,18 +314,19 @@ class BitCode:
         profile   = self.BCDict[BC][NTV][TRC]["buildPath"]
         bitcode   = self.BCDict[BC]["buildPath"]
         blockfile = self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]
+        loopfile  = self.BCDict[BC][NTV]["LFbuildPath"]
         # output files copied from tmp folder to build folder
         dotFile   = self.BCDict[BC][NTV][TRC]["CAR"]["dotFileTmpPath"]
         outputKF  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
         outputHC  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath_HC"]
         outputHL  = self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath_HL"]
         # generates header,footer commands for the bash script to move input and output files
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[profile, bitcode, blockfile], suffixFiles=[outputKF,dotFile,outputHC,outputHL] if self.args.hotcode_detection else [outputKF, dotFile] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], prefixFiles=[profile, bitcode, blockfile,loopfile], suffixFiles=[outputKF,dotFile,outputHC,outputHL] if self.args.hotcode_detection else [outputKF, dotFile] )
         
         TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
         BCfile    = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        hotCode   = " -h " if self.args.hotcode_detection else ""
+        hotCode   = " -h -l "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+"/"+self.BCDict[BC][NTV]["LoopFileName"] if self.args.hotcode_detection else ""
         command   = "time -p "+self.Cartographer+hotCode+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -d "+dotFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
 
         return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], command, "cartographer" ) + suffix
