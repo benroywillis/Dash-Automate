@@ -299,7 +299,7 @@ class BitCode:
         """
         prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC]["tmpPath"],self.BCDict[BC][NTV][TRC]["tmpPathBlockFile"]] )
 
-        envSet = "export MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
+        envSet = "export LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
         NTVfile = self.BCDict[BC][NTV][TRC]["tmpFolder"]+self.BCDict[BC][NTV]["Name"]
         trcCommand = "time -p "+NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"]
         return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["tmpFolder"], trcCommand, "trace")+suffix

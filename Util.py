@@ -12,6 +12,7 @@ globLog = logging.getLogger("Util")
 
     #"DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
     #"DASH_ROOT='/home/bwilli46/DashLibraries/debug/' " +\
+    #"LD_LIBRARY_PATH='/mnt/heorot-10/bwilli46/Installs/TraceAtlas/devb_relwithdebinfo/lib/' " +\
 ### Global Definitions
 SourceScript = "export " +\
     "CC='clang-9 -flto -DENABLE_TRACING -g3 -O0' " +\
@@ -20,7 +21,6 @@ SourceScript = "export " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
     "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
     "LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
-    "LD_LIBRARY_PATH='/mnt/heorot-10/bwilli46/Installs/TraceAtlas/devb_relwithdebinfo/lib/' " +\
     "AR='llvm-ar-9' " +\
     "NM='llvm-nm-9' " +\
     "RANLIB='/bin/true' " +\
@@ -137,7 +137,7 @@ def argumentParse():
     # toolchain configuration
     arg_parser.add_argument("-ho", "--hotcode_detection", action="store_true", help="Enable hotcode detection in the program segmentation step.")
     arg_parser.add_argument("-cs", "--compiler-suffix", default="", help="Set suffix for binaries in system LLVM install.")
-    arg_parser.add_argument("-cp", "--compiler-toolchain-prefix", default="/mnt/heorot-10/bwilli46/Installs/LLVM12/install-release/", help="Specify path to the LLVM toolchain installation.")
+    arg_parser.add_argument("-cp", "--compiler-toolchain-prefix", default="/mnt/heorot-10/bwilli46/Installs/LLVM9/install-release/", help="Specify path to the LLVM toolchain installation.")
     arg_parser.add_argument("-tp", "--toolchain-prefix", default="/mnt/heorot-10/bwilli46/Installs/TraceAtlas/devb_relwithdebinfo/", help="Specify path to the TraceAtlas toolchain installation.")
     # tracing configuration
     arg_parser.add_argument("-tc", "--trace-compression", default=9, help="Specify zlib compression level when tracing.")
