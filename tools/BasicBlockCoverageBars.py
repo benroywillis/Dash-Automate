@@ -10,14 +10,11 @@ import RetrieveData as RD
 dataFileName = "BasicBlockCoverage.json"
 
 # for testing
-#CorpusFolder = "/home/bwilli46/Dash/Dash-Automate/testing/"
-#buildFolders = {"build"}
-# for more extensive testing
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-buildFolders = {"build1-30-2022_noHLconstraints"}
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+
 # most recent build
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#buildFolders = {"build1-30-2022_noHLconstraints"}
+CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+buildFolders = {"build1-30-2022_noHLconstraints"}
 
 # maps build folder names to hotcode, hotloop, pamul
 NameMap = { "build2DMarkov": "PaMul", "build2DMarkov11-21-21": "PaMul", "buildHC": "HC", "buildHC11-21-21": "HC" }
@@ -37,9 +34,6 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-UniqueIDMap = {}
-UniqueID = 0
-
 def PlotCoverageBars(dataMap):
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("white")
@@ -54,25 +48,39 @@ def PlotCoverageBars(dataMap):
 	HL = list()
 	PaMul = list()
 	xtickLabels = list()
-	appended = False
 	projectNames = set()
-	appNames = set()
+	appNames = dict()
 	for kfPath in sortedKeys:
-		appName = RD.getTraceName(kfPath)
+		appName = "/".join(x for x in kfPath.split("/")[:-1])+RD.getTraceName(kfPath)
+		# if we haven't seen this app before, add a tick
 		if appName not in appNames:
-			appNames.add(appName)
+			appNames[appName] = { "HC": -1, "HL": -1, "PaMul": -1 }#.add(appName)
 			project = RD.getProjectName(kfPath, "Dash-Corpus")
+			# if the project doesn't yet exist make the tick the project name
 			if project not in projectNames:
 				xtickLabels.append(project)
 				projectNames.add(project)
+			# else make it a blank tick
 			else:
 				xtickLabels.append("")
 		if "HotCode" in kfPath:
 			HC.append( dataMap[kfPath]*100 )
+			if appNames[appName]["HC"] != -1:
+				print("Warning:Already have a hotcode file for {}!".format(kfPath))
+				xtickLabels.append("")
+			appNames[appName]["HC"] = kfPath
 		elif "HotLoop" in kfPath:
 			HL.append( dataMap[kfPath]*100 )
+			if appNames[appName]["HL"] != -1:
+				print("Warning:Already have a hotloop file for {}!".format(kfPath))
+				xtickLabels.append("")
+			appNames[appName]["HL"] = kfPath
 		else:
 			PaMul.append( dataMap[kfPath]*100 )
+			if appNames[appName]["PaMul"] != -1:
+				print("Warning:Already have a pamul file for {}!".format(kfPath))
+				xtickLabels.append("")
+			appNames[appName]["PaMul"] = kfPath
 	
 	ax.set_aspect("equal")
 	ax.set_title("Per Application Block Coverage", fontsize=titleFont)

@@ -11,16 +11,10 @@ dataFileName = "BasicBlockCorrespondence_data.json"
 
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#buildFolders = {"buildTest"}
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#buildFolders = { "buildHC", "build2DMarkov" }
 
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-buildFolders = { "build" }
-#buildFolders = { "build1-27-2022" }
-#buildFolders = {"buildQPR13_12-20-21"}
+buildFolders = { "build1-30-2022_noHLconstraints" }
 
 # maps build folder names to hotcode, hotloop, pamul
 NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
@@ -39,9 +33,6 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.8     , 0.8     , 0.8     , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
-
-UniqueIDMap = {}
-UniqueID = 0
 
 def PlotKernelCorrespondence(dataMap):
 	fig = plt.figure(frameon=False)
@@ -96,5 +87,5 @@ def PlotKernelCorrespondence(dataMap):
 
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
 refined = RD.refineBlockData(dataMap)
-matched = RD.matchData(refined)
+#matched = RD.matchData(refined)
 PlotKernelCorrespondence(refined)

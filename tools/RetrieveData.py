@@ -2,11 +2,11 @@ import json
 import os
 
 def getProjectName(kfPath, baseName):
+	while "//" in kfPath:
+		kfPath = kfPath.replace("//","/")
 	folders = kfPath.split("/")
 	for i in range(len(folders)):
 		d = folders[i]
-		if d == "":
-			continue
 		if d == baseName:
 			return folders[i+1]
 	return ""
@@ -15,13 +15,17 @@ def getTraceName(kfName):
 	# this method assumes the file name is kernel_<tracename>.json<_hotCodeType.json>
 	return kfName.split(".")[0].split("kernel_")[1]
 
+# global parameters for Uniquify to remember its previous work
+UniqueIDMap = {}
+UniqueID = 0
 def Uniquify(project, kernels):
 	"""
 	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
 	"""
+	global UniqueID
+	global UniqueIDMap
 	# project processing, the project name will be the stuff between kernel_ and the first ., indicating the trace name
 	traceName = getTraceName(project)
-	global UniqueID
 	mappedBlocks = set()
 	if UniqueIDMap.get(traceName) is None:
 		UniqueIDMap[traceName] = {}
