@@ -4,7 +4,7 @@ import re
 import statistics as st
 import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
-import RetrieveData
+import RetrieveData as RD
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
 dataFileName = "BasicBlockCorrespondence_data.json"
@@ -18,7 +18,8 @@ dataFileName = "BasicBlockCorrespondence_data.json"
 
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-buildFolders = { "build1-27-2022" }
+buildFolders = { "build" }
+#buildFolders = { "build1-27-2022" }
 #buildFolders = {"buildQPR13_12-20-21"}
 
 # maps build folder names to hotcode, hotloop, pamul
@@ -42,31 +43,6 @@ markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 UniqueIDMap = {}
 UniqueID = 0
 
-def Uniquify(project, kernels):
-	"""
-	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
-	"""
-	# project processing, the project name will be the stuff between kernel_ and the first ., indicating the trace name
-	traceName = project.split(".")[0].split("kernel_")[1]
-	global UniqueID
-	mappedBlocks = set()
-	if UniqueIDMap.get(traceName) is None:
-		UniqueIDMap[traceName] = {}
-	for k in kernels:
-		#for block in kernels[k]["Blocks"]:
-		for block in kernels[k]:
-			mappedID = -1
-			if UniqueIDMap[traceName].get(block) is None:
-				UniqueIDMap[traceName][block] = UniqueID
-				mappedID = UniqueID
-				UniqueID += 1
-			else:
-				mappedID = UniqueIDMap[traceName][block]
-			if mappedID == -1:
-				raise Exception("Could not map the block ID for {},{}!".format(traceName,block))
-			mappedBlocks.add(mappedID)
-	return mappedBlocks
-
 def PlotKernelCorrespondence(dataMap):
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("white")
@@ -82,11 +58,11 @@ def PlotKernelCorrespondence(dataMap):
 	PaMul = set()
 	for file in dataMap:
 		if "HotCode" in file:
-			HC = HC.union( Uniquify(file, dataMap[file]) )
+			HC = HC.union( RD.Uniquify(file, dataMap[file]) )
 		elif "HotLoop" in file:
-			HL = HL.union( Uniquify(file, dataMap[file]) )
+			HL = HL.union( RD.Uniquify(file, dataMap[file]) )
 		else:
-			PaMul = PaMul.union( Uniquify(file, dataMap[file]) )
+			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]) )
 	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
 	#pltv.legend(["HC","HL","PaMul"])
 	"""
@@ -118,7 +94,7 @@ def PlotKernelCorrespondence(dataMap):
 	plt.savefig("BasicBlockCorrespondence.png",format="png")
 	plt.show()
 
-dataMap = RetrieveData.retrieveKernelData(buildFolders, CorpusFolder, dataFileName)
-refined = RetrieveData.refineBlockData(dataMap)
-matched = RetrieveData.matchData(refined)
+dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
+refined = RD.refineBlockData(dataMap)
+matched = RD.matchData(refined)
 PlotKernelCorrespondence(refined)

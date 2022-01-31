@@ -1,6 +1,74 @@
 import json
 import os
 
+def getProjectName(kfPath, baseName):
+	folders = kfPath.split("/")
+	for i in range(len(folders)):
+		d = folders[i]
+		if d == "":
+			continue
+		if d == baseName:
+			return folders[i+1]
+	return ""
+
+def getTraceName(kfName):
+	# this method assumes the file name is kernel_<tracename>.json<_hotCodeType.json>
+	return kfName.split(".")[0].split("kernel_")[1]
+
+def Uniquify(project, kernels):
+	"""
+	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
+	"""
+	# project processing, the project name will be the stuff between kernel_ and the first ., indicating the trace name
+	traceName = getTraceName(project)
+	global UniqueID
+	mappedBlocks = set()
+	if UniqueIDMap.get(traceName) is None:
+		UniqueIDMap[traceName] = {}
+	for k in kernels:
+		#for block in kernels[k]["Blocks"]:
+		for block in kernels[k]:
+			mappedID = -1
+			if UniqueIDMap[traceName].get(block) is None:
+				UniqueIDMap[traceName][block] = UniqueID
+				mappedID = UniqueID
+				UniqueID += 1
+			else:
+				mappedID = UniqueIDMap[traceName][block]
+			if mappedID == -1:
+				raise Exception("Could not map the block ID for {},{}!".format(traceName,block))
+			mappedBlocks.add(mappedID)
+	return mappedBlocks
+
+
+def readKernelFile_Coverage(kf):
+	# first open the log to verify that the step ran 
+	"""
+	try:
+		log = open(log,"r")
+	except Exception as e:
+		print("Could not open "+log+": "+str(e))
+		return -1
+	"""
+	try:
+		hj = json.load( open(kf, "r") )
+	except Exception as e:
+		print("Could not open "+kf+": "+str(e))
+		return -1
+	
+	if hj.get("Kernels") is None:
+		return -1
+	if hj.get("ValidBlocks") is None:
+		return -1 
+	kernelBlocks = set()
+	for k in hj["Kernels"]:
+		if hj["Kernels"][k].get("Blocks") is None:
+			continue
+		else:
+			for b in hj["Kernels"][k]["Blocks"]:
+				kernelBlocks.add(b)
+	return len(kernelBlocks)/len(hj["ValidBlocks"])
+
 def readKernelFile(kf, justBlocks=True):
 	returnDict = {}
 	# first open the log to verify that the step ran 
@@ -46,21 +114,6 @@ def findOffset(path, basePath):
 				orderedOffset.append(entry)
 				offset.remove(entry)
 	return "/".join(x for x in orderedOffset)
-	"""	
-	l = path.split("/")
-	i = 0
-	while i < len(l):
-		if l[i] == "":
-			del l[i]
-		i += 1
-	idx_DC = 100000000
-	for i in range(len(l)):
-		if (i+1 < len(l)) and (i > idx_DC):
-			project += l[i]+"/"
-		elif( l[i] == "Dash-Corpus" ):
-			idx_DC = i
-	return project
-	"""
 
 def recurseIntoFolder(path, BuildNames, basePath, folderMap):
 	"""
@@ -122,7 +175,7 @@ def parseKernelData(k):
 		else:
 			return -1
 
-def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, findOld=True):
+def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader, findOld=True):
 	# contains paths to all directories that contain files we seek 
 	# project path : build folder 
 	directoryMap = {}
@@ -146,7 +199,7 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, findOld=True):
 		HCTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotCode.json")
 		HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
 		for k in kernelTargets:
-			dataMap[k] = readKernelFile(k)#parseKernelData(k)
+			dataMap[k] = KFReader(k)#parseKernelData(k)
 
 		with open(CorpusFolder+"allKernelData.json","w") as f:
 			json.dump(dataMap, f, indent=4)
@@ -171,19 +224,20 @@ def matchData(dataMap):
 	projects = {}
 	matchedData = {}
 	for project in dataMap:
-		name = project.split("/")[-1].split(".")[0]
+		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
 		if name not in set(projects.keys()):
 			projects[name] = { "HotCode": -1, "HotLoop": -1, "PaMul": -1 }
 			# find out if its a PaMul, hotcode or hotloop
 		if "HotCode" in project:
-			projects[name]["HotCode"] = project
+			projects[name]["HotCode"] = dataMap[project]
 		elif "HotLoop" in project:
-			projects[name]["HotLoop"] = project
+			projects[name]["HotLoop"] = dataMap[project]
 		else:
-			projects[name]["PaMul"] = project
+			projects[name]["PaMul"] = dataMap[project]
 
 	for project in dataMap:
-		name = name = project.split("/")[-1].split(".")[0]
+		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
 		if projects[name].get("HotCode") and projects[name].get("HotLoop") and projects[name].get("PaMul"):
-			matchedData[project] = dataMap[project]
+			if projects[name]["HotCode"] > 0 and projects[name]["HotLoop"] > 0 and projects[name]["PaMul"] > 0:
+				matchedData[project] = dataMap[project]
 	return matchedData
