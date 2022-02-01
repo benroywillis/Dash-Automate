@@ -179,7 +179,13 @@ def parseKernelData(k):
 		else:
 			return -1
 
-def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader, findOld=True):
+def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
+	try:
+		with open(dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing data file. Running collection algorithm...")
 	# contains paths to all directories that contain files we seek 
 	# project path : build folder 
 	directoryMap = {}
@@ -187,26 +193,16 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader, findO
 	# abs path : kernel data
 	dataMap = {}
 	# determines if the data generation code needs to be run
-	generateData = ~findOld
-	if not generateData:
-		try:
-			with open(CorpusFolder+dataFileName,"r") as f:
-				dataMap = json.load( f )
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+#	kernelTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix=".json")
+	kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
+	HCTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotCode.json")
+	HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
+	for k in kernelTargets:
+		dataMap[k] = KFReader(k)#parseKernelData(k)
 
-		except FileNotFoundError:
-			print("Could not find an existing {}, generating a new one".format(CorpusFolder+dataFileName))
-			generateData = True
-	if generateData:
-		recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
-#		kernelTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix=".json")
-		kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
-		HCTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotCode.json")
-		HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
-		for k in kernelTargets:
-			dataMap[k] = KFReader(k)#parseKernelData(k)
-
-		with open(CorpusFolder+"allKernelData.json","w") as f:
-			json.dump(dataMap, f, indent=4)
+	with open(dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
 
 	return dataMap
 
