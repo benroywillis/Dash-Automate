@@ -6,15 +6,17 @@ import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
 import RetrieveData as RD
 
-# dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "BasicBlockCorrespondence_data.json"
-
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
 
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-buildFolders = { "build1-30-2022_noHLconstraints" }
+#buildFolders = { "build1-30-2022_noHLconstraints" }
+#buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
+buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
+
+# dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
+dataFileName = "build_noHLconstraints_hc98_data.json"
 
 # maps build folder names to hotcode, hotloop, pamul
 NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
@@ -54,6 +56,7 @@ def PlotKernelCorrespondence(dataMap):
 			HL = HL.union( RD.Uniquify(file, dataMap[file]) )
 		else:
 			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]) )
+	print(" HC: {}, HL: {}, PaMul: {}".format(len(HC), len(HL), len(PaMul)))
 	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
 	#pltv.legend(["HC","HL","PaMul"])
 	"""
@@ -85,7 +88,43 @@ def PlotKernelCorrespondence(dataMap):
 	plt.savefig("BasicBlockCorrespondence.png",format="png")
 	plt.show()
 
+def ExclusionZones(dataMap):
+	exclusions = { 
+				   "HC": [], \
+				   "HC,HL": [], \
+				   "HL": []
+				 }
+	# observe the unique blocks of each data file and create the sets for each segmentation type
+	uniqueBlocks = {}
+	HC = set()
+	HL = set()
+	PaMul = set()
+	for file in dataMap:
+		uniqueBlocks[file] = RD.Uniquify(file, dataMap[file])
+		if "HotCode" in file:
+			HC = HC.union( uniqueBlocks[file] )
+		elif "HotLoop" in file:
+			HL = HL.union( uniqueBlocks[file] )
+		else:
+			PaMul = PaMul.union( uniqueBlocks[file] )
+	# find files that contribute to the exclusion zones
+	# find hotcode blocks that are not in hotloop or pamul
+	for file in uniqueBlocks:
+		if "HotCode" in file:
+			# overlap the blocks here with the PaMul set, if we don't have a complete overlap we have hotblocks not in PaMul
+			intersect_p = uniqueBlocks[file].intersection(PaMul)
+			intersect_l = uniqueBlocks[file].intersection(HL)
+			if (len(intersect_p) < len(uniqueBlocks[file])) and (len(intersect_l) < len(uniqueBlocks[file])):
+				exclusions["HC"].append(file)
+			else:
+				continue
+		else:
+			continue
+	with open("ExclusiveHC.json", "w") as f:
+		json.dump(exclusions, f, indent=4)
+
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
 refined = RD.refineBlockData(dataMap)
 #matched = RD.matchData(refined)
 PlotKernelCorrespondence(refined)
+ExclusionZones(dataMap)
