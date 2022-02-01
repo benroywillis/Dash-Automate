@@ -326,7 +326,7 @@ class BitCode:
         TRCfile   = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         BlockFile = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
         BCfile    = self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        hotCode   = " -h -l "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+"/"+self.BCDict[BC][NTV]["LoopFileName"] if self.args.hotcode_detection else ""
+        hotCode   = " -h -ht "+self.args.hotcode_threshold+" -l "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"]+"/"+self.BCDict[BC][NTV]["LoopFileName"] if self.args.hotcode_detection else ""
         command   = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ "+self.Cartographer+hotCode+" -i "+TRCfile+" -b "+BCfile+" -bi "+BlockFile+" -d "+dotFile+" -o "+self.BCDict[BC][NTV][TRC]["CAR"]["tmpPath"]
 
         return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["CAR"]["tmpFolder"], command, "cartographer" ) + suffix
