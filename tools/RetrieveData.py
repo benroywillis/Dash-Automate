@@ -11,9 +11,29 @@ def getProjectName(kfPath, baseName):
 			return folders[i+1]
 	return ""
 
+def getNativeName(loopName, kernel=False):
+	"""
+	loopName should be an absolute path to a loop file
+	This method assumes the loopfile name is Loop_<nativeName>.native
+	"""
+	path = "/".join(x for x in loopName.split("/")[:-1])
+	if kernel:
+		file = loopName.split("/")[-1]
+		filename = "_".join(x for x in file.split(".")[0].split("kernel_")[1].split("_")[:-1])
+	else:
+		file = loopName.split("/")[-1]
+		filename = file.split(".")[0].split("Loops_")[1]
+	return path+"/"+filename
+
 def getTraceName(kfName):
-	# this method assumes the file name is kernel_<tracename>.json<_hotCodeType.json>
-	return kfName.split(".")[0].split("kernel_")[1]
+	"""
+	kfName should be an absolute path to a kernel file
+	This method assumes the file name is kernel_<tracename>.json<_hotCodeType.json>
+	"""
+	path = "/".join(x for x in kfName.split("/")[:-1])
+	file = kfName.split("/")[-1]
+	trcName = file.split(".")[0].split("kernel_")[1]
+	return path+"/"+trcName
 
 # global parameters for Uniquify to remember its previous work
 UniqueIDMap = {}
@@ -30,8 +50,7 @@ def Uniquify(project, kernels):
 	if UniqueIDMap.get(traceName) is None:
 		UniqueIDMap[traceName] = {}
 	for k in kernels:
-		#for block in kernels[k]["Blocks"]:
-		for block in kernels[k]:
+		for block in [int(x) for x in kernels[k]]:
 			mappedID = -1
 			if UniqueIDMap[traceName].get(block) is None:
 				UniqueIDMap[traceName][block] = UniqueID
@@ -44,6 +63,50 @@ def Uniquify(project, kernels):
 			mappedBlocks.add(mappedID)
 	return mappedBlocks
 
+def Uniquify_static(project, kernels, trc=False):
+	"""
+	Uniquifies the blocks from static loops in a native file
+	Natives map to (possibly) multiple traces
+	For example, if a native is foo_0.native, it maps to all traces with foo_0<trc>.bin
+	Thus we need to match this native to its traces, if they exist, because they all share the same set of blocks
+	@param[in] project 	Absolute path to the file that contains kernels
+	@param[in] kernels	Structure of kernels. If trc, kernels is a kernel file. If not trc, kernels is a static loop file
+	@retval    mappedBlocks 	Set of integers representing block IDs that have been mapped to the corresponding native file
+	"""
+	global UniqueID
+	global UniqueIDMap
+	ntvName = getNativeName(project, kernel=trc)
+	mappedBlocks = set()
+	if UniqueIDMap.get(ntvName) is None:
+		UniqueIDMap[ntvName] = {}
+	if trc:
+		for k in kernels:
+			for block in [int(x) for x in kernels[k]]:
+				mappedID = -1
+				if UniqueIDMap[ntvName].get(block) is None:
+					UniqueIDMap[ntvName][block] = UniqueID
+					mappedID = UniqueID
+					UniqueID += 1
+				else:
+					mappedID = UniqueIDMap[ntvName][block]
+				if mappedID == -1:
+					raise Exception("Could not map the block ID for {},{}!".format(ntvName,block))
+				mappedBlocks.add(mappedID)
+	else:
+		for l in kernels:
+			for block in [int(x) for x in kernels[l]["Blocks"]]:
+				mappedID = -1
+				if UniqueIDMap[ntvName].get(block) is None:
+					UniqueIDMap[ntvName][block] = UniqueID
+					mappedID = UniqueID
+					UniqueID += 1
+				else:
+					mappedID = UniqueIDMap[ntvName][block]
+				if mappedID == -1:
+					raise Exception("Could not map the block ID for {},{}!".format(ntvName,block))
+				mappedBlocks.add(mappedID)
+				
+	return mappedBlocks
 
 def readKernelFile_Coverage(kf):
 	# first open the log to verify that the step ran 
@@ -101,6 +164,23 @@ def readKernelFile(kf, justBlocks=True):
 				returnDict["Kernels"][k] = list(hj["Kernels"][k]["Blocks"])
 			else:
 				returnDict["Kernels"][k] = hj["Kernels"][k]
+	return returnDict
+
+def readLoopFile(lf):
+	returnDict = {}
+	try:
+		hj = json.load( open(lf, "r") )
+	except Exception as e:
+		print("Could not open "+lf+": "+str(e))
+		return returnDict
+	# hj is a list of {"blocks":[], type: int} objects
+	if hj is None:
+		return returnDict
+	for i in range(len(hj)):
+		if hj[i].get("Blocks") is None:
+			returnDict[i] = {}
+		else:
+			returnDict[i] = { "Blocks": list(hj[i]["Blocks"]), "Type": hj[i]["Type"] }
 	return returnDict
 
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
@@ -200,6 +280,30 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
 	for k in kernelTargets:
 		dataMap[k] = KFReader(k)#parseKernelData(k)
+
+	with open(dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
+def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName):
+	try:
+		with open(dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing loop file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to kernel file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	loopTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="Loops_", suffix=".json")
+	for l in loopTargets:
+		dataMap[l] = readLoopFile(l)#parseKernelData(k)
 
 	with open(dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
