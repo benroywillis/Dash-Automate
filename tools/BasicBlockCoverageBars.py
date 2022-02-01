@@ -16,8 +16,8 @@ dataFileName = "BasicBlockCoverage.json"
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 buildFolders = {"build1-30-2022_noHLconstraints"}
 
-# maps build folder names to hotcode, hotloop, pamul
-NameMap = { "build2DMarkov": "PaMul", "build2DMarkov11-21-21": "PaMul", "buildHC": "HC", "buildHC11-21-21": "HC" }
+# set of project names I'm interested in
+InterestingProjects = { "Armadillo" }
 
 # plot parameters
 axisFont  = 10
@@ -51,11 +51,14 @@ def PlotCoverageBars(dataMap):
 	projectNames = set()
 	appNames = dict()
 	for kfPath in sortedKeys:
+		project = RD.getProjectName(kfPath, "Dash-Corpus")
+		if project not in InterestingProjects:
+			continue
+		print(project)
 		appName = "/".join(x for x in kfPath.split("/")[:-1])+RD.getTraceName(kfPath)
 		# if we haven't seen this app before, add a tick
 		if appName not in appNames:
 			appNames[appName] = { "HC": -1, "HL": -1, "PaMul": -1 }#.add(appName)
-			project = RD.getProjectName(kfPath, "Dash-Corpus")
 			# if the project doesn't yet exist make the tick the project name
 			if project not in projectNames:
 				xtickLabels.append(project)
