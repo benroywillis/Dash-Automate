@@ -4,19 +4,22 @@ import re
 import statistics as st
 import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
+import venn
 import RetrieveData as RD
 
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+#buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
-#buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
-buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
+buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
+#buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "build_noHLconstraints_hc98_data.json"
+dataFileName = "".join(x for x in CorpusFolder.split("/"))+"build_noHLconstraints_hc95_data.json"
+loopFileName = "".join(x for x in CorpusFolder.split("/"))+"build_noHLconstraints_hc95_loopdata.json"
 
 # maps build folder names to hotcode, hotloop, pamul
 NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
@@ -51,44 +54,50 @@ def PlotKernelCorrespondence(dataMap):
 	PaMul = set()
 	for file in dataMap:
 		if "HotCode" in file:
-			HC = HC.union( RD.Uniquify(file, dataMap[file]) )
+			HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 		elif "HotLoop" in file:
-			HL = HL.union( RD.Uniquify(file, dataMap[file]) )
+			HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 		else:
-			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]) )
-	print(" HC: {}, HL: {}, PaMul: {}".format(len(HC), len(HL), len(PaMul)))
+			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul), len(Loops)))
 	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
-	#pltv.legend(["HC","HL","PaMul"])
-	"""
-	ax.set_aspect("equal")
-	ax.set_title("Block Coverage Correlation", fontsize=titleFont)
-	ax.set_ylabel("PaMul Blocks", fontsize=axisLabelFont)
-	ax.set_xlabel("HotCode Blocks", fontsize=axisLabelFont)
-	ax.set_yscale("log")
-	ax.set_xscale("log")
-	#plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
-	#ax.tick_params(axis='x', colors='white')
-	VTicks = [10**0, 10**1, 10**3, 10**2, 10**4]
-	plt.yticks(VTicks, fontsize=axisFont)
-	HTicks = [10**0, 10**1, 10**3, 10**2, 10**4]
-	plt.xticks(HTicks, fontsize=axisFont)
-	#ax.set_yticks(VTicks)
-	#plt.hlines(VTicks, 0, len(xtickLabels), linestyle="dashed", colors=colors[-1])
-	#vLineLocs = []
-	#for i in range(len(xtickLabels)):
-#		if xtickLabels[i] != "":
-#			vLineLocs.append(i)
-#	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
-	#ax.yaxis.label.set_color('white')
-	#ax.xaxis.label.set_color('white')
-	"""
 	plt.savefig("BasicBlockCorrespondence.svg",format="svg")
 	plt.savefig("BasicBlockCorrespondence.eps",format="eps")
-	#plt.savefig("BasicBlockCorrespondence.pdf",format="pdf")
 	plt.savefig("BasicBlockCorrespondence.png",format="png")
 	plt.show()
 
-def ExclusionZones(dataMap):
+def PlotKernelCorrespondence_static(dataMap, loopMap):
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("white")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
+
+	# we need to go through each application and find the overlap of the blocks from the application
+	# 1. uniquify the BBIDs across all project,application,blocks sets
+	# 2. categorize the hotcode blocks, hot loop blocks and pamul blocks
+	# 3. throw these sets into the venn3 call and see what happens
+
+	HC = set()
+	HL = set()
+	PaMul = set()
+	Loops = set()
+	for file in dataMap:
+		if "HotCode" in file:
+			HC = HC.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+		elif "HotLoop" in file:
+			HL = HL.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+		else:
+			PaMul = PaMul.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+	for file in loopMap:
+		Loops = Loops.union( RD.Uniquify_static(file, loopMap[file]) )
+	print(" HC: {}, HL: {}, PaMul: {}, Loops: {} ".format(len(HC), len(HL), len(PaMul), len(Loops)))
+	types = { "HotCode": HC, "HotLoop": HL, "PaMul": PaMul, "Loop": Loops }
+	venn.venn(types)
+	plt.savefig("BasicBlockCorrespondence_static.svg",format="svg")
+	plt.savefig("BasicBlockCorrespondence_static.eps",format="eps")
+	plt.savefig("BasicBlockCorrespondence_static.png",format="png")
+	plt.show()
+
+def ExclusionZones(dataMap, loopMap):
 	exclusions = { 
 				   "HC": [], \
 				   "HC,HL": [], \
@@ -99,6 +108,7 @@ def ExclusionZones(dataMap):
 	HC = set()
 	HL = set()
 	PaMul = set()
+	Loops = set()
 	for file in dataMap:
 		uniqueBlocks[file] = RD.Uniquify(file, dataMap[file])
 		if "HotCode" in file:
@@ -124,7 +134,9 @@ def ExclusionZones(dataMap):
 		json.dump(exclusions, f, indent=4)
 
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
+loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName)
 refined = RD.refineBlockData(dataMap)
 #matched = RD.matchData(refined)
-PlotKernelCorrespondence(refined)
-ExclusionZones(dataMap)
+#PlotKernelCorrespondence(refined, loopMap)
+PlotKernelCorrespondence_static(refined, loopMap)
+ExclusionZones(dataMap, loopMap)
