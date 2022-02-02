@@ -18,8 +18,8 @@ buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
 #buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "".join(x for x in CorpusFolder.split("/"))+"build_noHLconstraints_hc95_data.json"
-loopFileName = "".join(x for x in CorpusFolder.split("/"))+"build_noHLconstraints_hc95_loopdata.json"
+dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
+loopFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loopdata.json"
 
 # maps build folder names to hotcode, hotloop, pamul
 NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
@@ -53,13 +53,14 @@ def PlotKernelCorrespondence(dataMap):
 	HL = set()
 	PaMul = set()
 	for file in dataMap:
-		if "HotCode" in file:
-			HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
-		elif "HotLoop" in file:
-			HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
-		else:
-			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
-	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul), len(Loops)))
+		if dataMap[file].get("Kernels"):
+			if "HotCode" in file:
+				HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+			elif "HotLoop" in file:
+				HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+			else:
+				PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
 	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
 	plt.savefig("BasicBlockCorrespondence.svg",format="svg")
 	plt.savefig("BasicBlockCorrespondence.eps",format="eps")
@@ -81,12 +82,13 @@ def PlotKernelCorrespondence_static(dataMap, loopMap):
 	PaMul = set()
 	Loops = set()
 	for file in dataMap:
-		if "HotCode" in file:
-			HC = HC.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
-		elif "HotLoop" in file:
-			HL = HL.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
-		else:
-			PaMul = PaMul.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+		if dataMap[file].get("Kernels"):
+			if "HotCode" in file:
+				HC = HC.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+			elif "HotLoop" in file:
+				HL = HL.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
+			else:
+				PaMul = PaMul.union( RD.Uniquify_static(file, dataMap[file]["Kernels"], trc=True) )
 	for file in loopMap:
 		Loops = Loops.union( RD.Uniquify_static(file, loopMap[file]) )
 	print(" HC: {}, HL: {}, PaMul: {}, Loops: {} ".format(len(HC), len(HL), len(PaMul), len(Loops)))
@@ -136,7 +138,7 @@ def ExclusionZones(dataMap, loopMap):
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
 loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName)
 refined = RD.refineBlockData(dataMap)
-#matched = RD.matchData(refined)
-#PlotKernelCorrespondence(refined, loopMap)
-PlotKernelCorrespondence_static(refined, loopMap)
-ExclusionZones(dataMap, loopMap)
+matched = RD.matchData(refined)
+PlotKernelCorrespondence(matched)
+#PlotKernelCorrespondence_static(matched, loopMap)
+ExclusionZones(matched, loopMap)

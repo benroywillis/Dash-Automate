@@ -137,7 +137,6 @@ def readKernelFile_Coverage(kf):
 	return len(kernelBlocks)/len(hj["ValidBlocks"])
 
 def readKernelFile(kf, justBlocks=True):
-	returnDict = {}
 	# first open the log to verify that the step ran 
 	"""try:
 		log = open(log,"r")
@@ -149,13 +148,12 @@ def readKernelFile(kf, justBlocks=True):
 		hj = json.load( open(kf, "r") )
 	except Exception as e:
 		print("Could not open "+kf+": "+str(e))
-		return returnDict
-	
+		return -1
 	if hj.get("Kernels") is None:
-		return returnDict
+		return -1 
 	if hj.get("ValidBlocks") is None:
-		return returnDict
-	returnDict["Kernels"] = {}
+		return -1
+	returnDict = { "Kernels": {} }
 	for k in hj["Kernels"]:
 		if hj["Kernels"][k].get("Blocks") is None:
 			returnDict["Kernels"][k] = {}
@@ -276,8 +274,6 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
 #	kernelTargets = getTargetFilePaths(directoryMap, "/".join(CorpusFolder.split("/")[:-2]), prefix="kernel_", suffix=".json")
 	kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
-	HCTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotCode.json")
-	HLTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix="_HotLoop.json")
 	for k in kernelTargets:
 		dataMap[k] = KFReader(k)#parseKernelData(k)
 
@@ -314,34 +310,37 @@ def refineBlockData(dataMap):
 	"""
 	@brief 	Finds all entries in the map that are not valid ie the entry is -1 and removes them
 	"""
-	refinedMap = {}
-	for file in dataMap:
-		if dataMap[file] == -1:
-			continue
-		refinedMap[file] = {}
-		for k in dataMap[file]:
-			refinedMap[file][k] = dataMap[file][k]
-	return refinedMap
+	i = 0
+	while( i < len(dataMap) ):
+		currentKey = list(dataMap.keys())[i]
+		if dataMap[currentKey] == -1:
+			print("removing {}".format(currentKey))
+			del dataMap[currentKey]
+		else:
+			i += 1
+	return dataMap
 
 def matchData(dataMap):
 	# here we need to look for three kinds of the same project: PaMul, hotcode and hotloop
 	projects = {}
-	matchedData = {}
+	i = 0
 	for project in dataMap:
 		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
 		if name not in set(projects.keys()):
-			projects[name] = { "HotCode": -1, "HotLoop": -1, "PaMul": -1 }
+			projects[name] = { "HotCode": False, "HotLoop": False, "PaMul": False }
 			# find out if its a PaMul, hotcode or hotloop
 		if "HotCode" in project:
-			projects[name]["HotCode"] = dataMap[project]
+			projects[name]["HotCode"] = True
 		elif "HotLoop" in project:
-			projects[name]["HotLoop"] = dataMap[project]
+			projects[name]["HotLoop"] = True
 		else:
-			projects[name]["PaMul"] = dataMap[project]
+			projects[name]["PaMul"] = True
 
-	for project in dataMap:
+	while i < len(dataMap):
+		project = list(dataMap.keys())[i]
 		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
-		if projects[name].get("HotCode") and projects[name].get("HotLoop") and projects[name].get("PaMul"):
-			if projects[name]["HotCode"] > 0 and projects[name]["HotLoop"] > 0 and projects[name]["PaMul"] > 0:
-				matchedData[project] = dataMap[project]
-	return matchedData
+		if projects[name]["HotCode"] and projects[name]["HotLoop"] and projects[name]["PaMul"]:
+			i += 1
+		else:
+			del dataMap[project]
+	return dataMap
