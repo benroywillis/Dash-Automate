@@ -13,7 +13,7 @@ def getProjectName(kfPath, baseName):
 
 def getNativeName(loopName, kernel=False):
 	"""
-	loopName should be an absolute path to a loop file
+	loopName should be an absolute path to a loop file or kernel file if kernel==True
 	This method assumes the loopfile name is Loop_<nativeName>.native
 	"""
 	path = "/".join(x for x in loopName.split("/")[:-1])
@@ -171,15 +171,33 @@ def readLoopFile(lf):
 	except Exception as e:
 		print("Could not open "+lf+": "+str(e))
 		return returnDict
-	# hj is a list of {"blocks":[], type: int} objects
+	# hj is a map of { "Loops": {"blocks":[], type: [int]}, "Static Blocks": [] } objects
 	if hj is None:
 		return returnDict
-	for i in range(len(hj)):
-		if hj[i].get("Blocks") is None:
+	for i in range(len(hj["Loops"])):
+		if hj["Loops"][i].get("Blocks") is None:
 			returnDict[i] = {}
 		else:
-			returnDict[i] = { "Blocks": list(hj[i]["Blocks"]), "Type": hj[i]["Type"] }
+			returnDict[i] = { "Blocks": list(hj["Loops"][i]["Blocks"]), "Type": hj["Loops"][i]["Type"] }
 	return returnDict
+
+def readLoopFile_Coverage(lf):
+	try:
+		hj = json.load( open(lf, "r") )
+	except Exception as e:
+		print("Could not open "+lf+": "+str(e))
+		return 0.0
+	loopBlocks = set()
+	# hj is a map of { "Loops": {"blocks":[], type: [int]}, "Static Blocks": [] } objects
+	if hj.get("Loops") is None:
+		return 0.0
+	for i in range(len(hj["Loops"])):
+		if hj["Loops"][i].get("Blocks"):
+			for b in hj["Loops"][i]["Blocks"]:
+				loopBlocks.add(b)
+	if hj["Static Blocks"] is None:
+		return 0.0
+	return len(loopBlocks) / len(hj["Static Blocks"])
 
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
 def findOffset(path, basePath):
@@ -282,7 +300,7 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 
 	return dataMap
 
-def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName):
+def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	try:
 		with open(dataFileName, "r") as f:
 			dataMap = json.load(f)
@@ -299,7 +317,7 @@ def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName):
 	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
 	loopTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="Loops_", suffix=".json")
 	for l in loopTargets:
-		dataMap[l] = readLoopFile(l)#parseKernelData(k)
+		dataMap[l] = lfReader(l)#parseKernelData(k)
 
 	with open(dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
