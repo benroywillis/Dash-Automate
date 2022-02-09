@@ -14,8 +14,9 @@ import RetrieveData as RD
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
-buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
+#buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
 #buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
+buildFolders = { "build_2-3-2022_hc95" }
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
 dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
@@ -140,5 +141,5 @@ loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
 PlotKernelCorrespondence(matched)
-#PlotKernelCorrespondence_static(matched, loopMap)
+PlotKernelCorrespondence_static(matched, loopMap)
 ExclusionZones(matched, loopMap)
