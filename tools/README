@@ -23,3 +23,24 @@ BasicBlockCoverageBars.py: Stacked bar chart of the static basic block % covered
  - x axis is applications
  - y axis is % of coverage of static blocks
  - stacked bars is the union of the coverage of all techniques. The lowest coverage technique is the bottom bar, 2nd is the middle bar, most coverage is the top bar
+
+FOR JOHN:
+Data:
+  The data you will need to build your own figures are local to my copy of this repository: /home/bwilli46/Dash/Dash-Automate/tools/
+  The files pertain to two scripts that generate figures:
+	BasicBlockCorrespondence.py: mntheorot-10DashDash-Corpusbuild2-8-2022_hc95_data.json holds the kernel data, mntheorot-10DashDash-Corpusbuild2-8-2022_hc95_loops.json holds the static loop data
+	BasicBlockCoverageBars.py: Coverage_mntheorot-10DashDash-Corpusbuild2-8-2022_hc95_data.json holds the kernel data, Coverage_mntheorot-10DashDash-Corpusbuild2-8-2022_hc95_loops.json holds the static loop data
+  Format: 
+	kernel data: { "<absolutePathToKernelFile>": [<blocks>], ... }
+	coverage data: { "<absolutePathToKernelFile>": float, ... }
+	loop data: { "<absolutePathToLoopFile>": [<blocks], ... }
+	loop coverage data: { "<absolutePathToLoopFile>": float, ... }
+
+RetrieveData.py:
+	Has many methods in it to facilitate the data picking of a repository that contains automation builds.
+	This is done by using a build folder name to pick the kernel and loop data that results in from the run.
+	All data uses the absolute path of the file as its unique identifier.
+	BasicBlockCorrespondence.py and BasicBlockCoverageBars.py contain scripts at the bottom that call the relevant methods
+
+Examples:
+	Use the scripts at the bottom of BasicBlockCorrespondence.py and BasicBlockCoverageBars.py as examples
