@@ -172,7 +172,7 @@ def readLoopFile(lf):
 		print("Could not open "+lf+": "+str(e))
 		return returnDict
 	# hj is a map of { "Loops": {"blocks":[], type: [int]}, "Static Blocks": [] } objects
-	if hj is None:
+	if hj.get("Loops") is None:
 		return returnDict
 	for i in range(len(hj["Loops"])):
 		if hj["Loops"][i].get("Blocks") is None:
