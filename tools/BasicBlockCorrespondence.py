@@ -124,7 +124,7 @@ def ExclusionZones(dataMap, loopMap):
 			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 	# find files that contribute to the exclusion zones
 	for file in dataMap:
-		uniqueBlocks = RD.Uniquify(file, dataMap[file])
+		uniqueBlocks = RD.Uniquify(file, dataMap[file]["Kernels"])
 		if "HotCode" in file:
 			# overlap the blocks with the PaMul set and the hotloop set
 			intersect_p = uniqueBlocks.intersection(PaMul)
@@ -140,10 +140,8 @@ def ExclusionZones(dataMap, loopMap):
 			intersect_c = uniqueBlocks.intersection(HC)
 			onlyHL = uniqueBlocks - intersect_p - intersect_c
 			if len(onlyHL):
-				print("Found exclusive hotloop blocks!")
 				exclusions["HL"].append(file)
 			else:
-				print("The length was {}, overlap of hotloop with paMul was {} and HC was {}".format(len(uniqueBlocks),len(intersect_p), len(intersect_c)))
 				continue
 		else:
 			continue
