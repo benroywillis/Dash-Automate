@@ -16,7 +16,8 @@ CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
 #buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
 #buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
-buildFolders = { "build_2-3-2022_hc95" }
+#buildFolders = { "build_2-3-2022_hc95" }
+buildFolders = { "build2-8-2022_hc95" }
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
 dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
@@ -102,44 +103,58 @@ def PlotKernelCorrespondence_static(dataMap, loopMap):
 
 def ExclusionZones(dataMap, loopMap):
 	exclusions = { 
+					# hotcode not captured by PaMul
 				   "HC": [], \
+					# hotcode and hotloop not captured by PaMul
 				   "HC,HL": [], \
+					# hotloop not captured by PaMul
 				   "HL": []
 				 }
-	# observe the unique blocks of each data file and create the sets for each segmentation type
-	uniqueBlocks = {}
+	# observe the unique blocks of each data file and create the sets for each segmentation method
 	HC = set()
 	HL = set()
 	PaMul = set()
 	Loops = set()
 	for file in dataMap:
-		uniqueBlocks[file] = RD.Uniquify(file, dataMap[file])
 		if "HotCode" in file:
-			HC = HC.union( uniqueBlocks[file] )
+			HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 		elif "HotLoop" in file:
-			HL = HL.union( uniqueBlocks[file] )
+			HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 		else:
-			PaMul = PaMul.union( uniqueBlocks[file] )
+			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 	# find files that contribute to the exclusion zones
-	# find hotcode blocks that are not in hotloop or pamul
-	for file in uniqueBlocks:
+	for file in dataMap:
+		uniqueBlocks = RD.Uniquify(file, dataMap[file])
 		if "HotCode" in file:
-			# overlap the blocks here with the PaMul set, if we don't have a complete overlap we have hotblocks not in PaMul
-			intersect_p = uniqueBlocks[file].intersection(PaMul)
-			intersect_l = uniqueBlocks[file].intersection(HL)
-			if (len(intersect_p) < len(uniqueBlocks[file])) and (len(intersect_l) < len(uniqueBlocks[file])):
+			# overlap the blocks with the PaMul set and the hotloop set
+			intersect_p = uniqueBlocks.intersection(PaMul)
+			intersect_l = uniqueBlocks.intersection(HL)
+			onlyHC = uniqueBlocks - intersect_p - intersect_l
+			# if the overlaps are not the size of the file coverage in both cases, there are unique blocks in the hotcode result that are not in either the paMul or hotloop coverage
+			if len(onlyHC):
 				exclusions["HC"].append(file)
 			else:
 				continue
+		elif "HotLoop" in file:
+			intersect_p = uniqueBlocks.intersection(PaMul)
+			intersect_c = uniqueBlocks.intersection(HC)
+			onlyHL = uniqueBlocks - intersect_p - intersect_c
+			if len(onlyHL):
+				print("Found exclusive hotloop blocks!")
+				exclusions["HL"].append(file)
+			else:
+				print("The length was {}, overlap of hotloop with paMul was {} and HC was {}".format(len(uniqueBlocks),len(intersect_p), len(intersect_c)))
+				continue
 		else:
 			continue
-	with open("ExclusiveHC.json", "w") as f:
+		
+	with open("ExclusiveRegions.json", "w") as f:
 		json.dump(exclusions, f, indent=4)
 
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
-loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName)
+loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName, RD.readLoopFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
-PlotKernelCorrespondence(matched)
-PlotKernelCorrespondence_static(matched, loopMap)
+#PlotKernelCorrespondence(matched)
+#PlotKernelCorrespondence_static(matched, loopMap)
 ExclusionZones(matched, loopMap)
