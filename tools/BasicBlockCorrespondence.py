@@ -9,6 +9,7 @@ import RetrieveData as RD
 
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
@@ -132,7 +133,7 @@ def ExclusionZones(dataMap, loopMap):
 			onlyHC = uniqueBlocks - intersect_p - intersect_l
 			# if the overlaps are not the size of the file coverage in both cases, there are unique blocks in the hotcode result that are not in either the paMul or hotloop coverage
 			if len(onlyHC):
-				exclusions["HC"].append(file)
+				exclusions["HC"].append( (file,list(RD.reverseUniquify(onlyHC, file))) )
 			else:
 				continue
 		elif "HotLoop" in file:
@@ -140,7 +141,7 @@ def ExclusionZones(dataMap, loopMap):
 			intersect_c = uniqueBlocks.intersection(HC)
 			onlyHL = uniqueBlocks - intersect_p - intersect_c
 			if len(onlyHL):
-				exclusions["HL"].append(file)
+				exclusions["HL"].append( (file,list(RD.reverseUniquify(onlyHL, file))) )
 			else:
 				continue
 		else:
