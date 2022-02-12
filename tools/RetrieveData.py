@@ -108,6 +108,26 @@ def Uniquify_static(project, kernels, trc=False):
 				
 	return mappedBlocks
 
+def reverseUniquify(uniquified, file):
+	"""
+	Reverse-maps the uniquified BBIDs in uniquified, belonging to the original file argument
+	"""
+	trcName = getTraceName(file)
+	originalIDs = set()
+	if UniqueIDMap.get(trcName) is not None:
+		for UID in uniquified:
+			OID = -1 # original BBID
+			for BBID,MID in UniqueIDMap[trcName].items(): # basic block ID and mapped ID
+				if UID == MID:
+					OID = BBID
+					break
+			if OID == -1:
+				raise ValueError("Cannot map this unique ID to a real BBID!")
+			originalIDs.add(OID)
+		return originalIDs
+	else:
+		return originalIDs
+
 def readKernelFile_Coverage(kf):
 	# first open the log to verify that the step ran 
 	"""
