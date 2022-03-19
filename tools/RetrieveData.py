@@ -387,3 +387,55 @@ def matchData(dataMap):
 		else:
 			del dataMap[project]
 	return dataMap
+
+def SortAndMap_App(dataMap, InterestingProjects):
+	"""
+	This function turns a map of kernel files into a map of application names (native name), values { HC: { KID: set(uniquified_blocks) }, .. }
+	@param[in] 	dataMap	Map of kernel files. Key is absolute path to a kernel file, value is a map of KIDs to sets of basic blocks
+				Specifically: { kf: { "Kernels": { int(kid): set(blocks), ... } } }
+	@retval appMap	Maps an application name (native name) to each type of segmentation, each segmentation is mapped to kernel IDs, each kernel ID has a set of uniquified basic block IDs
+					ie { NTV: { "HC": { int(kid): set(uniquified_blocks), ... }, "HL": { ... }, "PaMul": { ... } }, ... }
+	@retval xtickLabels 	List of strings, where each member corresponds to a key in appMap
+							The keys in appMap are sorted, and whenever the project a given key comes from changes, the first key of that project gets an x-axis label of that project name
+							For the rest of the keys belonging to that project, the xtick label is an empty string
+	Since multiple traces can map to a single application, this method takes the union of each kernel ID from each trace
+	"""
+	# sorted list of absolute kernel file paths
+	sortedKeys = sorted(dataMap)
+	# list of labels that mark the beginnings and ends of each project in the x-axis applications
+	xtickLabels = list()
+	# set of projectNames that have been seen in the input data
+	projectNames = set()
+	# maps an application name to its HC, HL and PaMul data (each label has a set of uniquified basic block IDs
+	appNames = dict()
+	# for each trace
+	for kfPath in sortedKeys:
+		# make sure it is part of the projects we are interested in, and make an entry for it if it doesn't yet exist in our data
+		if dataMap[kfPath].get("Kernels"):
+			project = getProjectName(kfPath, "Dash-Corpus")
+			if project not in InterestingProjects:
+				continue
+			newProject = False
+			if project not in projectNames:
+				xtickLabels.append(project)
+				projectNames.add(project)
+				newProject = True
+
+			# once that change is made, we will map multiple traces to one application... so you have to take the union of all traces for each application
+			appName = "/".join(x for x in kfPath.split("/")[:-1])+getNativeName(kfPath, kernel=True)
+			# if we haven't seen this app before, add an entry to the processed data array
+			# this is a new application with a project, if this app isn't getting the project name as its xlabel give it a blank one
+			if appName not in appNames:
+				appNames[appName] = { "HC": set(), "HL": set(), "PaMul": set() }
+				if not newProject:
+					xtickLabels.append("")
+
+			if "HotCode" in kfPath:
+				appNames[appName]["HC"] = appNames[appName]["HC"].union( Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
+			elif "HotLoop" in kfPath:
+				appNames[appName]["HL"] = appNames[appName]["HL"].union( Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
+			else:
+				appNames[appName]["PaMul"] = appNames[appName]["PaMul"].union( Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
+
+	return appNames, xtickLabels
+

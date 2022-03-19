@@ -32,7 +32,7 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-def PlotCoverageBars(dataMap):
+def PlotCoverageBars(appNames, xtickLabels):
 	"""
 	@brief This function shows a per-application breakdown of what Hotcode, Hotloop and PaMul capture (in terms of basic blocks)
 	This figure should be used in conjunction with a Venn diagram showing the overall basic blocks captured by each strategy
@@ -45,51 +45,10 @@ def PlotCoverageBars(dataMap):
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
 
 	# we need to go through each application and find the overlap of the blocks from the application
-	# 1. uniquify the BBIDs across all applications
-	# 2. categorize the hotcode blocks, hot loop blocks and pamul blocks
-	# 3. for each application, intersect the block sets. This will yield exclusive and overlap regions
-	# 4. for regions that overlap with PaMul, sort their magnitudes and make an entry for that application
-	# 5. for regions that do not overlap PaMul, sort their magnitudes, flip the sign, and make and entry for that application
+	# 1. for each application, intersect the block sets. This will yield exclusive and overlap regions
+	# 2. for regions that overlap with PaMul, sort their magnitudes and make an entry for that application
+	# 3. for regions that do not overlap PaMul, sort their magnitudes, flip the sign, and make and entry for that application
 
-	# sorted list of absolute kernel file paths
-	sortedKeys = sorted(dataMap)
-	# list of labels that mark the beginnings and ends of each project in the x-axis applications
-	xtickLabels = list()
-	# set of projectNames that have been seen in the input data
-	projectNames = set()
-	# maps an application name to its HC, HL and PaMul data (each label has a set of uniquified basic block IDs
-	appNames = dict()
-	# for each trace
-	for kfPath in sortedKeys:
-		# make sure it is part of the projects we are interested in, and make an entry for it if it doesn't yet exist in our data
-		if dataMap[kfPath].get("Kernels"):
-			project = RD.getProjectName(kfPath, "Dash-Corpus")
-			if project not in InterestingProjects:
-				continue
-			newProject = False
-			if project not in projectNames:
-				xtickLabels.append(project)
-				projectNames.add(project)
-				newProject = True
-
-			# TODO: this is by trace, do by application
-			# once that change is made, we will map multiple traces to one application... so you have to take the union of all traces for each application
-			appName = "/".join(x for x in kfPath.split("/")[:-1])+RD.getNativeName(kfPath, kernel=True)
-			# if we haven't seen this app before, add an entry to the processed data array
-			# this is a new application with a project, if this app isn't getting the project name as its xlabel give it a blank one
-			if appName not in appNames:
-				appNames[appName] = { "HC": set(), "HL": set(), "PaMul": set() }
-				if not newProject:
-					xtickLabels.append("")
-
-			if "HotCode" in kfPath:
-				appNames[appName]["HC"] = appNames[appName]["HC"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
-			elif "HotLoop" in kfPath:
-				appNames[appName]["HL"] = appNames[appName]["HL"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
-			else:
-				appNames[appName]["PaMul"] = appNames[appName]["PaMul"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
-
-	# now that we have all the data sorted, we need to intersect the sets and come up with coverage bars to overlap
 	setIntersections = {}
 	for kfPath in appNames:
 		HCset = appNames[kfPath]["HC"]
@@ -124,12 +83,7 @@ def PlotCoverageBars(dataMap):
 	HC        = [-1*setIntersections[k]["NonPaMul"]["HC"] for k in setIntersections]
 	HL        = [-1*setIntersections[k]["NonPaMul"]["HL"] for k in setIntersections]
 	HCHL      = [-1*setIntersections[k]["NonPaMul"]["HCHL"] for k in setIntersections]
-	#print(len(xtickLabels))
-	#print(len(lowest))
-	#print(len(secondLowest))
-	#print(len(thirdHighest))
-	#print(len(secondHighest))
-	#print(len(highest))
+
 	#ax.set_aspect("equal")
 	ax.set_title("Per Application Block Coverage", fontsize=titleFont)
 	ax.bar([x for x in range(len(xtickLabels))], PaMul, label="PaMul")
@@ -149,5 +103,6 @@ def PlotCoverageBars(dataMap):
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
-PlotCoverageBars(matched)
+appMap, xaxis  = RD.SortAndMap_App(matched, InterestingProjects)
+PlotCoverageBars(appMap, xaxis)
 
