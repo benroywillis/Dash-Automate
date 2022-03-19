@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 ## input data
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#buildFolders = {"build_noHLconstraints_hc98"}
+#buildFolders = {"build2-23-2022_hc95"}
 
 # most recent build
 CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
@@ -74,20 +74,20 @@ def PlotCoverageBars(dataMap):
 
 			# TODO: this is by trace, do by application
 			# once that change is made, we will map multiple traces to one application... so you have to take the union of all traces for each application
-			appName = "/".join(x for x in kfPath.split("/")[:-1])+RD.getTraceName(kfPath)
+			appName = "/".join(x for x in kfPath.split("/")[:-1])+RD.getNativeName(kfPath, kernel=True)
 			# if we haven't seen this app before, add an entry to the processed data array
 			# this is a new application with a project, if this app isn't getting the project name as its xlabel give it a blank one
 			if appName not in appNames:
-				appNames[appName] = { "HC": -1, "HL": -1, "PaMul": -1 }
+				appNames[appName] = { "HC": set(), "HL": set(), "PaMul": set() }
 				if not newProject:
 					xtickLabels.append("")
 
 			if "HotCode" in kfPath:
-				appNames[appName]["HC"] = RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True )
+				appNames[appName]["HC"] = appNames[appName]["HC"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
 			elif "HotLoop" in kfPath:
-				appNames[appName]["HL"] = RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True )
+				appNames[appName]["HL"] = appNames[appName]["HL"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
 			else:
-				appNames[appName]["PaMul"] = RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True )
+				appNames[appName]["PaMul"] = appNames[appName]["PaMul"].union( RD.Uniquify_static( kfPath, dataMap[kfPath]["Kernels"], trc=True ) )
 
 	# now that we have all the data sorted, we need to intersect the sets and come up with coverage bars to overlap
 	setIntersections = {}
@@ -95,58 +95,50 @@ def PlotCoverageBars(dataMap):
 		HCset = appNames[kfPath]["HC"]
 		HLset = appNames[kfPath]["HL"]
 		PaMulset = appNames[kfPath]["PaMul"]
-		setIntersections[kfPath] = { "NonPaMul": { "HC": 0.0, "HL": 0.0 }, "PaMul": { "HC": 0.0, "HL": 0.0, "PaMul": 1.0 } }
+		setIntersections[kfPath] = { "NonPaMul": { "HCHL": 0.0, "HC": 0.0, "HL": 0.0 }, "PaMul": { "PaMulHC": 0.0, "PaMulHL": 0.0, "PaMul": 0.0, "PaMulHCHL": 0.0 } }
 		# john: do this in reverse order bc that saves work
-		HC         = HCset - HCset.intersection(HLset) - HCset.intersection(PaMulset)
-		HL         = HLset - HLset.intersection(HCset) - HLset.intersection(PaMulset)
-		PaMul      = PaMulset - PaMulset.intersection(HCset) - PaMulset.intersection(HLset)
-		#HCHL       = HC.intersection(HL) - HC.intersection(PaMul) - HL.intersection(PaMul)
-		PaMulHC    = PaMulset.intersection(HCset) - PaMulset.intersection(HLset).intersection(HCset)
-		PaMulHL    = PaMulset.intersection(HLset) - PaMulset.intersection(HLset).intersection(HCset)
-		#PaMulHCHL  = PaMul.intersection(HC) + PaMul.intersection(HL)
+		HC        = HCset - HLset - PaMulset
+		HL        = HLset - HCset - PaMulset
+		PaMul     = PaMulset - HCset - HLset
+		HCHL      = HCset.intersection(HLset) - PaMulset
+		PaMulHC   = PaMulset.intersection(HCset) - HLset
+		PaMulHL   = PaMulset.intersection(HLset) - HCset
+		PaMulHCHL = PaMulset.intersection(HCset).intersection(HLset) 
 
 		# use the above set arithmetic to calculate the PaMul overlap regions (above x-axis) and non-PaMul overlap regions (below x-axis)
-		setIntersections[kfPath]["NonPaMul"]["HC"] = len(HC) / len(PaMulset) if len(PaMulset) > 0 else len(HC)
-		setIntersections[kfPath]["NonPaMul"]["HL"] = len(HL) / len(PaMulset) if len(PaMulset) > 0 else len(HL)
-		setIntersections[kfPath]["PaMul"]["HC"] = len(PaMulHC) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHC)
-		setIntersections[kfPath]["PaMul"]["HL"] = len(PaMulHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHL)
+		setIntersections[kfPath]["NonPaMul"]["HC"]     = len(HC) / len(PaMulset) if len(PaMulset) > 0 else len(HC)
+		setIntersections[kfPath]["NonPaMul"]["HL"]     = len(HL) / len(PaMulset) if len(PaMulset) > 0 else len(HL)
+		setIntersections[kfPath]["NonPaMul"]["HCHL"]   = len(HCHL) / len(PaMulset) if len(PaMulset) > 0 else len(HCHL)
+		setIntersections[kfPath]["PaMul"]["PaMul"]     = len(PaMul) / len(PaMulset) if len(PaMulset) > 0 else len(PaMul)
+		setIntersections[kfPath]["PaMul"]["PaMulHC"]   = len(PaMulHC) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHC)
+		setIntersections[kfPath]["PaMul"]["PaMulHL"]   = len(PaMulHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHL)
+		setIntersections[kfPath]["PaMul"]["PaMulHCHL"] = len(PaMulHCHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHCHL)
 	print(setIntersections)
 	# with the set intersections, we sort the data points into their respective positions
 	# the 5 lists below represent the positions: lowest means most negative (highest non-PaMul), highest means most positive (highest PaMul overlap)
-	lowest        = []
-	secondLowest  = []
-	highest       = []
-	secondHighest = []
-	thirdHighest  = []
 
-	for kf in setIntersections:
-		if setIntersections[kf]["NonPaMul"]["HC"] > setIntersections[kf]["NonPaMul"]["HL"]:
-			lowest.append( -1*setIntersections[kf]["NonPaMul"]["HC"] )
-			secondLowest.append( -1*setIntersections[kf]["NonPaMul"]["HL"] )
-		else:
-			lowest.append( -1*setIntersections[kf]["NonPaMul"]["HL"] )
-			secondLowest.append( -1*setIntersections[kf]["NonPaMul"]["HC"] )
-		if setIntersections[kf]["PaMul"]["HC"] > setIntersections[kf]["NonPaMul"]["HL"]:
-			secondHighest.append( setIntersections[kf]["PaMul"]["HC"] )
-			thirdHighest.append( setIntersections[kf]["PaMul"]["HL"] )
-		else:
-			secondHighest.append( setIntersections[kf]["PaMul"]["HL"] )
-			thirdHighest.append( setIntersections[kf]["PaMul"]["HC"] )
-		highest.append( setIntersections[kf]["PaMul"]["PaMul"] )
-
+	PaMul     = [setIntersections[k]["PaMul"]["PaMul"] for k in setIntersections]
+	PaMulHL   = [setIntersections[k]["PaMul"]["PaMulHL"] for k in setIntersections]
+	PaMulHC   = [setIntersections[k]["PaMul"]["PaMulHC"] for k in setIntersections]
+	PaMulHCHL = [setIntersections[k]["PaMul"]["PaMulHCHL"] for k in setIntersections]
+	HC        = [-1*setIntersections[k]["NonPaMul"]["HC"] for k in setIntersections]
+	HL        = [-1*setIntersections[k]["NonPaMul"]["HL"] for k in setIntersections]
+	HCHL      = [-1*setIntersections[k]["NonPaMul"]["HCHL"] for k in setIntersections]
 	#print(len(xtickLabels))
 	#print(len(lowest))
 	#print(len(secondLowest))
 	#print(len(thirdHighest))
 	#print(len(secondHighest))
 	#print(len(highest))
-	ax.set_aspect("equal")
+	#ax.set_aspect("equal")
 	ax.set_title("Per Application Block Coverage", fontsize=titleFont)
-	ax.bar([x for x in range(len(xtickLabels))], highest, label="PaMul")
-	ax.bar([x for x in range(len(xtickLabels))], secondHighest, label="HotLoop")
-	ax.bar([x for x in range(len(xtickLabels))], thirdHighest, label="HotCode")
-	ax.bar([x for x in range(len(xtickLabels))], secondLowest, label="HCNoPaMul")
-	ax.bar([x for x in range(len(xtickLabels))], lowest, label="HLNoPaMul")
+	ax.bar([x for x in range(len(xtickLabels))], PaMul, label="PaMul")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHL, bottom = PaMul, label="PaMul & HL")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHC, bottom = [PaMul[i]+PaMulHL[i] for i in range(len(PaMul))], label="PaMul & HC")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHCHL, bottom = [PaMul[i]+PaMulHL[i]+PaMulHC[i] for i in range(len(PaMul))], label="PaMul & HL & HC")
+	ax.bar([x for x in range(len(xtickLabels))], HC, label="HC")
+	ax.bar([x for x in range(len(xtickLabels))], HL, bottom = HC, label="HL")
+	ax.bar([x for x in range(len(xtickLabels))], HCHL, bottom = [HC[i]+HL[i] for i in range(len(HC))], label="HC & HL")
 	ax.set_ylabel("%", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
