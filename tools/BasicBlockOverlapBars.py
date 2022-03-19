@@ -143,9 +143,7 @@ def PlotCoverageBars(dataMap):
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	ax.legend()
-	plt.savefig("BasicBlockOverlaps.svg",format="svg")
-	plt.savefig("BasicBlockOverlaps.eps",format="eps")
-	plt.savefig("BasicBlockOverlaps.png",format="png")
+	RD.PrintFigure(plt, "BasicBlockOverlap")
 	plt.show()
 
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)

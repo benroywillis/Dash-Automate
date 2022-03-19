@@ -63,9 +63,7 @@ def plotKernelCoverageResults():
 	#plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("KernelCoverage.svg",format="svg")
-	plt.savefig("KernelCoverage.eps",format="eps")
-	plt.savefig("KernelCoverage.png",format="png")
+	RD.PrintFigure(plt, "KernelCoverage")
 	plt.show()
 
 DataMap = json.load( open("tools/MatchedData.json","r") )

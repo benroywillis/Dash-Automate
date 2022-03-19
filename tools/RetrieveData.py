@@ -1,6 +1,11 @@
 import json
 import os
 
+def PrintFigure(plt, name):
+	plt.savefig("Figures/"+name+".svg",format="svg")
+	plt.savefig("Figures/"+name+".eps",format="eps")
+	plt.savefig("Figures/"+name+".png",format="png")
+
 def getProjectName(kfPath, baseName):
 	while "//" in kfPath:
 		kfPath = kfPath.replace("//","/")
@@ -297,7 +302,7 @@ def parseKernelData(k):
 
 def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	try:
-		with open(dataFileName, "r") as f:
+		with open("Data/"+dataFileName, "r") as f:
 			dataMap = json.load(f)
 			return dataMap
 	except FileNotFoundError:
@@ -315,14 +320,14 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	for k in kernelTargets:
 		dataMap[k] = KFReader(k)#parseKernelData(k)
 
-	with open(dataFileName,"w") as f:
+	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
 
 	return dataMap
 
 def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	try:
-		with open(dataFileName, "r") as f:
+		with open("Data/"+dataFileName, "r") as f:
 			dataMap = json.load(f)
 			return dataMap
 	except FileNotFoundError:
@@ -339,7 +344,7 @@ def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	for l in loopTargets:
 		dataMap[l] = lfReader(l)#parseKernelData(k)
 
-	with open(dataFileName,"w") as f:
+	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
 
 	return dataMap

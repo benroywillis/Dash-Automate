@@ -11,3 +11,5 @@ launch.json
 *.bak
 tmp*
 *.log
+tools/Data/
+tools/Figures/

@@ -97,10 +97,7 @@ def PlotCoverageBars(dataMap):
 #	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("BasicBlockCoverageBars.svg",format="svg")
-	plt.savefig("BasicBlockCoverageBars.eps",format="eps")
-	#plt.savefig("BasicBlockCoverageBars.pdf",format="pdf")
-	plt.savefig("BasicBlockCoverageBars.png",format="png")
+	RD.PrintFigure(plt, "BasicBlockCoverageBars")
 	plt.show()
 
 def PlotCoverageBarsWithLoops(dataMap, loopMap):
@@ -178,10 +175,7 @@ def PlotCoverageBarsWithLoops(dataMap, loopMap):
 #	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("BasicBlockCoverageBars.svg",format="svg")
-	plt.savefig("BasicBlockCoverageBars.eps",format="eps")
-	#plt.savefig("BasicBlockCoverageBars.pdf",format="pdf")
-	plt.savefig("BasicBlockCoverageBars.png",format="png")
+	RD.PrintFigure(plt, "BasicBlockCoverageBars")
 	plt.show()
 
 dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile_Coverage)

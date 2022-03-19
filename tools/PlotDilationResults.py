@@ -72,10 +72,7 @@ def plotProfileDilationResults():
 	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("ProfileTimeDilation.svg",format="svg")
-	plt.savefig("ProfileTimeDilation.eps",format="eps")
-	plt.savefig("ProfileTimeDilation.pdf",format="pdf")
-	plt.savefig("ProfileTimeDilation.png",format="png")
+	RD.PrintFigure(plt, "ProfileTimeDilation")
 	plt.show()
 
 def plotSegmentationVTransformResults():
@@ -135,10 +132,7 @@ def plotSegmentationVTransformResults():
 	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("SegmentationVsTransformsDilationFigure.svg",format="svg")
-	plt.savefig("SegmentationVsTransformsDilationFigure.eps",format="eps")
-	plt.savefig("SegmentationVsTransformsDilationFigure.pdf",format="pdf")
-	plt.savefig("SegmentationVsTransformsDilationFigure.png",format="png")
+	RD.PrintFigure(plt, "SegmentationVsTransformsDilationFigure")
 	plt.show()
 
 def plotSegmentationResults():
@@ -196,11 +190,7 @@ def plotSegmentationResults():
 	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["endEdges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
 	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Kernels"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
 	plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["EndNodes"]*TimeMap[key]["Natives"]["Kernels"]*TimeMap[key]["Natives"]["endEdges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
-	#plt.savefig("SegmentationDilationFigure.svg",format="svg")
-	#plt.savefig("SegmentationDilationFigure_Vertices.png",format="png")
-	#plt.savefig("SegmentationDilationFigure_Edges.png",format="png")
-	#plt.savefig("SegmentationDilationFigure_Kernels.png",format="png")
-	plt.savefig("SegmentationDilationFigure_VerticesEdgesKernels.png",format="png")
+	RD.PrintFigure(plt, "SegmentationDilationFigure_VerticesEdgesKernels")
 	plt.show()
 
 def plotTransformDilationResults():
@@ -252,13 +242,7 @@ def plotTransformDilationResults():
 	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Nodes"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
 	#plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Edges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
 	plt.hlines(VTicks, 0, max([TimeMap[key]["Natives"]["Nodes"]*TimeMap[key]["Natives"]["Edges"] for key in TimeMap]), linestyle="dashed", colors=colors[-1])
-	#plt.savefig("TransformDilationFigure.svg",format="svg")
-	#plt.savefig("TransformDilationFigure_Vertices.png",format="png")
-	#plt.savefig("TransformDilationFigure_Edges.png",format="png")
-	plt.savefig("TransformDilationFigure_VerticesEdges.svg",format="svg")
-	plt.savefig("TransformDilationFigure_VerticesEdges.eps",format="eps")
-	plt.savefig("TransformDilationFigure_VerticesEdges.pdf",format="pdf")
-	plt.savefig("TransformDilationFigure_VerticesEdges.png",format="png")
+	RD.PrintFigure(plt, "TransformDilationFigure_VerticesEdges")
 	plt.show()
 
 

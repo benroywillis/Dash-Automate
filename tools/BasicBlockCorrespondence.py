@@ -18,7 +18,9 @@ CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
 #buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
 #buildFolders = { "build_2-3-2022_hc95" }
-buildFolders = { "build2-8-2022_hc95" }
+#buildFolders = { "build2-8-2022_hc95" }
+#buildFolders = { "build2-14-2022_hc95" }
+buildFolders = { "build2-23-2022_hc95" }
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
 dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
@@ -65,9 +67,7 @@ def PlotKernelCorrespondence(dataMap):
 				PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
 	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
-	plt.savefig("BasicBlockCorrespondence.svg",format="svg")
-	plt.savefig("BasicBlockCorrespondence.eps",format="eps")
-	plt.savefig("BasicBlockCorrespondence.png",format="png")
+	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
 
 def PlotKernelCorrespondence_static(dataMap, loopMap):
@@ -97,9 +97,7 @@ def PlotKernelCorrespondence_static(dataMap, loopMap):
 	print(" HC: {}, HL: {}, PaMul: {}, Loops: {} ".format(len(HC), len(HL), len(PaMul), len(Loops)))
 	types = { "HotCode": HC, "HotLoop": HL, "PaMul": PaMul, "Loop": Loops }
 	venn.venn(types)
-	plt.savefig("BasicBlockCorrespondence_static.svg",format="svg")
-	plt.savefig("BasicBlockCorrespondence_static.eps",format="eps")
-	plt.savefig("BasicBlockCorrespondence_static.png",format="png")
+	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
 
 def ExclusionZones(dataMap, loopMap):
@@ -154,6 +152,6 @@ dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.rea
 loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName, RD.readLoopFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
-#PlotKernelCorrespondence(matched)
-#PlotKernelCorrespondence_static(matched, loopMap)
+PlotKernelCorrespondence(matched)
+PlotKernelCorrespondence_static(matched, loopMap)
 ExclusionZones(matched, loopMap)

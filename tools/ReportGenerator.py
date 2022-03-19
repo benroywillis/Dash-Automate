@@ -208,10 +208,7 @@ def PlotKernelSizeCorrelation(dataMap):
 #	plt.vlines(vLineLocs, VTicks[0], VTicks[-1], linestyle="dashed", colors=colors[-1])
 	#ax.yaxis.label.set_color('white')
 	#ax.xaxis.label.set_color('white')
-	plt.savefig("KernelCoverageCovariance.svg",format="svg")
-	plt.savefig("KernelCoverageCovariance.eps",format="eps")
-	#plt.savefig("KernelCoverageCovariance.pdf",format="pdf")
-	plt.savefig("KernelCoverageCovariance.png",format="png")
+	RD.PrintFigure(plt, "KernelCoverageCovariance")
 	plt.show()
 
 def reportCompliant(project, keyName, dir, dic):
