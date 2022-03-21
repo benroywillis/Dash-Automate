@@ -439,3 +439,24 @@ def SortAndMap_App(dataMap, InterestingProjects):
 
 	return appNames, xtickLabels
 
+def OverlapRegions(appMap):
+	"""
+	This function overlaps all 7 regions possible for a 3-circle venn diagram
+	The input appMap should be a map of native file data as described in the return value description of SortAndMap_App
+	"""
+	if not len(appMap):
+		return [ [], [], [], [], [], [], [] ]
+	for kfPath in appMap:
+		HCset = appMap[kfPath]["HC"]
+		HLset = appMap[kfPath]["HL"]
+		PaMulset = appMap[kfPath]["PaMul"]
+		# john: do this in reverse order bc that saves work
+		HC        = HCset - HLset - PaMulset
+		HL        = HLset - HCset - PaMulset
+		PaMul     = PaMulset - HCset - HLset
+		HCHL      = HCset.intersection(HLset) - PaMulset
+		PaMulHC   = PaMulset.intersection(HCset) - HLset
+		PaMulHL   = PaMulset.intersection(HLset) - HCset
+		PaMulHCHL = PaMulset.intersection(HCset).intersection(HLset) 
+	# when using this with matplotlib_venn, [A, B, AB, C, AC, BC, ABC] with labels [A, B, C]
+	return [HC, HL, HCHL, PaMul, PaMulHC, PaMulHL, PaMulHCHL]
