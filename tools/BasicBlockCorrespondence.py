@@ -1,7 +1,4 @@
 import json
-import os
-import re
-import statistics as st
 import matplotlib.pyplot as plt
 import matplotlib_venn   as pltv
 import venn
@@ -26,8 +23,7 @@ buildFolders = { "build2-23-2022_hc95" }
 dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
 loopFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loopdata.json"
 
-# maps build folder names to hotcode, hotloop, pamul
-NameMap = { "build2DMarkov": "2DMarkov", "build2DMarkov11-21-21": "2DMarkov", "buildHC": "HC", "buildHC11-21-21": "HC" }
+InterestingProjects = { "Armadillo" }
 
 # plot parameters
 axisFont  = 10
@@ -58,6 +54,8 @@ def PlotKernelCorrespondence(dataMap):
 	HL = set()
 	PaMul = set()
 	for file in dataMap:
+		if RD.getProjectName(file, "Dash-Corpus") not in InterestingProjects:
+			continue
 		if dataMap[file].get("Kernels"):
 			if "HotCode" in file:
 				HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
