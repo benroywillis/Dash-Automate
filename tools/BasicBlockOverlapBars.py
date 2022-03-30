@@ -15,7 +15,7 @@ dataFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buil
 loopFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loop.json"
 
 # set of project names I'm interested in
-InterestingProjects = { "Armadillo" }
+InterestingProjects = { "Dash-RadioCorpus" }
 
 # plot parameters
 axisFont  = 10
@@ -72,24 +72,24 @@ def PlotCoverageBars(appNames, xtickLabels):
 		setIntersections[kfPath]["PaMul"]["PaMulHC"]   = len(PaMulHC) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHC)
 		setIntersections[kfPath]["PaMul"]["PaMulHL"]   = len(PaMulHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHL)
 		setIntersections[kfPath]["PaMul"]["PaMulHCHL"] = len(PaMulHCHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHCHL)
-	print(setIntersections)
+
 	# with the set intersections, we sort the data points into their respective positions
 	# the 5 lists below represent the positions: lowest means most negative (highest non-PaMul), highest means most positive (highest PaMul overlap)
 
-	PaMul     = [setIntersections[k]["PaMul"]["PaMul"] for k in setIntersections]
-	PaMulHL   = [setIntersections[k]["PaMul"]["PaMulHL"] for k in setIntersections]
-	PaMulHC   = [setIntersections[k]["PaMul"]["PaMulHC"] for k in setIntersections]
-	PaMulHCHL = [setIntersections[k]["PaMul"]["PaMulHCHL"] for k in setIntersections]
-	HC        = [-1*setIntersections[k]["NonPaMul"]["HC"] for k in setIntersections]
-	HL        = [-1*setIntersections[k]["NonPaMul"]["HL"] for k in setIntersections]
-	HCHL      = [-1*setIntersections[k]["NonPaMul"]["HCHL"] for k in setIntersections]
+	PaMul     = [setIntersections[k]["PaMul"]["PaMul"]*100 for k in setIntersections]
+	PaMulHL   = [setIntersections[k]["PaMul"]["PaMulHL"]*100 for k in setIntersections]
+	PaMulHC   = [setIntersections[k]["PaMul"]["PaMulHC"]*100 for k in setIntersections]
+	PaMulHCHL = [setIntersections[k]["PaMul"]["PaMulHCHL"]*100 for k in setIntersections]
+	HC        = [-1*setIntersections[k]["NonPaMul"]["HC"]*100 for k in setIntersections]
+	HL        = [-1*setIntersections[k]["NonPaMul"]["HL"]*100 for k in setIntersections]
+	HCHL      = [-1*setIntersections[k]["NonPaMul"]["HCHL"]*100 for k in setIntersections]
 
 	#ax.set_aspect("equal")
 	ax.set_title("Per Application Block Coverage", fontsize=titleFont)
-	ax.bar([x for x in range(len(xtickLabels))], PaMul, label="PaMul")
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHL, bottom = PaMul, label="PaMul & HL")
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHC, bottom = [PaMul[i]+PaMulHL[i] for i in range(len(PaMul))], label="PaMul & HC")
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHCHL, bottom = [PaMul[i]+PaMulHL[i]+PaMulHC[i] for i in range(len(PaMul))], label="PaMul & HL & HC")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHCHL, label="PaMul & HL & HC")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHL, bottom = PaMulHCHL, label="PaMul & HL")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHC, bottom = [PaMulHCHL[i]+PaMulHL[i] for i in range(len(PaMul))], label="PaMul & HC")
+	ax.bar([x for x in range(len(xtickLabels))], PaMul, bottom = [PaMulHCHL[i]+PaMulHL[i]+PaMulHC[i] for i in range(len(PaMul))], label="PaMul")
 	ax.bar([x for x in range(len(xtickLabels))], HC, label="HC")
 	ax.bar([x for x in range(len(xtickLabels))], HL, bottom = HC, label="HL")
 	ax.bar([x for x in range(len(xtickLabels))], HCHL, bottom = [HC[i]+HL[i] for i in range(len(HC))], label="HC & HL")
