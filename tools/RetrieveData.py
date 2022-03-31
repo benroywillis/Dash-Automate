@@ -393,6 +393,7 @@ def SortAndMap_App(dataMap, InterestingProjects):
 	This function turns a map of kernel files into a map of application names (native name), values { HC: { KID: set(uniquified_blocks) }, .. }
 	@param[in] 	dataMap	Map of kernel files. Key is absolute path to a kernel file, value is a map of KIDs to sets of basic blocks
 				Specifically: { kf: { "Kernels": { int(kid): set(blocks), ... } } }
+	@param[in]  InterestingProjects	Set of project names that should be included in the data. If this set is empty, no project is vetted
 	@retval appMap	Maps an application name (native name) to each type of segmentation, each segmentation is mapped to kernel IDs, each kernel ID has a set of uniquified basic block IDs
 					ie { NTV: { "HC": { int(kid): set(uniquified_blocks), ... }, "HL": { ... }, "PaMul": { ... } }, ... }
 	@retval xtickLabels 	List of strings, where each member corresponds to a key in appMap
@@ -413,8 +414,9 @@ def SortAndMap_App(dataMap, InterestingProjects):
 		# make sure it is part of the projects we are interested in, and make an entry for it if it doesn't yet exist in our data
 		if dataMap[kfPath].get("Kernels"):
 			project = getProjectName(kfPath, "Dash-Corpus")
-			if project not in InterestingProjects:
-				continue
+			if len(InterestingProjects):
+				if project not in InterestingProjects:
+					continue
 			newProject = False
 			if project not in projectNames:
 				xtickLabels.append(project)
