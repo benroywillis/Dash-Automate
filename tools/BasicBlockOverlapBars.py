@@ -15,21 +15,22 @@ dataFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buil
 loopFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loop.json"
 
 # set of project names I'm interested in
-InterestingProjects = { "Dash-RadioCorpus" }
+# if this is empty we take all projects
+InterestingProjects = {}
 
 # plot parameters
 axisFont  = 10
 axisLabelFont  = 10
 titleFont = 16
 xtickRotation = 90
-colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
-           ( 255./255, 127./255, 15./255 , 127./255 ),
-       	   ( 214./255, 39./255 , 40./255 , 127./255 ),
-           ( 121./255, 154./255, 134./255, 127./255 ),
-           ( 198./255, 195./255, 71./255 , 127./255 ),
-           ( 1.      , 1.      , 1.      , 127./255 ),
-           ( 0.8     , 0.8     , 0.8     , 127./255 ),
-           ( 0.0     , 0.0     , 0.0     , 127./255 ),]
+colors = [ ( 50./255 , 162./255, 81./255 , 255./255 ),
+           ( 255./255, 127./255, 15./255 , 255./255 ),
+       	   ( 214./255, 39./255 , 40./255 , 255./255 ),
+           ( 121./255, 154./255, 134./255, 255./255 ),
+           ( 198./255, 195./255, 71./255 , 255./255 ),
+           ( 255./255, 0.0     , 0.0     , 255./255 ),
+           ( 0.8     , 255./255, 0.0     , 255./255 ),
+           ( 0.0     , 0.0     , 255./255, 255./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
 def PlotCoverageBars(appNames, xtickLabels):
@@ -41,8 +42,8 @@ def PlotCoverageBars(appNames, xtickLabels):
 	For BBs that do not overlap with PaMul, each strategy should be shown in stacked bars below the x-axis in least-greatest order
 	"""
 	fig = plt.figure(frameon=False)
-	fig.set_facecolor("white")
-	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
 	# we need to go through each application and find the overlap of the blocks from the application
 	# 1. for each application, intersect the block sets. This will yield exclusive and overlap regions
@@ -86,13 +87,13 @@ def PlotCoverageBars(appNames, xtickLabels):
 
 	#ax.set_aspect("equal")
 	ax.set_title("Per Application Block Coverage", fontsize=titleFont)
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHCHL, label="PaMul & HL & HC")
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHL, bottom = PaMulHCHL, label="PaMul & HL")
-	ax.bar([x for x in range(len(xtickLabels))], PaMulHC, bottom = [PaMulHCHL[i]+PaMulHL[i] for i in range(len(PaMul))], label="PaMul & HC")
-	ax.bar([x for x in range(len(xtickLabels))], PaMul, bottom = [PaMulHCHL[i]+PaMulHL[i]+PaMulHC[i] for i in range(len(PaMul))], label="PaMul")
-	ax.bar([x for x in range(len(xtickLabels))], HC, label="HC")
-	ax.bar([x for x in range(len(xtickLabels))], HL, bottom = HC, label="HL")
-	ax.bar([x for x in range(len(xtickLabels))], HCHL, bottom = [HC[i]+HL[i] for i in range(len(HC))], label="HC & HL")
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHCHL, label="PaMul & HL & HC", color=colors[0])
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHL, bottom = PaMulHCHL, label="PaMul & HL", color=colors[1])
+	ax.bar([x for x in range(len(xtickLabels))], PaMulHC, bottom = [PaMulHCHL[i]+PaMulHL[i] for i in range(len(PaMul))], label="PaMul & HC", color=colors[2])
+	ax.bar([x for x in range(len(xtickLabels))], PaMul, bottom = [PaMulHCHL[i]+PaMulHL[i]+PaMulHC[i] for i in range(len(PaMul))], label="PaMul", color=colors[3])
+	ax.bar([x for x in range(len(xtickLabels))], HC, label="HC", color=colors[4])
+	ax.bar([x for x in range(len(xtickLabels))], HL, bottom = HC, label="HL", color=colors[5])
+	ax.bar([x for x in range(len(xtickLabels))], HCHL, bottom = [HC[i]+HL[i] for i in range(len(HC))], label="HC & HL", color=colors[6])
 	ax.set_ylabel("%", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
