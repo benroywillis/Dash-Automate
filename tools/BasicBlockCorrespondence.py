@@ -23,7 +23,9 @@ buildFolders = { "build2-23-2022_hc95" }
 dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
 loopFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loopdata.json"
 
-InterestingProjects = { "Armadillo" }
+# set that selects projects we want to be included in the input data
+# if this set is empty we select all available projects
+InterestingProjects = {}
 
 # plot parameters
 axisFont  = 10
@@ -54,8 +56,9 @@ def PlotKernelCorrespondence(dataMap):
 	HL = set()
 	PaMul = set()
 	for file in dataMap:
-		if RD.getProjectName(file, "Dash-Corpus") not in InterestingProjects:
-			continue
+		if len(InterestingProjects):
+			if RD.getProjectName(file, "Dash-Corpus") not in InterestingProjects:
+				continue
 		if dataMap[file].get("Kernels"):
 			if "HotCode" in file:
 				HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
@@ -64,7 +67,8 @@ def PlotKernelCorrespondence(dataMap):
 			else:
 				PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
-	pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
+	v = pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
+	#v.get_patch_by_id("100").set_color(colors[0])
 	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
 
@@ -151,5 +155,5 @@ loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName, RD
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
 PlotKernelCorrespondence(matched)
-PlotKernelCorrespondence_static(matched, loopMap)
+#PlotKernelCorrespondence_static(matched, loopMap)
 ExclusionZones(matched, loopMap)
