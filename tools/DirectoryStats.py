@@ -180,11 +180,11 @@ def getProjectStats(dataMap):
 			if directoryKernelMap[p].get(f) is None:
 				directoryKernelMap[p][f] = { "Kernels": 0, "Applications": 0 }
 			for a in dataMap[p]:
-				if dataMap[p][a].get(f) is None:
+				if dataMap[p][a].get("2DMarkov") is None:
 					continue
-				if dataMap[p][a][f].get("Kernels") is None:
+				if dataMap[p][a]["2DMarkov"].get("Kernels") is None:
 					continue
-				directoryKernelMap[p][f]["Kernels"] += dataMap[p][a][f]["Kernels"]
+				directoryKernelMap[p][f]["Kernels"] += dataMap[p][a]["2DMarkov"]["Kernels"]
 				directoryKernelMap[p][f]["Applications"] += 1
 	return directoryKernelMap
 
@@ -197,6 +197,11 @@ def printProjectStats(directoryKernelMap):
 			refinedDMap[mappedP] = {"Kernels": 0, "Applications": 0 }
 		refinedDMap[mappedP]["Applications"] += directoryKernelMap[p][f]["Applications"]
 		refinedDMap[mappedP]["Kernels"] += directoryKernelMap[p][f]["Kernels"]
+	refinedDMap["Total"] = { "Kernels": 0, "Applications": 0 }
+	for p in refinedDMap:
+		if p is not "Total":
+			refinedDMap["Total"]["Kernels"] += refinedDMap[p]["Kernels"]
+			refinedDMap["Total"]["Applications"] += refinedDMap[p]["Applications"]
 
 	with open("DirectoryKernelStats.json","w") as f:
 		json.dump(refinedDMap, f, indent=4)
@@ -379,8 +384,8 @@ def outputDirectoryKernels(matchedData):
 #buildFolders = { "buildHC11-21-21", "build2DMarkov11-21-21" }
 #buildFolders = { "buildHC", "build2DMarkov" }
 
-CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/"
-buildFolders = {"buildQPR13_12-20-21"}
+CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+buildFolders = {"build2-23-2022_hc95"}
 dataMap = retrieveData(buildFolders)
 pStats = getProjectStats(dataMap)
 printProjectStats(pStats)
