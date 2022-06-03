@@ -190,6 +190,7 @@ def readKernelFile(kf, justBlocks=True):
 	return returnDict
 
 def readLoopFile(lf):
+	print(lf)
 	returnDict = {}
 	try:
 		hj = json.load( open(lf, "r") )
@@ -223,6 +224,22 @@ def readLoopFile_Coverage(lf):
 	if hj["Static Blocks"] is None:
 		return 0.0
 	return len(loopBlocks) / len(hj["Static Blocks"])
+
+def readLogFile(lf, regexf):
+	"""
+	lf - absolute path to a log file
+	regexf - function looking for a regular expression, should return a string
+	"""
+	try:
+		lf = open(lf, "r")
+	except Exception as e:
+		print("Could not open logfile "+lf+": "+str(e))
+	regexStrings = []
+	for line in lf:
+		reg = regexf(line)
+		if len(reg):
+			regexStrings.append(reg)
+	return regexStrings
 
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
 def findOffset(path, basePath):
@@ -264,7 +281,6 @@ def recurseIntoFolder(path, BuildNames, basePath, folderMap):
 	for f in os.scandir(path):
 		if f.is_dir():
 			directories.append(f)
-
 	for d in directories:
 		folderMap = recurseIntoFolder(d.path, BuildNames, basePath, folderMap)
 	return folderMap
@@ -343,6 +359,30 @@ def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	loopTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="Loops_", suffix=".json")
 	for l in loopTargets:
 		dataMap[l] = lfReader(l)#parseKernelData(k)
+
+	with open("Data/"+dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
+def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing loop file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to log file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	logTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="Cartographer_", suffix=".log")
+	for l in logTargets:
+		dataMap[l] = readLogFile(l, lfReader)
 
 	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
