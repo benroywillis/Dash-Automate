@@ -20,7 +20,8 @@ CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build5-20-22_newestChanges_hc95" }
 #buildFolders = { "build5-22-22_hc95" }
 #buildFolders = { "build6-02-22_hc95" }
-buildFolders = { "build6-07-22_hc95" }
+#buildFolders = { "build6-07-22_hc95" }
+buildFolders = { "build6-30-22_hc95" }
 
 def PrintFigure(plt, name):
 	plt.savefig("Figures/"+name+".svg",format="svg")
@@ -211,7 +212,6 @@ def readKernelFile(kf, justBlocks=True):
 	return returnDict
 
 def readLoopFile(lf):
-	print(lf)
 	returnDict = {}
 	try:
 		hj = json.load( open(lf, "r") )
@@ -392,7 +392,7 @@ def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
 			dataMap = json.load(f)
 			return dataMap
 	except FileNotFoundError:
-		print("No pre-existing loop file. Running collection algorithm...")
+		print("No pre-existing log info file. Running collection algorithm...")
 	# contains paths to all directories that contain files we seek 
 	# project path : build folder 
 	directoryMap = {}
