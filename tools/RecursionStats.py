@@ -2,18 +2,8 @@ import RetrieveData as RD
 import matplotlib.pyplot as plt
 import re
 
-## input data
-# for testing
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#buildFolders = {"build5-13-22_hc95"}
-buildFolders = {"build6-02-22_hc95"}
-
-# most recent build
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#buildFolders = {"build5-13-2022_hc95"}
-
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "Recursion_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
+dataFileName = "Recursion_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
 
 # set of project names I'm interested in
 # if this is empty we take all projects
@@ -150,5 +140,5 @@ def plotRecursionData(dataMap):
 	RD.PrintFigure(plt, "RecursionBars")
 	plt.show()
 
-dataMap = RD.retrieveLogData(buildFolders, CorpusFolder, dataFileName, recursiveFunctionRegex)
+dataMap = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, dataFileName, recursiveFunctionRegex)
 plotRecursionData(dataMap)

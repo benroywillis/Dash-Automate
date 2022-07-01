@@ -4,24 +4,9 @@ import matplotlib_venn   as pltv
 import venn
 import RetrieveData as RD
 
-# for testing
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Artisan/"
-#buildFolders = { "build_noHLconstraints_hc98" }
-
-# most recent build
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#buildFolders = { "build1-30-2022_noHLconstraints" }
-#buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
-#buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
-#buildFolders = { "build_2-3-2022_hc95" }
-#buildFolders = { "build2-8-2022_hc95" }
-#buildFolders = { "build2-14-2022_hc95" }
-buildFolders = { "build2-23-2022_hc95" }
-
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
-loopFileName = "".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loopdata.json"
+dataFileName = "".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
+loopFileName = "".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_loopdata.json"
 
 # set that selects projects we want to be included in the input data
 # if this set is empty we select all available projects
@@ -150,8 +135,8 @@ def ExclusionZones(dataMap, loopMap):
 	with open("ExclusiveRegions.json", "w") as f:
 		json.dump(exclusions, f, indent=4)
 
-dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
-loopMap = RD.retrieveStaticLoopData(buildFolders, CorpusFolder, loopFileName, RD.readLoopFile)
+dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
+loopMap = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopFileName, RD.readLoopFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
 PlotKernelCorrespondence(matched)

@@ -1,6 +1,27 @@
 import json
 import os
 
+## input data
+# for testing
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Artisan/"
+#buildFolders = { "build_noHLconstraints_hc98" }
+
+# most recent build
+CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+#buildFolders = { "build1-30-2022_noHLconstraints" }
+#buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
+#buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
+#buildFolders = { "build_2-3-2022_hc95" }
+#buildFolders = { "build2-8-2022_hc95" }
+#buildFolders = { "build2-14-2022_hc95" }
+#buildFolders = { "build2-23-2022_hc95" }
+#buildFolders = { "build5-20-22_hc95" }
+#buildFolders = { "build5-20-22_newestChanges_hc95" }
+#buildFolders = { "build5-22-22_hc95" }
+#buildFolders = { "build6-02-22_hc95" }
+buildFolders = { "build6-07-22_hc95" }
+
 def PrintFigure(plt, name):
 	plt.savefig("Figures/"+name+".svg",format="svg")
 	plt.savefig("Figures/"+name+".eps",format="eps")

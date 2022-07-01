@@ -1,18 +1,10 @@
 import RetrieveData as RD
 import matplotlib.pyplot as plt
-
-## input data
-# for testing
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#buildFolders = {"build2-23-2022_hc95"}
-
-# most recent build
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-buildFolders = {"build2-23-2022_hc95"}
+import json
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_data.json"
-loopFileName = "Coverage_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+"_loop.json"
+dataFileName = "Coverage_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
+loopFileName = "Coverage_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_loop.json"
 
 # set of project names I'm interested in
 # if this is empty we take all projects
@@ -33,18 +25,7 @@ colors = [ ( 50./255 , 162./255, 81./255 , 255./255 ), # leaf green
            ( 198./255, 195./255, 71./255 , 255./255 ) ]# mustard yellow
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-def PlotCoverageBars(appNames, xtickLabels):
-	"""
-	@brief This function shows a per-application breakdown of what Hotcode, Hotloop and PaMul capture (in terms of basic blocks)
-	This figure should be used in conjunction with a Venn diagram showing the overall basic blocks captured by each strategy
-	This figure should be color-matched to the Venn diagram
-	For places of overlap with PaMul, each strategy should be shown in stacked bars above the x-axis in least-greatest order
-	For BBs that do not overlap with PaMul, each strategy should be shown in stacked bars below the x-axis in least-greatest order
-	"""
-	fig = plt.figure(frameon=False)
-	fig.set_facecolor("black")
-	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
-
+def SetIntersections(appNames):
 	# we need to go through each application and find the overlap of the blocks from the application
 	# 1. for each application, intersect the block sets. This will yield exclusive and overlap regions
 	# 2. for regions that overlap with PaMul, sort their magnitudes and make an entry for that application
@@ -73,6 +54,28 @@ def PlotCoverageBars(appNames, xtickLabels):
 		setIntersections[kfPath]["PaMul"]["PaMulHC"]   = len(PaMulHC) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHC)
 		setIntersections[kfPath]["PaMul"]["PaMulHL"]   = len(PaMulHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHL)
 		setIntersections[kfPath]["PaMul"]["PaMulHCHL"] = len(PaMulHCHL) / len(PaMulset) if len(PaMulset) > 0 else len(PaMulHCHL)
+	return setIntersections
+
+def outputProblemProjects(setIntersections):
+	# sort by size of non-PaMul code
+	sortedKeys = sorted( setIntersections, key=lambda x: setIntersections[x]["NonPaMul"]["HC"]+setIntersections[x]["NonPaMul"]["HL"]+setIntersections[x]["NonPaMul"]["HCHL"], reverse=True)
+	sortedIntersections = {}
+	for key in sortedKeys:
+		sortedIntersections[key] = setIntersections[key]
+	with open("BadPaMulStructureProjects.json", "w") as f:
+		json.dump(sortedIntersections, f, indent=4)
+
+def PlotCoverageBars(setIntersections, xtickLabels):
+	"""
+	@brief This function shows a per-application breakdown of what Hotcode, Hotloop and PaMul capture (in terms of basic blocks)
+	This figure should be used in conjunction with a Venn diagram showing the overall basic blocks captured by each strategy
+	This figure should be color-matched to the Venn diagram
+	For places of overlap with PaMul, each strategy should be shown in stacked bars above the x-axis in least-greatest order
+	For BBs that do not overlap with PaMul, each strategy should be shown in stacked bars below the x-axis in least-greatest order
+	"""
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
 	# with the set intersections, we sort the data points into their respective positions
 	# the 5 lists below represent the positions: lowest means most negative (highest non-PaMul), highest means most positive (highest PaMul overlap)
@@ -97,13 +100,15 @@ def PlotCoverageBars(appNames, xtickLabels):
 	ax.set_ylabel("%", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
-	ax.legend()
+	ax.legend(frameon=False)
 	RD.PrintFigure(plt, "BasicBlockOverlap")
 	plt.show()
 
-dataMap = RD.retrieveKernelData(buildFolders, CorpusFolder, dataFileName, RD.readKernelFile)
+dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
 appMap, xaxis  = RD.SortAndMap_App(matched, InterestingProjects)
-PlotCoverageBars(appMap, xaxis)
+setIntersections = SetIntersections(appMap)
+outputProblemProjects(setIntersections)
+PlotCoverageBars(setIntersections, xaxis)
 
