@@ -17,7 +17,8 @@ colors = [ ( 50./255 , 162./255, 81./255 , 255./255 ), # leaf green
            ( 190./255, 10./255 , 255./255, 255./255 ), # violet
            ( 180./255, 90./255 , 0.0     , 255./255 ), # brown
            ( 255./255, 10./255 , 140./255, 255./255 ), # hot pink
-           ( 198./255, 195./255, 71./255 , 255./255 ) ]# mustard yellow
+           ( 198./255, 195./255, 71./255 , 255./255 ), # mustard yellow
+           ( 204./255, 153./255, 255./255, 255./255 ) ]# light violet
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
 # this function returns a string with information in it if information is found in the line of the log file
@@ -58,17 +59,19 @@ def mapErrorMessage(error):
 	elif error.startswith("interrupt"):
 		return "Evaluation Time Too Long"
 	elif error.startswith(" Could not find a matching next edge"):
-		return "Call-Return Mapping"
+		return "Static Information Injection"
+	elif error.startswith(" Dynamic call graph edge was not confirmed"):
+		return "Static Information Injection"
 	elif error.startswith(" This sink node ID is already"):
 		return "Profile Read Error"
 	elif error.startswith(" Function subgraph BFS exceeded"):
 		return "Function Subgraph"
-	elif error.startswith(" Found a midnode that is not"):
-		return "Transform Error"
-	elif error.startswith(" Found more than one"):
-		return "Transform Error"
 	elif error.startswith(" Node is unreachable"):
 		return "Function Subgraph"
+	elif error.startswith(" Found a shared function that exits the program"):
+		return "Function Subgraph"
+	elif error.startswith(" Found a midnode that is not"):
+		return "Transform Error"
 	elif error.startswith(" Found more than one node"):
 		return "Transform Error"
 	else:
@@ -88,11 +91,12 @@ def plotCompliance(results):
 	mappedResults = {}
 	for p in results:
 		if p != "Ignore":
-			mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "Unknown": 0 }
+			mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "Unknown": 0 }
 			for e in results[p]:
 				mappedResults[p][mapErrorMessage(e)] += results[p][e]
 	compliant      = [mappedResults[p]["Compliant"] for p in mappedResults]
 	inlineSchedule = [mappedResults[p]["Inlining Schedule"] for p in mappedResults]
+	sii            = [mappedResults[p]["Static Information Injection"] for p in mappedResults]
 	ettl           = [mappedResults[p]["Evaluation Time Too Long"] for p in mappedResults]
 	callReturnMap  = [mappedResults[p]["Call-Return Mapping"] for p in mappedResults]
 	profile        = [mappedResults[p]["Profile Read Error"] for p in mappedResults]
@@ -108,7 +112,8 @@ def plotCompliance(results):
 	ax.bar([x for x in range(len(profile))], profile, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i] for i in range(len(compliant))], label="Profile Read Error", color=colors[4])
 	ax.bar([x for x in range(len(subgraph))], subgraph, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i] for i in range(len(compliant))], label="Function Subgraph", color=colors[5])
 	ax.bar([x for x in range(len(transform))], transform, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i] for i in range(len(compliant))], label="Transform Error", color=colors[6])
-	ax.bar([x for x in range(len(unknown))], unknown, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="Unknown", color=colors[7])
+	ax.bar([x for x in range(len(sii))], sii, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="Static Information Injection", color=colors[7])
+	ax.bar([x for x in range(len(unknown))], unknown, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="Unknown", color=colors[8])
 	ax.set_ylabel("Count", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
