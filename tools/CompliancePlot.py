@@ -18,7 +18,8 @@ colors = [ ( 50./255 , 162./255, 81./255 , 255./255 ), # leaf green
            ( 180./255, 90./255 , 0.0     , 255./255 ), # brown
            ( 255./255, 10./255 , 140./255, 255./255 ), # hot pink
            ( 198./255, 195./255, 71./255 , 255./255 ), # mustard yellow
-           ( 204./255, 153./255, 255./255, 255./255 ) ]# light violet
+           ( 204./255, 153./255, 255./255, 255./255 ), # light violet
+           ( 255./255, 178./255, 100./255, 255./255 ) ]# tan
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
 # this function returns a string with information in it if information is found in the line of the log file
@@ -60,7 +61,9 @@ def mapErrorMessage(error):
 		return "Evaluation Time Too Long"
 	elif error.startswith(" Could not find a matching next edge"):
 		return "Static Information Injection"
-	elif error.startswith(" Dynamic call graph edge was not confirmed"):
+	elif error.startswith(" Dynamic graph call edge was not confirmed"):
+		return "Static Information Injection"
+	elif error.startswith(" Outgoing edges do not sum to "):
 		return "Static Information Injection"
 	elif error.startswith(" This sink node ID is already"):
 		return "Profile Read Error"
@@ -74,6 +77,8 @@ def mapErrorMessage(error):
 		return "Transform Error"
 	elif error.startswith(" Found more than one node"):
 		return "Transform Error"
+	elif error.startswith("In Progress"):
+		return "In Progress"
 	else:
 		return "Unknown"
 
@@ -91,7 +96,7 @@ def plotCompliance(results):
 	mappedResults = {}
 	for p in results:
 		if p != "Ignore":
-			mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "Unknown": 0 }
+			mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "In Progress": 0, "Unknown": 0 }
 			for e in results[p]:
 				mappedResults[p][mapErrorMessage(e)] += results[p][e]
 	compliant      = [mappedResults[p]["Compliant"] for p in mappedResults]
@@ -102,6 +107,7 @@ def plotCompliance(results):
 	profile        = [mappedResults[p]["Profile Read Error"] for p in mappedResults]
 	subgraph       = [mappedResults[p]["Function Subgraph"] for p in mappedResults]
 	transform      = [mappedResults[p]["Transform Error"] for p in mappedResults]
+	inProgress     = [mappedResults[p]["In Progress"] for p in mappedResults]
 	unknown        = [mappedResults[p]["Unknown"] for p in mappedResults]
 
 	ax.set_title("Compliance", fontsize=titleFont)
@@ -113,7 +119,8 @@ def plotCompliance(results):
 	ax.bar([x for x in range(len(subgraph))], subgraph, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i] for i in range(len(compliant))], label="Function Subgraph", color=colors[5])
 	ax.bar([x for x in range(len(transform))], transform, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i] for i in range(len(compliant))], label="Transform Error", color=colors[6])
 	ax.bar([x for x in range(len(sii))], sii, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="Static Information Injection", color=colors[7])
-	ax.bar([x for x in range(len(unknown))], unknown, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="Unknown", color=colors[8])
+	ax.bar([x for x in range(len(unknown))], inProgress, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i] for i in range(len(compliant))], label="InProgress", color=colors[8])
+	ax.bar([x for x in range(len(unknown))], unknown, bottom=[compliant[i]+inlineSchedule[i]+ettl[i]+callReturnMap[i]+profile[i]+subgraph[i]+transform[i]+inProgress[i] for i in range(len(compliant))], label="Unknown", color=colors[9])
 	ax.set_ylabel("Count", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
@@ -128,7 +135,7 @@ for entry in sorted(dataMap):
 	if results.get(projectName) is None:
 		results[projectName] = { "success": 0 }
 	if len(dataMap[entry]) == 0:
-		dataMap[entry] = ["unhandled exception"]
+		dataMap[entry] = ["In Progress"]
 	if dataMap[entry][0] == "success":
 		results[projectName]["success"] += 1
 	else:
