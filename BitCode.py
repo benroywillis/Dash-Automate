@@ -461,7 +461,7 @@ class BitCode:
             # push to SQL
             self.BCSQL.push()
             # delete trace if needed
-            if not self.args.keep_trace:
+            if self.args.delete_profile:
                 self.deleteProfiles()
             return True
 

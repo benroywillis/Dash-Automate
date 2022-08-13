@@ -131,7 +131,7 @@ def argumentParse():
     arg_parser.add_argument("-ns", "--no-subdirectories", action="store_true", help="Ignore subdirectories specified in the .json.")
     arg_parser.add_argument("-nl", "--no-labeling", action="store_true", help="Turn off kernel labeling in the Cartographer.")
     #arg_parser.add_argument("-np", "--no-papi", action="store_true", help="Disable the PAPI step of the tool.")
-    arg_parser.add_argument("-kt", "--keep-trace", action="store_true", help="Don't delete the trace during build flow.")
+    arg_parser.add_argument("-dp", "--delete-profile", default=True, action="store_true", help="Delete profiles during build flow.")
     arg_parser.add_argument("-P", "--project-prefix", default=os.getcwd(), help="Set path prefix to the project root folder.")
     arg_parser.add_argument("-lp", "--long-report", action='store_true', help="Include reports about individual projects and bitcodes in the FULLREPORT file.")
     # toolchain configuration
