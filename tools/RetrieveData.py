@@ -1,6 +1,9 @@
+# for reading and writing jsons
 import json
+# for filesystem ops
 import os
-
+# for reading binary-encoded profiles
+import struct
 ## input data
 # for testing
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
@@ -8,7 +11,10 @@ import os
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
-CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/OpenCV/"
+#CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
+#CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
 #buildFolders = { "build1-31-2022_noHLconstraints_hc95" }
 #buildFolders = { "build_noHLconstraints_hc98" } # started 1-31-22
@@ -21,7 +27,14 @@ CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
 #buildFolders = { "build5-22-22_hc95" }
 #buildFolders = { "build6-02-22_hc95" }
 #buildFolders = { "build6-07-22_hc95" }
-buildFolders = { "build6-30-22_hc95" }
+#buildFolders = { "build6-30-22_hc95" }
+#buildFolders = { "build7-5-22_hc95" }
+#buildFolders = { "build7-28-22_hc95" }
+#buildFolders = { "build7-29-22_hc95" }
+#buildFolders = { "build8-07-22_hc95" }
+buildFolders = { "build_OPENCV_test" }
+#buildFolders = { "OldBuild" }
+#buildFolders = { "STL_Test" }
 
 def PrintFigure(plt, name):
 	plt.savefig("Figures/"+name+".svg",format="svg")
@@ -262,6 +275,39 @@ def readLogFile(lf, regexf):
 			regexStrings.append(reg)
 	return regexStrings
 
+def readProfile(f):
+	"""
+	Reads a profile in binary format
+	@retval 	tuple( a map from edge to frequency, a map of block ID to frequency )
+	"""
+	try:
+		pf = open(f, "rb")
+	except Exception as e:
+		print("Could not open profile file "+f+": "+str(e))
+	profile_b = pf.read()
+	# markov order
+	MO = struct.unpack("I", profile_b[:4])[0]
+	# block count
+	blockCount = struct.unpack("I", profile_b[4:8])[0]
+	# edge count
+	edgeCount = struct.unpack("I", profile_b[8:12])[0]
+	# read each edge and frequency
+	# maps a tuple of src,snk to a frequency count
+	profile = {}
+	for newEdge in struct.iter_unpack("IIL", profile_b[12:]):
+		src = newEdge[0]
+		snk = newEdge[1]
+		fre = newEdge[2]
+		profile[ (src,snk) ] = fre
+
+	blockFrequencies = {}
+	for edge in profile:
+		if blockFrequencies.get(edge[1]) is None:
+			blockFrequencies[edge[1]] = profile[edge]
+		else:
+			blockFrequencies[edge[1]] += profile[edge]
+	return profile, blockFrequencies
+
 # the functions in this file only work if the file tree project has Dash-Corpus in its root path
 def findOffset(path, basePath):
 	b = set(basePath.split("/"))
@@ -404,6 +450,30 @@ def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	logTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="Cartographer_", suffix=".log")
 	for l in logTargets:
 		dataMap[l] = readLogFile(l, lfReader)
+
+	with open("Data/"+dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
+def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing log info file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to log file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	profileTargets = getTargetFilePaths(directoryMap, CorpusFolder, suffix=".bin")
+	for l in profileTargets:
+		dataMap[l] = readProfile(l)
 
 	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
