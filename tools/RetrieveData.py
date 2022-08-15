@@ -602,3 +602,31 @@ def OverlapRegions(appMap):
 		PaMulHCHL = PaMulset.intersection(HCset).intersection(HLset) 
 	# when using this with matplotlib_venn, [A, B, AB, C, AC, BC, ABC] with labels [A, B, C]
 	return [HC, HL, HCHL, PaMul, PaMulHC, PaMulHL, PaMulHCHL]
+
+def OverlapRegions(HCKs, HLKs, PaMulKs):
+	"""
+	This function overlaps all 7 regions possible for a 3-circle venn diagram
+	The input appMap should be a map of native file data as described in the return value description of SortAndMap_App
+	"""
+	HCset = set()
+	for k in HCKs:
+		for b in HCKs[k]:
+			HCset.add(int(b))
+	HLset = set()
+	for k in HLKs:
+		for b in HLKs[k]:
+			HLset.add(int(b))
+	PaMulset = set()
+	for k in PaMulKs:
+		for b in PaMulKs[k]:
+			PaMulset.add(int(b))
+	# john: do this in reverse order bc that saves work
+	HC        = HCset - HLset - PaMulset
+	HL        = HLset - HCset - PaMulset
+	PaMul     = PaMulset - HCset - HLset
+	HCHL      = HCset.intersection(HLset) - PaMulset
+	PaMulHC   = PaMulset.intersection(HCset) - HLset
+	PaMulHL   = PaMulset.intersection(HLset) - HCset
+	PaMulHCHL = PaMulset.intersection(HCset).intersection(HLset) 
+	# when using this with matplotlib_venn, [A, B, AB, C, AC, BC, ABC] with labels [A, B, C]
+	return HC, HL, PaMul, HCHL, PaMulHC, PaMulHL, PaMulHCHL
