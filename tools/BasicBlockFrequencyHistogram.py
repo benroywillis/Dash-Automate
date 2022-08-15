@@ -11,16 +11,19 @@ axisFont  = 10
 axisLabelFont  = 10
 titleFont = 16
 xtickRotation = 90
-colors = [ ( 50./255 , 162./255, 81./255 , 255./255 ), # leaf green
-           ( 255./255, 127./255, 15./255 , 255./255 ), # crimson red
-           ( 214./255, 39./255 , 40./255 , 255./255 ), # orange
+colors = [ 
+           ( 255./255,  95./255,  95./255, 255./255 ), # HC, orangish red
+           (  50./255, 162./255,  81./255, 255./255 ), # HL, leaf green
+           ( 190./255,  10./255, 255./255, 255./255 ), # PaMul, violet
+           ( 255./255, 153./255,  51./255, 255./255 ), # HCHL, lite brown
+           ( 255./255, 102./255, 178./255, 255./255 ), # HCPaMul, pink
+           (  51./255, 153./255, 255./255, 255./255 ), # HLPaMul, sky blue
+           ( 153./255, 153./255, 255./255, 255./255 ), # HCHLPaMul, brown-purple 
+           ( 255./255, 178./255, 100./255, 255./255 ), # None, tan
            ( 121./255, 154./255, 134./255, 255./255 ), # olive green
-           ( 190./255, 10./255 , 255./255, 255./255 ), # violet
-           ( 180./255, 90./255 , 0.0     , 255./255 ), # brown
-           ( 255./255, 10./255 , 140./255, 255./255 ), # hot pink
-           ( 198./255, 195./255, 71./255 , 255./255 ), # mustard yellow
-           ( 204./255, 153./255, 255./255, 255./255 ), # light violet
-           ( 255./255, 178./255, 100./255, 255./255 ) ]# tan
+           ( 198./255, 195./255,  71./255, 255./255 ), # mustard yellow
+           ( 204./255, 153./255, 255./255, 255./255 )  # light violet
+         ]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
 # maps a frequency count to the number of basic blocks that have that frequency count
@@ -72,20 +75,92 @@ def freqPlotParse(dataPoint, segHist):
 				segHist[freq]["None"] += 1
 	return segHist
 
-def plotSegmentedHistogram(segHist, plotNone=True, min=0, max=0):
+def plotSegmentedHistogram(segHist, plotHC=True, plotHL=True, plotPaMul=True, plotHCHL=True, plotHCPaMul=True, plotHLPaMul=True, plotHCHLPaMul=True, plotNone=True, limitTicks=True, min=0, max=0):
 	"""
-	@param segHist	Maps a frequency to a map of each category magnitude ie { 20: { "HC": 4, "HL": 10, ... } }
-	@param plotNone	Include basic blocks that do not belong to any kernel segmentation strategy
-	@param min		Minimum frequency to plot (inclusive)
-	@param max		Maximum frequency to plot (exclusive). If 0 the entire length of the data is considered
+	@param segHist			Maps a frequency to a map of each category magnitude ie { 20: { "HC": 4, "HL": 10, ... } }
+	@param plotHC    		Include basic blocks that belong exclusively to the HC kernel segmentation strategy
+	@param plotHL    		Include basic blocks that belong exclusively to the HL kernel segmentation strategy
+	@param plotPaMul    	Include basic blocks that belong exclusively to the PaMul kernel segmentation strategy
+	@param plotHCHL    		Include basic blocks that belong to both the HC and HL kernel segmentation strategies
+	@param plotHCPaMul		Include basic blocks that belong to both the HC and PaMul kernel segmentation strategies
+	@param plotHLPaMul		Include basic blocks that belong to both the HL and PaMul kernel segmentation strategies
+	@param plotHCHLPaMul	Include basic blocks that belong to the HC, HL, and PaMul kernel segmentation strategies
+	@param plotNone			Include basic blocks that do not belong to any kernel segmentation strategy
+	@param limitTicks 		Cap ticks on the xaxis of the plot to 100 in equal intervals
+	@param min				Minimum frequency to plot (inclusive)
+	@param max				Maximum frequency to plot (exclusive). If 0 the entire length of the data is considered
 	"""
 	fig = plt.figure(figsize=figDim, dpi=figDPI, frameon=False)
 	ax = fig.add_subplot(1, 1, 1, frameon=False)
 
+	# put data into an array
+	frequencies = sorted(list(segHist.keys()))
+	allData     = []
+	dataLabels  = []
+	dataColors  = []
+	if plotHC:
+		HC        = [segHist[f]["HC"] for f in sorted(segHist)]
+		allData.append(HC)
+		dataLabels.append( "HC" )
+		dataColors.append( colors[0] )
+	if plotHL:
+		HL        = [segHist[f]["HL"] for f in sorted(segHist)]
+		allData.append(HL)
+		dataLabels.append( "HL" )
+		dataColors.append( colors[1] )
+	if plotPaMul:
+		PaMul     = [segHist[f]["PaMul"] for f in sorted(segHist)]
+		allData.append(PaMul)
+		dataLabels.append( "PaMul" )
+		dataColors.append( colors[2] )
+	if plotHCHL:
+		HCHL      = [segHist[f]["HCHL"] for f in sorted(segHist)]
+		allData.append(HCHL)
+		dataLabels.append( "HCHL" )
+		dataColors.append( colors[3] )
+	if plotHCPaMul:
+		HCPaMul   = [segHist[f]["HCPaMul"] for f in sorted(segHist)]
+		allData.append(HCPaMul)
+		dataLabels.append( "HCPaMul" )
+		dataColors.append( colors[4] )
+	if plotHLPaMul:
+		HLPaMul   = [segHist[f]["HLPaMul"] for f in sorted(segHist)]
+		allData.append(HLPaMul)
+		dataLabels.append( "HLPaMul" )
+		dataColors.append( colors[5] )
+	if plotHCHLPaMul:
+		HCHLPaMul = [segHist[f]["HCHLPaMul"] for f in sorted(segHist)]
+		allData.append(HCHLPaMul)
+		dataLabels.append( "HCHLPaMul" )
+		dataColors.append( colors[6] )
+	if plotNone:
+		Non       = [segHist[f]["None"] for f in sorted(segHist)]
+		allData.append(Non)
+		dataLabels.append( "None" )
+		dataColors.append( colors[7] )
+
+	# take out all non-zero entries (along the columns, all entries of a row have to be 0 for the row to be eliminated)
+	toRemove = []
+	for j in range(len(allData[0])):
+		allzero = True
+		for i in range(len(allData)):
+			if allData[i][j] > 0:
+				allzero = False
+				break
+		if allzero:
+			toRemove.append( j )
+	offset = 0
+	for i in range(len(toRemove)):
+		del frequencies[toRemove[i] - offset]
+		for r in range(len(allData)):
+			del allData[r][toRemove[i] - offset]
+		offset += 1
+
+	# length of the data
 	if max:
 		dataLength = max
 	else:
-		dataLength = len(list(segHist.keys()))
+		dataLength = len(allData[0])
 
 	# x axis labels
 	# only put 100 ticks total on the axis
@@ -95,32 +170,44 @@ def plotSegmentedHistogram(segHist, plotNone=True, min=0, max=0):
 		tickInterval = 1
 	xtickLabels = []
 	for i in range(dataLength):
-		if (i % tickInterval) == 0:
-			xtickLabels.append( str(sorted(list(segHist.keys()))[i]) )
+		if limitTicks:
+			if (i % tickInterval) == 0:
+				xtickLabels.append( str(frequencies[i]) )
+			else:
+				xtickLabels.append("")
 		else:
-			xtickLabels.append("")
-
-	HC        = [segHist[f]["HC"] for f in sorted(segHist)]
-	HL        = [segHist[f]["HL"] for f in sorted(segHist)]
-	PaMul     = [segHist[f]["PaMul"] for f in sorted(segHist)]
-	HCHL      = [segHist[f]["HCHL"] for f in sorted(segHist)]
-	HCPaMul   = [segHist[f]["HCPaMul"] for f in sorted(segHist)]
-	HLPaMul   = [segHist[f]["HLPaMul"] for f in sorted(segHist)]
-	HCHLPaMul = [segHist[f]["HCHLPaMul"] for f in sorted(segHist)]
-	if plotNone:
-		Non       = [segHist[f]["None"] for f in sorted(segHist)]
+			xtickLabels.append( str(frequencies[i]) )
 
 	ax.set_title("Frequency Histogram", fontsize=titleFont)
-
-	ax.bar([x for x in range(dataLength)], HC[:dataLength], label="HC", color=colors[0])
-	ax.bar([x for x in range(dataLength)], HL[:dataLength], bottom=HC[:dataLength], label="HL", color=colors[1])
-	ax.bar([x for x in range(dataLength)], PaMul[:dataLength], bottom=[HC[i]+HL[i] for i in range(dataLength)], label="PaMul", color=colors[2])
-	ax.bar([x for x in range(dataLength)], HCHL[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i] for i in range(dataLength)], label="HCHL", color=colors[3])
-	ax.bar([x for x in range(dataLength)], HCPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i] for i in range(dataLength)], label="HCPaMul", color=colors[4])
-	ax.bar([x for x in range(dataLength)], HLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i] for i in range(dataLength)], label="HLPaMul", color=colors[5])
-	ax.bar([x for x in range(dataLength)], HCHLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i] for i in range(dataLength)], label="HCHLPaMul", color=colors[6])
+	for i in range(len(allData)):
+		if i == 0:
+			ax.bar([x for x in range(dataLength)], allData[i][:dataLength], label=dataLabels[i], color=dataColors[i])
+		else:
+			barBottom = []
+			for j in range(dataLength):
+				sum = 0
+				for k in range(i):
+					sum += allData[k][j]
+				barBottom.append( sum )
+			ax.bar([x for x in range(dataLength)], allData[i][:dataLength], bottom=barBottom, label=dataLabels[i], color=dataColors[i])
+	"""
+	if plotHC:
+		ax.bar([x for x in range(dataLength)], HC[:dataLength], label="HC", color=colors[0])
+	if plotHL:
+		ax.bar([x for x in range(dataLength)], HL[:dataLength], bottom=HC[:dataLength], label="HL", color=colors[1])
+	if plotPaMul:
+		ax.bar([x for x in range(dataLength)], PaMul[:dataLength], bottom=[HC[i]+HL[i] for i in range(dataLength)], label="PaMul", color=colors[2])
+	if plotHCHL:
+		ax.bar([x for x in range(dataLength)], HCHL[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i] for i in range(dataLength)], label="HCHL", color=colors[3])
+	if plotHCPaMul:
+		ax.bar([x for x in range(dataLength)], HCPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i] for i in range(dataLength)], label="HCPaMul", color=colors[4])
+	if plotHLPaMul:
+		ax.bar([x for x in range(dataLength)], HLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i] for i in range(dataLength)], label="HLPaMul", color=colors[5])
+	if plotHCHLPaMul:
+		ax.bar([x for x in range(dataLength)], HCHLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i] for i in range(dataLength)], label="HCHLPaMul", color=colors[6])
 	if plotNone:
 		ax.bar([x for x in range(dataLength)], Non[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i]+HCHLPaMul[i] for i in range(dataLength)], label="None", color=colors[7])
+	"""
 	ax.set_ylabel("MembershipCount", fontsize=axisLabelFont)
 	ax.set_xlabel("Frequency", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
@@ -165,14 +252,16 @@ for path in blockFrequencies:
 				dataMap[matchPath]["Kernels"]["HL"] = matchedKernels[path2]["Kernels"]
 			else:
 				dataMap[matchPath]["Kernels"]["PaMul"] = matchedKernels[path2]["Kernels"]
-			print("Matched "+path+" and "+path2)
 			if (dataMap[matchPath]["Kernels"].get("HC") is not None) and (dataMap[matchPath]["Kernels"].get("HL") is not None) and (dataMap[matchPath]["Kernels"].get("PaMul") is not None):
 				break
+print("Matched files for "+str(len(dataMap))+" projects")
 
 # generate segmented histogram
 segHist = {}
 for entry in dataMap:
 	segHist = freqPlotParse(dataMap[entry], segHist)
 
-plotSegmentedHistogram(segHist, max=100)
-plotSegmentedHistogram(segHist, plotNone=False, max=1000)
+#plotSegmentedHistogram(segHist, max=100)
+#plotSegmentedHistogram(segHist, plotNone=False, max=100)
+#plotSegmentedHistogram(segHist, plotNone=False, max=1000)
+plotSegmentedHistogram(segHist, plotHL=False, plotPaMul=False, plotHCHL=False, plotHCPaMul=False, plotHLPaMul=False, plotHCHLPaMul=False, plotNone=False)
