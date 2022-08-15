@@ -12,7 +12,7 @@ import struct
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/OpenCV/"
+CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
@@ -32,7 +32,8 @@ CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/OpenCV/"
 #buildFolders = { "build7-28-22_hc95" }
 #buildFolders = { "build7-29-22_hc95" }
 #buildFolders = { "build8-07-22_hc95" }
-buildFolders = { "build_OPENCV_test" }
+buildFolders = { "build8-12-22" }
+#buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
 
@@ -389,7 +390,7 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 			dataMap = json.load(f)
 			return dataMap
 	except FileNotFoundError:
-		print("No pre-existing data file. Running collection algorithm...")
+		print("No pre-existing kernel data file. Running collection algorithm...")
 	# contains paths to all directories that contain files we seek 
 	# project path : build folder 
 	directoryMap = {}
@@ -459,10 +460,16 @@ def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
 def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
 	try:
 		with open("Data/"+dataFileName, "r") as f:
-			dataMap = json.load(f)
+			kvList = json.load(f)
+			# the file is stored as a list of key-value pairs, so reconstruct the map from that list
+			dataMap = {}
+			for path in kvList:
+				dataMap[path] = {}
+				for entry in kvList[path]:
+					dataMap[path][tuple(entry["key"])] = entry["value"]
 			return dataMap
 	except FileNotFoundError:
-		print("No pre-existing log info file. Running collection algorithm...")
+		print("No pre-existing profile file. Running collection algorithm...")
 	# contains paths to all directories that contain files we seek 
 	# project path : build folder 
 	directoryMap = {}
@@ -473,10 +480,12 @@ def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
 	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
 	profileTargets = getTargetFilePaths(directoryMap, CorpusFolder, suffix=".bin")
 	for l in profileTargets:
-		dataMap[l] = readProfile(l)
+		dataMap[l] = readProfile(l)[0]
 
 	with open("Data/"+dataFileName,"w") as f:
-		json.dump(dataMap, f, indent=4)
+		# the json dumper can't handle tuples as keys
+		# therefore we turn the map into a list of key-value pairs
+		json.dump( { p: [ { "key": k, "value": v } for k, v in dataMap[p].items() ] for p in dataMap }, f, indent=4)
 
 	return dataMap
 
