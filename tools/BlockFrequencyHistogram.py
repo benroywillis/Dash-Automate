@@ -1,10 +1,12 @@
 import matplotlib.pyplot as plt
 import RetrieveData as RD
 
-profilesFileName = "Profiles_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
-kernelsFileName = "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
+profilesFileName = "Profiles_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
+kernelsFileName = "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 
 # plot parameters
+figDim = (19.2,10.8) # in inches
+figDPI = 100 # creates 1920x1080 image
 axisFont  = 10
 axisLabelFont  = 10
 titleFont = 16
@@ -78,15 +80,32 @@ def freqPlotParse(dataPoint, segHist):
 				segHist[freq]["None"] += 1
 	return segHist
 
-def plotSegmentedHistogram(segHist):
-	fig = plt.figure(frameon=False)
-	fig.set_facecolor("black")
-	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
+def plotSegmentedHistogram(segHist, min=0, max=0):
+	"""
+	@param segHist	Maps a frequency to a map of each category magnitude ie { 20: { "HC": 4, "HL": 10, ... } }
+	@param min		Minimum frequency to plot (inclusive)
+	@param max		Maximum frequency to plot (exclusive). If 0 the entire length of the data is considered
+	"""
+	fig = plt.figure(figsize=figDim, dpi=figDPI, frameon=False)
+	ax = fig.add_subplot(1, 1, 1, frameon=False)
+
+	if max:
+		dataLength = max
+	else:
+		dataLength = len(list(segHist.keys()))
 
 	# x axis labels
+	# only put 100 ticks total on the axis
+	if dataLength > 100 :
+		tickInterval = int(dataLength / 100)
+	else:
+		tickInterval = 1
 	xtickLabels = []
-	for f in sorted(segHist):
-		xtickLabels.append(f)
+	for i in range(dataLength):
+		if (i % tickInterval) == 0:
+			xtickLabels.append( str(sorted(list(segHist.keys()))[i]) )
+		else:
+			xtickLabels.append("")
 
 	HC        = [segHist[f]["HC"] for f in sorted(segHist)]
 	HL        = [segHist[f]["HL"] for f in sorted(segHist)]
@@ -98,14 +117,15 @@ def plotSegmentedHistogram(segHist):
 	Non       = [segHist[f]["None"] for f in sorted(segHist)]
 
 	ax.set_title("Frequency Histogram", fontsize=titleFont)
-	ax.bar([x for x in range(len(HC))], HC, label="HC", color=colors[0])
-	ax.bar([x for x in range(len(HL))], HL, bottom=HC, label="HL", color=colors[1])
-	ax.bar([x for x in range(len(PaMul))], PaMul, bottom=[HC[i]+HL[i] for i in range(len(PaMul))], label="PaMul", color=colors[2])
-	ax.bar([x for x in range(len(HCHL))], HCHL, bottom=[HC[i]+HL[i]+PaMul[i] for i in range(len(HCHL))], label="HCHL", color=colors[3])
-	ax.bar([x for x in range(len(HCPaMul))], HCPaMul, bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i] for i in range(len(HCPaMul))], label="HCPaMul", color=colors[4])
-	ax.bar([x for x in range(len(HLPaMul))], HLPaMul, bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i] for i in range(len(HLPaMul))], label="HLPaMul", color=colors[5])
-	ax.bar([x for x in range(len(HCHLPaMul))], HCHLPaMul, bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i] for i in range(len(HCHLPaMul))], label="HCHLPaMul", color=colors[6])
-	ax.bar([x for x in range(len(Non))], Non, bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i]+HCHLPaMul[i] for i in range(len(Non))], label="None", color=colors[7])
+
+	ax.bar([x for x in range(dataLength)], HC[:dataLength], label="HC", color=colors[0])
+	ax.bar([x for x in range(dataLength)], HL[:dataLength], bottom=HC[:dataLength], label="HL", color=colors[1])
+	ax.bar([x for x in range(dataLength)], PaMul[:dataLength], bottom=[HC[i]+HL[i] for i in range(dataLength)], label="PaMul", color=colors[2])
+	ax.bar([x for x in range(dataLength)], HCHL[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i] for i in range(dataLength)], label="HCHL", color=colors[3])
+	ax.bar([x for x in range(dataLength)], HCPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i] for i in range(dataLength)], label="HCPaMul", color=colors[4])
+	ax.bar([x for x in range(dataLength)], HLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i] for i in range(dataLength)], label="HCHLPaMul", color=colors[5])
+	ax.bar([x for x in range(dataLength)], HCHLPaMul[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i] for i in range(dataLength)], label="HCHLPaMul", color=colors[6])
+	ax.bar([x for x in range(dataLength)], Non[:dataLength], bottom=[HC[i]+HL[i]+PaMul[i]+HCHL[i]+HCPaMul[i]+HLPaMul[i]+HCHLPaMul[i] for i in range(dataLength)], label="None", color=colors[7])
 	ax.set_ylabel("MembershipCount", fontsize=axisLabelFont)
 	ax.set_xlabel("Frequency", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
@@ -159,4 +179,4 @@ segHist = {}
 for entry in dataMap:
 	segHist = freqPlotParse(dataMap[entry], segHist)
 
-plotSegmentedHistogram(segHist)
+plotSegmentedHistogram(segHist, max=100)
