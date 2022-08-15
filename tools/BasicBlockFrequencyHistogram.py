@@ -75,7 +75,7 @@ def freqPlotParse(dataPoint, segHist):
 				segHist[freq]["None"] += 1
 	return segHist
 
-def plotSegmentedHistogram(segHist, plotHC=True, plotHL=True, plotPaMul=True, plotHCHL=True, plotHCPaMul=True, plotHLPaMul=True, plotHCHLPaMul=True, plotNone=True, limitTicks=True, min=0, max=0):
+def plotSegmentedHistogram(segHist, plotHC=True, plotHL=True, plotPaMul=True, plotHCHL=True, plotHCPaMul=True, plotHLPaMul=True, plotHCHLPaMul=True, plotNone=True, limitTicks=True, min=0, max=0, show=True):
 	"""
 	@param segHist			Maps a frequency to a map of each category magnitude ie { 20: { "HC": 4, "HL": 10, ... } }
 	@param plotHC    		Include basic blocks that belong exclusively to the HC kernel segmentation strategy
@@ -89,6 +89,7 @@ def plotSegmentedHistogram(segHist, plotHC=True, plotHL=True, plotPaMul=True, pl
 	@param limitTicks 		Cap ticks on the xaxis of the plot to 100 in equal intervals
 	@param min				Minimum frequency to plot (inclusive)
 	@param max				Maximum frequency to plot (exclusive). If 0 the entire length of the data is considered
+	@param show				Render figure after generation
 	"""
 	fig = plt.figure(figsize=figDim, dpi=figDPI, frameon=False)
 	ax = fig.add_subplot(1, 1, 1, frameon=False)
@@ -212,8 +213,34 @@ def plotSegmentedHistogram(segHist, plotHC=True, plotHL=True, plotPaMul=True, pl
 	ax.set_xlabel("Frequency", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	ax.legend(frameon=False)
-	RD.PrintFigure(plt, "BasicBlockFrequencyHistogram")
-	plt.show()
+	figureName = "BasicBlockFrequencyHistogram"
+	if not plotHC:
+		figureName += "_NoHC"
+	if not plotHL:
+		figureName += "_NoHL"
+	if not plotPaMul:
+		figureName += "_NoPaMul"
+	if not plotHCHL:
+		figureName += "_NoHCHL"
+	if not plotHCPaMul:
+		figureName += "_NoHCPaMul"
+	if not plotHLPaMul:
+		figureName += "_NoHLPaMul"
+	if not plotHCHLPaMul:
+		figureName += "_NoHCHLPaMul"
+	if not plotNone:
+		figureName += "_NoNone"
+	if min:
+		figureName += "_min_"+str(min)
+	if max:
+		figureName += "_max_"+str(max)
+	if limitTicks:
+		figureName += "_limitedTicks"
+	RD.PrintFigure(plt, figureName)
+	if show:
+		plt.show()
+	else:
+		print("Completed "+figureName)
 
 # profile data retrieval
 profileMap = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profilesFileName)
@@ -261,7 +288,7 @@ segHist = {}
 for entry in dataMap:
 	segHist = freqPlotParse(dataMap[entry], segHist)
 
-#plotSegmentedHistogram(segHist, max=100)
-#plotSegmentedHistogram(segHist, plotNone=False, max=100)
-#plotSegmentedHistogram(segHist, plotNone=False, max=1000)
-plotSegmentedHistogram(segHist, plotHL=False, plotPaMul=False, plotHCHL=False, plotHCPaMul=False, plotHLPaMul=False, plotHCHLPaMul=False, plotNone=False)
+plotSegmentedHistogram(segHist, max=100, show=False)
+plotSegmentedHistogram(segHist, plotNone=False, max=100, show=False)
+plotSegmentedHistogram(segHist, plotNone=False, max=1000, show=False)
+plotSegmentedHistogram(segHist, plotHL=False, plotPaMul=False, plotHCHL=False, plotHCPaMul=False, plotHLPaMul=False, plotHCHLPaMul=False, plotNone=False, show=False)
