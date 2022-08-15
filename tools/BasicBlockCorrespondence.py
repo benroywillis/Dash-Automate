@@ -5,8 +5,8 @@ import venn
 import RetrieveData as RD
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
-loopFileName = "".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_loopdata.json"
+dataFileName = "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
+loopFileName = "Loops_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 
 # set that selects projects we want to be included in the input data
 # if this set is empty we select all available projects
@@ -56,6 +56,31 @@ def PlotKernelCorrespondence(dataMap):
 	#v.get_patch_by_id("100").set_color(colors[0])
 	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
+
+def PlotKernelCorrespondence_Manual(dataMap):
+	zoneMags = { "HC": 0, "HL": 0, "PaMul": 0, "HCHL": 0, "HCPaMul": 0, "HLPaMul": 0, "HCHLPaMul": 0 }
+	combinedMap = {}
+	for path in dataMap:
+		matchPath = "/".join(x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0]
+		if combinedMap.get(matchPath) is None:
+			combinedMap[matchPath] = { "HC": {}, "HL": {}, "PaMul": {} }
+		if "HotCode" in path:
+			combinedMap[matchPath]["HC"] = dataMap[path]["Kernels"]
+		elif "HotLoop" in path:
+			combinedMap[matchPath]["HL"] = dataMap[path]["Kernels"]
+		else:
+			combinedMap[matchPath]["PaMul"] = dataMap[path]["Kernels"]
+	for path in combinedMap:
+		HC, HL, PaMul, HCHL, HCPaMul, HLPaMul, HCHLPaMul = RD.OverlapRegions(combinedMap[path]["HC"], combinedMap[path]["HL"], combinedMap[path]["PaMul"])
+		zoneMags["HC"] += len(HC)
+		zoneMags["HL"] += len(HL)
+		zoneMags["PaMul"] += len(PaMul)
+		zoneMags["HCHL"] += len(HCHL)
+		zoneMags["HCPaMul"] += len(HCPaMul)
+		zoneMags["HLPaMul"] += len(HLPaMul)
+		zoneMags["HCHLPaMul"] += len(HCHLPaMul)
+	print("Manual correspondence region magnitudes:")
+	print(zoneMags)
 
 def PlotKernelCorrespondence_static(dataMap, loopMap):
 	fig = plt.figure(frameon=False)
@@ -132,13 +157,14 @@ def ExclusionZones(dataMap, loopMap):
 		else:
 			continue
 		
-	with open("ExclusiveRegions.json", "w") as f:
+	with open("Data/ExclusiveRegions.json", "w") as f:
 		json.dump(exclusions, f, indent=4)
 
 dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
 loopMap = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopFileName, RD.readLoopFile)
 refined = RD.refineBlockData(dataMap)
 matched = RD.matchData(refined)
+PlotKernelCorrespondence_Manual(matched)
 PlotKernelCorrespondence(matched)
 #PlotKernelCorrespondence_static(matched, loopMap)
-ExclusionZones(matched, loopMap)
+#ExclusionZones(matched, loopMap)
