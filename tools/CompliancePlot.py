@@ -153,9 +153,10 @@ for entry in results:
 			else:
 				results["Total"][category] += results[entry][category]
 results["Ignore"] = {}
-results["Ignore"]["Compliance"] = results["Total"]["success"] / ( sum([results["Total"][x] for x in results["Total"]]) )
 results["Ignore"]["Total"] = sum([results["Total"][x] for x in results["Total"]])
-results["Ignore"]["Errors"] = results["Ignore"]["Total"] - results["Total"]["success"]
+results["Ignore"]["Errors"] = results["Ignore"]["Total"] - results["Total"]["success"] - results["Total"]["In Progress"]
+results["Ignore"]["In Progress"] = results["Total"]["In Progress"]
+results["Ignore"]["Compliance"] = results["Total"]["success"] / ( results["Ignore"]["Total"] - results["Ignore"]["In Progress"] )
 with open("Data/Results_Compliance_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json", "w") as f:
 	json.dump(results, f, indent=4)
 plotCompliance(results)
