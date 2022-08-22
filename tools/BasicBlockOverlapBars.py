@@ -3,8 +3,7 @@ import matplotlib.pyplot as plt
 import json
 
 # dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "Coverage_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_data.json"
-loopFileName = "Coverage_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+"_loop.json"
+dataFileName = "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 
 # set of project names I'm interested in
 # if this is empty we take all projects
