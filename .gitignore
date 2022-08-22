@@ -13,3 +13,4 @@ tmp*
 *.log
 tools/Data/
 tools/Figures/
+nohup.out
