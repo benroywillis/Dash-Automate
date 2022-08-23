@@ -70,17 +70,26 @@ def PlotKernelCorrespondence_Manual(dataMap):
 			combinedMap[matchPath]["HL"] = dataMap[path]["Kernels"]
 		else:
 			combinedMap[matchPath]["PaMul"] = dataMap[path]["Kernels"]
+
+	# record projects that have exclusive HC and HCHL blocks
+	exclusionRegions = { "HC": [], "HCHL": [] }
 	for path in combinedMap:
 		HC, HL, PaMul, HCHL, HCPaMul, HLPaMul, HCHLPaMul = RD.OverlapRegions(combinedMap[path]["HC"], combinedMap[path]["HL"], combinedMap[path]["PaMul"])
 		zoneMags["HC"] += len(HC)
+		if len(HC):
+			exclusionRegions["HC"].append( [path, list(HC)] )
 		zoneMags["HL"] += len(HL)
 		zoneMags["PaMul"] += len(PaMul)
 		zoneMags["HCHL"] += len(HCHL)
+		if len(HCHL):
+			exclusionRegions["HCHL"].append( [path, list(HCHL)] )
 		zoneMags["HCPaMul"] += len(HCPaMul)
 		zoneMags["HLPaMul"] += len(HLPaMul)
 		zoneMags["HCHLPaMul"] += len(HCHLPaMul)
 	print("Manual correspondence region magnitudes:")
 	print(zoneMags)
+	with open("Data/ExclusionRegions_"+list(RD.buildFolders)[0]+".json", "w") as f:
+		json.dump(exclusionRegions, f, indent=4)
 
 def PlotKernelCorrespondence_static(dataMap, loopMap):
 	fig = plt.figure(frameon=False)
