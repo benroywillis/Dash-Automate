@@ -62,7 +62,7 @@ def PrintCorpusStats(data):
 	with open("Data/DirectoryKernelStats.json","w") as f:
 		json.dump(sortedData, f, indent=4)
 
-	# print results to csv
+	# print results to csv, latex
 	csvString = "Library,Profiles,Kernels\n"
 	for p in sorted(data):
 		csvString  += p+","
@@ -70,6 +70,13 @@ def PrintCorpusStats(data):
 		csvString += str(entry["Profiles"])+","+str(entry["Kernels"])+"\n"
 	with open("Data/DirectoryKernelStats.csv","w") as f:
 		f.write(csvString)
+
+	latexString = "Library & Applications & Kernels \\\\\n"
+	for p in sorted(data):
+		latexString += p+" & "
+		latexString += str(data[p]["Profiles"])+" & "+str(data[p]["Kernels"])+" \\\\\n"
+	with open("Data/DirectoryKernelStats.tex","w") as f:
+		f.write(latexString)
 
 dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
 PaMulData = ParsePaMulKernels(dataMap)
