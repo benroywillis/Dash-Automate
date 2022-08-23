@@ -61,7 +61,7 @@ def outputProblemProjects(setIntersections):
 	sortedIntersections = {}
 	for key in sortedKeys:
 		sortedIntersections[key] = setIntersections[key]
-	with open("BadPaMulStructureProjects.json", "w") as f:
+	with open("Data/BadPaMulStructureProjects.json", "w") as f:
 		json.dump(sortedIntersections, f, indent=4)
 
 def PlotCoverageBars(setIntersections, xtickLabels):
