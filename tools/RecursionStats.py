@@ -49,7 +49,7 @@ def recursiveFunctionRegex(line):
 def getProjectData(dataMap):
 	projectMap = {}
 	for path in dataMap:
-		if len(dataMap[path]) != 8:
+		if len(dataMap[path]) != 9:
 			print("Entry "+path+" doesn't have all entries! - "+str(dataMap[path]))
 			continue
 		pName = RD.getProjectName(path, "Dash-Corpus")
@@ -118,7 +118,13 @@ def getProjectData(dataMap):
 		projectMap["Total"]["Dynamic"]["Live"]  += projectMap[entry]["Dynamic"]["Live"]
 		projectMap["Total"]["Dynamic"]["IDR"]   += projectMap[entry]["Dynamic"]["IDR"]
 		projectMap["Total"]["Dynamic"]["DR"]    += projectMap[entry]["Dynamic"]["DR"]
-	return projectMap
+	sortedMap = {}
+	for entry in sorted(projectMap):
+		if entry == "Total":
+			continue
+		sortedMap[entry] = projectMap[entry]
+	sortedMap["Total"] = projectMap["Total"]
+	return sortedMap
 
 def plotRecursionData_bars(projectMap):
 	xTickLabels = list(projectMap.keys())
@@ -158,16 +164,16 @@ def plotRecursionData_scatter(projectMap):
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
 	xtickLabels = list(projectMap.keys())
-	ax.set_title("Static Function Overheads", fontsize=titleFont)
+	ax.set_title("Static Structure Ambiguity", fontsize=titleFont)
 
-	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["Live"] / projectMap[p]["Static"]["Total"] * 100 for p in projectMap], label="Live", color=colors[0], marker=markers[0] )
-	ax.scatter( xtickLabels, [projectMap[p]["Static"]["TFP"] / projectMap[p]["Static"]["Total"] * 100 for p in projectMap], label="Function Pointers", color=colors[1], marker=markers[1] )
-	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["DR"] / projectMap[p]["Dynamic"]["Live"] * 100 for p in projectMap], label="Recursive", color=colors[2], marker=markers[2] )
+	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["Live"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Live", color=colors[0], marker=markers[0] )
+	ax.scatter( xtickLabels, [projectMap[p]["Static"]["TFP"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Function Pointers", color=colors[1], marker=markers[1] )
+	#ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["DR"] / projectMap[p]["Dynamic"]["Live"] * 100 if projectMap[p]["Dynamic"]["Live"] > 0 else 0 for p in projectMap], label="Recursive", color=colors[2], marker=markers[2] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["IDR"] / projectMap[p]["Dynamic"]["Live"] * 100 for p in projectMap], label="Indirect Recursive", color=colors[3], marker=markers[3] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Static"]["Total"] for p in projectMap], label="Static-Total", color=colors[0] )
 
-	ax.set_xlabel("Project", fontsize=axisFont)
-	ax.set_ylabel("%", fontsize=axisFont)
+	ax.set_xlabel("Library", fontsize=axisFont)
+	ax.set_ylabel("Normalized Proportion (count/library static functions)", fontsize=axisFont)
 	ax.set_ylim([0, 100])
 	ax.legend(frameon=False)
 	plt.xticks(fontsize=axisFont, rotation=xtickRotation)
