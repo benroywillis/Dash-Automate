@@ -6,8 +6,8 @@ import os
 import struct
 ## input data
 # for testing
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Unittests/"
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/Artisan/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Unittests/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
@@ -32,15 +32,26 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build7-28-22_hc95" }
 #buildFolders = { "build7-29-22_hc95" }
 #buildFolders = { "build8-07-22_hc95" }
-buildFolders = { "build8-12-22" }
+#buildFolders = { "build8-12-22" }
+#buildFolders = { "build8-16-22" }
+#buildFolders = { "build8-17-22" }
+#buildFolders = { "build8-20-22" }
+#buildFolders = { "build8-22-22" }
+#buildFolders = { "build8-24-22" }
+#buildFolders = { "build8-28-22" }
+buildFolders = { "build9-04-22" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
 
-def PrintFigure(plt, name):
-	plt.savefig("Figures/"+name+".svg",format="svg")
-	plt.savefig("Figures/"+name+".eps",format="eps")
-	plt.savefig("Figures/"+name+".png",format="png")
+def PrintFigure(plt, name, buildTag=True):
+	if buildTag:
+		figureName = "Figures/"+name+"_"+list(buildFolders)[0]
+	else:
+		figureName = "Figures/"+name+".svg"
+	plt.savefig(figureName+".svg",format="svg")
+	plt.savefig(figureName+".eps",format="eps")
+	plt.savefig(figureName+".png",format="png")
 
 def getProjectName(kfPath, baseName):
 	while "//" in kfPath:
@@ -266,14 +277,17 @@ def readLogFile(lf, regexf):
 	regexf - function looking for a regular expression, should return a string
 	"""
 	try:
-		lf = open(lf, "r")
+		logfile = open(lf, "r")
 	except Exception as e:
 		print("Could not open logfile "+lf+": "+str(e))
 	regexStrings = []
-	for line in lf:
-		reg = regexf(line)
-		if len(reg):
-			regexStrings.append(reg)
+	try:
+		for line in logfile:
+			reg = regexf(line)
+			if len(reg):
+				regexStrings.append(reg)
+	except:
+		print("Could not read a line in log file "+lf)
 	return regexStrings
 
 def readProfile(f):
@@ -285,6 +299,7 @@ def readProfile(f):
 		pf = open(f, "rb")
 	except Exception as e:
 		print("Could not open profile file "+f+": "+str(e))
+		return
 	profile_b = pf.read()
 	# markov order
 	MO = struct.unpack("I", profile_b[:4])[0]
@@ -370,7 +385,12 @@ def getTargetFilePaths(directoryMap, baseDir, offset = "", prefix = "", suffix =
 		for f in os.scandir(bfPath):
 			filePath = bfPath+"/"
 			if f.name.startswith(prefix) and f.name.endswith(suffix):
-				targetFiles.append(filePath+f.name)
+				# remove excess slashes in the paths
+				pathList = filePath.split("/")
+				while "" in pathList:
+					pathList.remove("")
+				filePath = "/".join( x for x in pathList )
+				targetFiles.append("/"+filePath+"/"+f.name)
 	return targetFiles
 
 def parseKernelData(k):
@@ -433,7 +453,7 @@ def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 
 	return dataMap
 
-def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
+def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader, Prefix="Cartographer_"):
 	try:
 		with open("Data/"+dataFileName, "r") as f:
 			dataMap = json.load(f)
@@ -448,7 +468,7 @@ def retrieveLogData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	dataMap = {}
 	# determines if the data generation code needs to be run
 	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
-	logTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="Cartographer_", suffix=".log")
+	logTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix=Prefix, suffix=".log")
 	for l in logTargets:
 		dataMap[l] = readLogFile(l, lfReader)
 
