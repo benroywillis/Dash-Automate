@@ -254,11 +254,28 @@ for path in refinedProfiles:
 			blockFrequencies[path][edge[1]] = refinedProfiles[path][edge]
 		else:
 			blockFrequencies[path][edge[1]] += refinedProfiles[path][edge]
-			
+
 # kernel data retrieval
 kernelMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelsFileName, RD.readKernelFile)
 refinedBlocks = RD.refineBlockData(kernelMap)
 matchedKernels = RD.matchData(refinedBlocks)
+
+# the hotloop data is going to contain a bunch of dead code (frequency 0 blocks, which never appeared in the profiles)
+# we add that information to the block data here
+for path in matchedKernels:
+	if "HotLoop" in path:
+		profileName = path.split("/")[-1].split("kernel_")[1].split(".json")[0]+".bin"
+		chop = path.split("/")[:-1]
+		while "" in chop:
+			chop.remove("")
+		profilePath = "/"+"/".join( chop )+"/"+profileName
+		if blockFrequencies.get(profilePath) is not None:
+			for kernel in kernelMap[path]["Kernels"]:
+				for block in kernelMap[path]["Kernels"][kernel]:
+					if blockFrequencies[profilePath].get(block) is None:
+						blockFrequencies[profilePath][block] = 0
+		else:
+			print("No profile file: "+profilePath)
 
 # now combine the profile and kernel data
 dataMap = {}
