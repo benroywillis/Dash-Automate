@@ -236,6 +236,18 @@ def readKernelFile(kf, justBlocks=True):
 				returnDict["Kernels"][k] = hj["Kernels"][k]
 	return returnDict
 
+def readKernelGrammarFile(kgf):
+	"""
+	"""
+	try:
+		kgj = json.load( open(kgf, "r") )
+	except Exception as e:
+		print("Could not open "+kgf+": "+str(e))
+		return -1
+	if kgj.get("Statistics") is not None:
+		return kgj["Statistics"]
+	return -1
+
 def readLoopFile(lf):
 	returnDict = {}
 	try:
@@ -447,6 +459,30 @@ def retrieveStaticLoopData(buildFolders, CorpusFolder, dataFileName, lfReader):
 	loopTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="Loops_", suffix=".json")
 	for l in loopTargets:
 		dataMap[l] = lfReader(l)#parseKernelData(k)
+
+	with open("Data/"+dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
+def retrieveKernelGrammarData(buildFolders, CorpusFolder, dataFileName, kgReader):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing kernel grammar file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to log file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	kgTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="KG_", suffix=".json")
+	for k in kgTargets:
+		dataMap[k] = readKernelGrammarFile(k)
 
 	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
