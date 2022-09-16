@@ -106,9 +106,9 @@ def mapCartographerErrorMessage(error):
 def mapMemoryPassErrorMessage(error):
 	if error.startswith("success"):
 		return "Compliant"
-	elif error.startswith("Kernel entrance sink node intersected"):
+	elif error.startswith(" Kernel entrance sink node intersected"):
 		return "Kernel boundary"
-	elif error.startswith("Kernel exit source node intersected"):
+	elif error.startswith(" Kernel exit source node intersected"):
 		return "Kernel boundary"
 	elif error.startswith("In Progress"):
 		return "In Progress"
