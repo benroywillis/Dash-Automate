@@ -61,7 +61,10 @@ def readMemoryPassLog(line):
 		return "interrupt"
 	reasons = re.findall("\[critical\]", line)
 	if len(reasons):
-		return line.split(":")[-1]
+		if "/" in line:
+			return line.split(":")[-1]
+		else:
+			return line.split("critical]")[-1]
 	return ""
 
 # categories are:
@@ -110,6 +113,12 @@ def mapMemoryPassErrorMessage(error):
 		return "Kernel boundary"
 	elif error.startswith(" Kernel exit source node intersected"):
 		return "Kernel boundary"
+	elif error.startswith(" Block was not accounted for in"):
+		return "Unknown Block"
+	elif error.startswith(" Found a block that has already executed"):
+		return "Unknown Block"
+	elif error.startswith(" Found multiple nonkernel instances that did not occur"):
+		return "Unknown epoch sequence"
 	elif error.startswith("In Progress"):
 		return "In Progress"
 	else:
@@ -212,11 +221,11 @@ def plotMemoryPassCompliance(results):
 			xtickLabels.append(p)
 
 	mappedResults = {}
-	categories = { "Compliant": 0, "File Read Error": 0, "Kernel boundary": 0, "In Progress": 0, "Unknown": 0 }
+	categories = { "Compliant": 0, "File Read Error": 0, "Kernel boundary": 0, "Unknown Block": 0, "Unknown epoch sequence": 0, "In Progress": 0, "Unknown": 0 }
 	dataLabels = list(categories)
 	for p in results:
 		if p != "Ignore":
-			mappedResults[p] = { "Compliant": 0, "File Read Error": 0, "Kernel boundary": 0, "In Progress": 0, "Unknown": 0 }
+			mappedResults[p] = { "Compliant": 0, "File Read Error": 0, "Kernel boundary": 0, "Unknown Block": 0, "Unknown epoch sequence": 0, "In Progress": 0, "Unknown": 0 }
 			for e in results[p]:
 				mappedResults[p][mapMemoryPassErrorMessage(e)] += results[p][e]
 
