@@ -118,7 +118,9 @@ def mapMemoryPassErrorMessage(error):
 	elif error.startswith(" Found a block that has already executed"):
 		return "Unknown Block"
 	elif error.startswith(" Found multiple nonkernel instances that did not occur"):
-		return "Unknown epoch sequence"
+		return "Unexpected epoch sequence"
+	elif error.startswith(" Could not determine depth of kernel hierarchy jump"):
+		return "Unexpected epoch sequence"
 	elif error.startswith("In Progress"):
 		return "In Progress"
 	else:
