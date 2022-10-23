@@ -174,13 +174,15 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["Name"] = NTVname+".memory.native"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["buildPath"] = self.buildPath+NTVname+".memory.native"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["TG_buildPath"] = self.buildPath+"TaskGraph_"+TRCname+".dot"
-                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instance_buildPath"] = self.buildPath+"Instance_"+TRCname+".dot"
+                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instancedot_buildPath"] = self.buildPath+"Instance_"+TRCname+".dot"
+                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instance_buildPath"] = self.buildPath+"Instance_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["MF_buildPath"] = self.buildPath+"TaskGraph_"+TRCname+".csv"
                 tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["Mem"]["Name"]+"/"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["tmpFolder"] = tmpFolder 
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["bcTmpPath"] = tmpFolder+NTVname+".memory.bc"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["tmpPath"] = tmpFolder+NTVname+".memory.native"
-                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instance_tmpPath"] = tmpFolder+"instance_"+TRCname+".dot"
+                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instancedot_tmpPath"] = tmpFolder+"instance_"+TRCname+".dot"
+                self.BCDict[BCpath][NTV][TRCkey]["Mem"]["instance_tmpPath"] = tmpFolder+"instance_"+TRCname+".json"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["TG_tmpPath"] = tmpFolder+"TaskGraph_"+TRCname+".dot"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["MF_tmpPath"] = tmpFolder+"MemoryFootprint_"+TRCname+".csv"
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"]["Script"] = self.buildPath+"scripts/MemoryPass_"+TRCname+".sh"
@@ -397,17 +399,22 @@ class BitCode:
         else:
             optClangString = ""
 
-        bitcode    = self.BCDict[BC]["buildPath"]
-        kernelFile = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
-        instance   = self.BCDict[BC][NTV][TRC]["Mem"]["instance_tmpPath"]
-        taskGraph  = self.BCDict[BC][NTV][TRC]["Mem"]["TG_tmpPath"]
-        footprints = self.BCDict[BC][NTV][TRC]["Mem"]["MF_tmpPath"]
+        bitcode      = self.BCDict[BC]["buildPath"]
+        kernelFile   = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
+        instance_dot = self.BCDict[BC][NTV][TRC]["Mem"]["instancedot_tmpPath"]
+        instance     = self.BCDict[BC][NTV][TRC]["Mem"]["instance_tmpPath"]
+        taskGraph    = self.BCDict[BC][NTV][TRC]["Mem"]["TG_tmpPath"]
+        footprints   = self.BCDict[BC][NTV][TRC]["Mem"]["MF_tmpPath"]
         
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"], prefixFiles=[bitcode, kernelFile], suffixFiles=[instance, taskGraph, footprints])
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"], prefixFiles=[bitcode, kernelFile], suffixFiles=[instance_dot, instance, taskGraph, footprints])
 
         optPass   = self.OPT+" -load "+self.Tracer+" -Memory "+self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"]+self.BCDict[BC]["Name"]+" -o "+self.BCDict[BC][NTV][TRC]["Mem"]["bcTmpPath"]+" "+optOptString
         clangPass = self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV][TRC]["Mem"]["bcTmpPath"]+" -o "+self.BCDict[BC][NTV][TRC]["Mem"]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        envSet    = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ KERNEL_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]+" MEMORY_DOTFILE="+self.BCDict[BC][NTV][TRC]["Mem"]["instance_tmpPath"]+" TASKGRAPH_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["TG_tmpPath"]+" CSV_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["MF_tmpPath"]
+        envSet    = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ KERNEL_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]+\
+                        " MEMORY_DOTFILE="+self.BCDict[BC][NTV][TRC]["Mem"]["instancedot_tmpPath"]+\
+                        " TASKGRAPH_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["TG_tmpPath"]+\
+                        " CSV_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["MF_tmpPath"]+\
+                        " INSTANCE_FILE="+self.BCDict[BC][NTV][TRC]["Mem"]["instance_tmpPath"]
         command   = envSet+" "+self.BCDict[BC][NTV][TRC]["Mem"]["tmpPath"]+" "+self.BCDict[BC][NTV][TRC]["RARG"]
 
         return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["Mem"]["tmpFolder"], optPass, "MemoryPass" ) \
