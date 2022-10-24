@@ -6,7 +6,7 @@ import os
 import struct
 ## input data
 # for testing
-#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Unittests/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
 #CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
@@ -85,14 +85,19 @@ def getNativeName(loopName, kernel=False):
 		filename = file.split(".")[0].split("Loops_")[1]
 	return path+"/"+filename
 
-def getTraceName(kfName):
+def getTraceName(kfName, instance=False):
 	"""
 	kfName should be an absolute path to a kernel file
 	This method assumes the file name is kernel_<tracename>.json<_hotCodeType.json>
 	"""
+	if "instance" in kfName:
+		instance = True
 	path = "/".join(x for x in kfName.split("/")[:-1])
 	file = kfName.split("/")[-1]
-	trcName = file.split(".")[0].split("kernel_")[1]
+	if instance:
+		trcName = file.split(".")[0].split("instance_")[1]
+	else:
+		trcName = file.split(".")[0].split("kernel_")[1]
 	return path+"/"+trcName
 
 # global parameters for Uniquify to remember its previous work
@@ -587,30 +592,42 @@ def refineBlockData(dataMap):
 		if dataMap[currentKey] == -1:
 			print("removing {}".format(currentKey))
 			del dataMap[currentKey]
+		elif dataMap[currentKey].get("Kernels") is None:
+			print("removing {}".format(currentKey))
+			del dataMap[currentKey]
+		elif not isinstance( dataMap[currentKey]["Kernels"], dict ):
+			print("removing {}".format(currentKey))
+			del dataMap[currentKey]
 		else:
 			i += 1
 	return dataMap
 
-def matchData(dataMap):
-	# here we need to look for three kinds of the same project: PaMul, hotcode and hotloop
+def matchData(dataMap, instanceMap=dict(), instance=False):
+	# here we need to look for three kinds of the same project: PaMul, Instance, hotcode and hotloop
 	projects = {}
 	i = 0
+	if instance:
+		for key,value in instanceMap.items():
+			dataMap[key] = value
+			
 	for project in dataMap:
-		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
+		name = getTraceName(project, instance = True if "instance" in project else False)
 		if name not in set(projects.keys()):
-			projects[name] = { "HotCode": False, "HotLoop": False, "PaMul": False }
+			projects[name] = { "HotCode": False, "HotLoop": False, "PaMul": False, "Instance": False }
 			# find out if its a PaMul, hotcode or hotloop
 		if "HotCode" in project:
 			projects[name]["HotCode"] = True
 		elif "HotLoop" in project:
 			projects[name]["HotLoop"] = True
+		elif "instance" in project:
+			projects[name]["Instance"] = True
 		else:
 			projects[name]["PaMul"] = True
 
 	while i < len(dataMap):
 		project = list(dataMap.keys())[i]
-		name = getTraceName(project)#project.split("/")[-1].split(".")[0]
-		if projects[name]["HotCode"] and projects[name]["HotLoop"] and projects[name]["PaMul"]:
+		name = getTraceName(project, instance = True if "instance" in project else False)
+		if projects[name]["HotCode"] and projects[name]["HotLoop"] and projects[name]["PaMul"] and projects[name]["Instance"]:
 			i += 1
 		else:
 			del dataMap[project]
@@ -718,3 +735,4 @@ def OverlapRegions(HCKs, HLKs, PaMulKs):
 	PaMulHCHL = PaMulset.intersection(HCset).intersection(HLset) 
 	# when using this with matplotlib_venn, [A, B, AB, C, AC, BC, ABC] with labels [A, B, C]
 	return HC, HL, PaMul, HCHL, PaMulHC, PaMulHL, PaMulHCHL
+
