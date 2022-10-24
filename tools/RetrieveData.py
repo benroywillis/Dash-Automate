@@ -46,7 +46,8 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build9-20-22" }
 #buildFolders = { "build9-22-22" }
 #buildFolders = { "build9-30-22" }
-buildFolders = { "build10-05-22" }
+#buildFolders = { "build10-05-22" }
+buildFolders = { "build10-22-22" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
@@ -442,6 +443,30 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
 	for k in kernelTargets:
 		dataMap[k] = KFReader(k)#parseKernelData(k)
+
+	with open("Data/"+dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
+def retrieveInstanceData(buildFolders, CorpusFolder, dataFileName, KFReader):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing instance data file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to kernel file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="instance_", suffix=".json")
+	for k in kernelTargets:
+		dataMap[k] = KFReader(k)
 
 	with open("Data/"+dataFileName,"w") as f:
 		json.dump(dataMap, f, indent=4)
