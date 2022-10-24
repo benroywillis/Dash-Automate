@@ -53,7 +53,6 @@ def PlotKernelCorrespondence(dataMap):
 				PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
 	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
 	v = pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
-	#v.get_patch_by_id("100").set_color(colors[0])
 	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
 
