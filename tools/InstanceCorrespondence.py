@@ -27,6 +27,11 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
+def PrintProjectInstances(dataMap):
+	"""
+	@brief Prints a .json file of all applications, kernels and hot instances
+	"""
+
 def PlotConfusionMatrix(dataMap):
 	"""
 	@brief Plots the correspondence between different structuring techniques: hotcode, hotloop, PaMul and memory instance pass
@@ -70,9 +75,9 @@ def PlotConfusionMatrix(dataMap):
 		Instanceonly = Instanceset - HLset - HCset
 
 	# output a csv of the table
-	csvString += "HCOnly,"+str(len(HConly))+"\n"
+	csvString = "HCOnly,"+str(len(HConly))+"\n"
 	csvString += "HLOnly,"+str(0)+","+str(len(HLonly))+"\n"
-	csvString += "InstanceOnly,"+str(len(Intersectonly))+"\n"
+	csvString += "InstanceOnly,"+str(len(Instanceonly))+"\n"
 	csvString += "HC & HL,"+str(len(HCHLset))+"\n"
 	csvString += "HC & Instance,"+str(len(HCInstanceset))+"\n"
 	csvString += "HL & Instance,"+str(len(HLInstanceset))+"\n"
