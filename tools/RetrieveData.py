@@ -582,7 +582,7 @@ def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
 
 	return dataMap
 
-def refineBlockData(dataMap):
+def refineBlockData(dataMap, loopFile=False):
 	"""
 	@brief 	Finds all entries in the map that are not valid ie the entry is -1 and removes them
 	"""
@@ -592,10 +592,13 @@ def refineBlockData(dataMap):
 		if dataMap[currentKey] == -1:
 			print("removing {}".format(currentKey))
 			del dataMap[currentKey]
-		elif dataMap[currentKey].get("Kernels") is None:
+		elif loopFile and (len(dataMap[currentKey]) == 0):
 			print("removing {}".format(currentKey))
 			del dataMap[currentKey]
-		elif not isinstance( dataMap[currentKey]["Kernels"], dict ):
+		elif (not loopFile) and (dataMap[currentKey].get("Kernels") is None):
+			print("removing {}".format(currentKey))
+			del dataMap[currentKey]
+		elif (not loopFile) and (not isinstance( dataMap[currentKey]["Kernels"], dict )):
 			print("removing {}".format(currentKey))
 			del dataMap[currentKey]
 		else:
@@ -736,3 +739,139 @@ def OverlapRegions(HCKs, HLKs, PaMulKs):
 	# when using this with matplotlib_venn, [A, B, AB, C, AC, BC, ABC] with labels [A, B, C]
 	return HC, HL, PaMul, HCHL, PaMulHC, PaMulHL, PaMulHCHL
 
+def neutralPath(path):
+	"""
+	@brief Finds the path that only contains the unique identifier of that application (the trace name with its absolute path)
+	Does almost exactly what RD.getTraceName() does but it doesn't set any hard requirements on the filename
+	"""
+	return "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
+
+def combineData( loopData = {}, kernelData = {}, instanceData = {}, profileData = {} ):
+	"""
+	@brief Takes all maps, finds the common path between keys in each map and combines them into a single map
+	@param[in] kernelData 		Map of kernel data, which may contain hotcode and hotloop information. Each key should be an absolute path to a kernel file
+	@param[in] instanceData 	Map of instance data, which should only contain instance data. Each key should be an absolute path to an instance file.
+	"""
+	allData = {}
+	# add profile data
+	for path in profileData:
+		projectPath = getTraceName(path)
+		if allData.get(projectPath) is None:
+			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+	# add kernel data
+	for path in kernelData:
+		#projectPath = "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
+		projectPath = getTraceName(path)
+		if allData.get(projectPath) is None:
+			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+		if "HotCode" in path:
+			if isinstance( kernelData[path], dict ):
+				allData[projectPath]["HotCode"] = kernelData[path]["Kernels"]
+		elif "HotLoop" in path:
+			if isinstance( kernelData[path], dict ):
+				allData[projectPath]["HotLoop"] = kernelData[path]["Kernels"]
+		else:
+			if isinstance( kernelData[path], dict ):
+				allData[projectPath]["PaMul"] = kernelData[path]["Kernels"]
+	# add instance data
+	for path in instanceData:
+		projectPath = getTraceName(path)
+		if allData.get(projectPath) is None:
+			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+		if isinstance( instanceData[path], dict ):
+			allData[projectPath]["Instance"] = instanceData[path]["Kernels"]
+	# add loop data
+	# we do this last so that the entire application namespace is already in allData
+	for path in loopData:
+		# native namespace (the Loop files are named after standalone binaries because static loops are per-binary, not application)
+		# thus, you have to apply all permutations seen in the application namespace to the native namespace
+		nativePath = getNativeName(path)
+		if isinstance(loopData[path], dict):
+			for tracePath in allData:
+				if nativePath in tracePath:
+					allData[tracePath]["Loop"] = loopData[path]
+				
+	# remove all entries that do not have all types
+	projects = {}
+	i = 0
+	for project in allData:
+		if project not in set(projects.keys()):
+			projects[project] = { "Loop": False, "Profile": False, "HotCode": False, "HotLoop": False, "PaMul": False, "Instance": False }
+		if len(allData[project]["Loop"]):
+			projects[project]["Loop"] = True
+		if len(allData[project]["Profile"]):
+			projects[project]["Profile"] = True
+		if len(allData[project]["HotCode"]):
+			projects[project]["HotCode"] = True
+		if len(allData[project]["HotLoop"]):
+			projects[project]["HotLoop"] = True
+		if len(allData[project]["PaMul"]):
+			projects[project]["PaMul"] = True
+		if len(allData[project]["Instance"]):
+			projects[project]["Instance"] = True
+	
+	while i < len(allData):
+		project = list(allData.keys())[i]
+		if len(loopData) and len(kernelData) and len(instanceData) and len(profileData):
+			if 	projects[project]["Loop"]    and projects[project]["Profile"] and projects[project]["HotCode"] and \
+				projects[project]["HotLoop"] and projects[project]["PaMul"]   and projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(profileData) and len(kernelData):
+			if 	projects[project]["Loop"] and projects[project]["Profile"] and projects[project]["HotCode"] and \
+				projects[project]["HotLoop"] and projects[project]["PaMul"] :
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(kernelData) and len(instanceData):
+			if 	projects[project]["Loop"] and projects[project]["HotCode"] and projects[project]["HotLoop"] and \
+				projects[project]["PaMul"] and projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(profileData) and len(instanceData):
+			if 	projects[project]["Loop"] and projects[project]["Profile"] and projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(profileData) and len(kernelData) and len(instanceData):
+			if 	projects[project]["Profile"] and projects[project]["HotCode"] and projects[project]["HotLoop"] and \
+				projects[project]["PaMul"] and projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(profileData):
+			if  projects[project]["Loop"] and projects[project]["Profile"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(kernelData):
+			if  projects[project]["Loop"] and projects[project]["HotCode"] and projects[project]["HotLoop"] and projects["PaMul"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(loopData) and len(instanceData):
+			if  projects[project]["Loop"] and projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(profileData) and len(kernelData):
+			if 	projects[project]["Profile"] and projects[project]["HotCode"] and projects[project]["HotLoop"] and \
+				projects[project]["PaMul"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(profileData) and len(instanceData):
+			if projects[project]["Profile"] and projects["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+		elif len(kernelData) and len(instanceData):
+			if  projects[project]["HotCode"] and projects[project]["HotLoop"] and projects[project]["PaMul"] and \
+				projects[project]["Instance"]:
+				i += 1
+			else:
+				del allData[project]
+
+	return allData
