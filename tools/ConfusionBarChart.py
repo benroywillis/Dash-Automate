@@ -150,15 +150,53 @@ def GenerateOverlapRegions(dataMap):
 	csvString += "HL & PaMul & Instance,"+str(len(HLPaMulInstanceset))+"\n"
 	# quadruple
 	csvString += "HC & HL & PaMul & Instance,"+str(len(HCHLPaMulInstanceset))+"\n"
+
+	# dump
 	with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
 		f.write(csvString)
+	with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".json", "w") as f:
+		outputDict = { "HC": len(HConly), "HL": len(HLonly), "PaMul": len(Pamulonly), "Instance": len(Instanceonly), \
+					   "HCHL": len(HCHLset), "HCPaMul": len(HCPaMulset), "HCInstance": len(HCInstanceset), 
+					   "HLPaMul": len(HLPaMulset), "HLPaMul": len(HLPaMulset), "HLInstance": len(HLInstanceset), \
+					   "PaMulInstance": len(PaMulInstanceset), "HCHLPaMul": len(HCHLPaMulset), "HCHLInstance": len(HCHLInstanceset),\
+					   "HCPaMulInstance": len(HCPaMulInstanceset), "HLPaMulInstance": len(HLPaMulInstanceset), \
+					   "HCHLPaMulInstance": len(HCHLPaMulInstanceset), "Deadcode": len(deadCode), "HCDead": len(HCdeadcode), \
+					   "HLDead": len(HLdeadcode), "PaMulDead": len(PaMuldeadcode), "Instancedead": len(Instancedeadcode) }
+		json.dump(outputDict, f, indent=4)
 
+def plotBars():
+	try:
+		with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".json", "r") as f:
+			dataMap = json.load(f)
+	except FileNotFoundError:
+		print("Could not find data file ./Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".json for plotting Confusion bars!")
+		return
 	# generate bar chart
-	bars = [ len(deadCode), len(HConly), len(HLonly), len(PaMulonly), len(Instanceonly), \
-			  len(HCdeadcode), len(HLdeadcode), len(PaMuldeadcode), len(Instancedeadcode), \
-			  len(HCHLset), len(HCPaMulset), len(HCInstanceset), len(HLPaMulset), len(HLInstanceset), len(PaMulInstanceset), \
-			  len(HCHLPaMulset), len(HCHLInstanceset), len(HCPaMulInstanceset), len(HLPaMulInstanceset), \
-			  len(HCHLPaMulInstanceset) ]
+	deadCode          = dataMap["Deadcode"]
+	HCdeadcode        = dataMap["HCDead"]
+	HLdeadcode        = dataMap["HLDead"]
+	PaMuldeadcode     = dataMap["PaMulDead"]
+	Instancedeadcode  = dataMap["InstanceDead"]
+	HConly            = dataMap["HC"]
+	HLonly            = dataMap["HL"]
+	PaMulonly         = dataMap["PaMul"]
+	Instanceonly      = dataMap["Instance"]
+	HCHL              = dataMap["HCHL"]
+	HCPaMul           = dataMap["HCPaMul"]
+	HCInstance        = dataMap["HCInstance"]
+	HLPaMul           = dataMap["HLPaMul"]
+	HLInstance        = dataMap["HLInstance"]
+	PaMulInstance     = dataMap["PaMulInstance"]
+	HCHLPaMul         = dataMap["HCHLPaMul"]
+	HCHLInstance      = dataMap["HCHLInstance"]
+	HCPaMulInstance   = dataMap["HCPaMulInstance"]
+	HLPaMulInstance   = dataMap["HLPaMulInstance"]
+	HCHLPaMulInstance = dataMap["HCHLPaMulInstance"]
+	bars = [ deadCode, HConly, HLonly, PaMulonly, Instanceonly, \
+			  HCdeadcode, HLdeadcode, PaMuldeadcode, Instancedeadcode, \
+			  HCHL, HCPaMul, HCInstance, HLPaMul, HLInstance, PaMulInstance, \
+			  HCHLPaMul, HCHLInstance, HCPaMulInstance, HLPaMulInstance, \
+			  HCHLPaMulInstance ]
 	xtickLabels = [ "Deadcode", "HConly", "HLonly", "PaMulonly", "Instanceonly", \
 					"HCdeadcode", "HLdeadcode", "PaMuldeadcode", "Instancedeadcode", \
 					"HCHL", "HCPaMul", "HCInstance", "HLPaMul", "HLInstance", "PaMulInstance", \
@@ -173,11 +211,14 @@ def GenerateOverlapRegions(dataMap):
 	ax.set_ylabel("Count", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
 	ax.legend(frameon=False)
+	ax.set_ylim([0, 500000])
 	RD.PrintFigure(plt, "ConfusionBarChart")
 	plt.show()
 	
 
-loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
+
+
+"""loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
 profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
 kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDataFileName, RD.readKernelFile)
 instanceData = RD.retrieveInstanceData(RD.buildFolders, RD.CorpusFolder, instanceDataFileName, RD.readKernelFile)
@@ -188,3 +229,5 @@ refinedKernelData   = RD.refineBlockData(kernelData)
 refinedInstanceData = RD.refineBlockData(instanceData)
 combined = RD.combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, instanceData = refinedInstanceData )
 GenerateOverlapRegions(combined)
+"""
+plotBars()

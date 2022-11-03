@@ -6,13 +6,13 @@ import os
 import struct
 ## input data
 # for testing
-CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
 #CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
+CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
