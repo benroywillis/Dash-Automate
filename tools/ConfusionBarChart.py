@@ -101,8 +101,20 @@ def GenerateOverlapRegions(dataMap):
 		for entry in dataMap[path]["Profile"]:
 			profileBlocks.add(entry[0])
 			profileBlocks.add(entry[1])
+		for k in dataMap[path]["HotCode"]:
+			for b in dataMap[path]["HotCode"][k]:
+				if b not in profileBlocks:
+					deadBlocks.add(b)
 		for k in dataMap[path]["HotLoop"]:
 			for b in dataMap[path]["HotLoop"][k]:
+				if b not in profileBlocks:
+					deadBlocks.add(b)
+		for k in dataMap[path]["PaMul"]:
+			for b in dataMap[path]["PaMul"][k]:
+				if b not in profileBlocks:
+					deadBlocks.add(b)
+		for k in dataMap[path]["Instance"]:
+			for b in dataMap[path]["Instance"][k]:
 				if b not in profileBlocks:
 					deadBlocks.add(b)
 		deadCode = deadCode.union( RD.Uniquify( path, { "0": list(deadBlocks) }, tn=False ) )
@@ -142,6 +154,27 @@ def GenerateOverlapRegions(dataMap):
 		f.write(csvString)
 
 	# generate bar chart
+	bars = [ len(deadCode), len(HConly), len(HLonly), len(PaMulonly), len(Instanceonly), \
+			  len(HCdeadcode), len(HLdeadcode), len(PaMuldeadcode), len(Instancedeadcode), \
+			  len(HCHLset), len(HCPaMulset), len(HCInstanceset), len(HLPaMulset), len(HLInstanceset), len(PaMulInstanceset), \
+			  len(HCHLPaMulset), len(HCHLInstanceset), len(HCPaMulInstanceset), len(HLPaMulInstanceset), \
+			  len(HCHLPaMulInstanceset) ]
+	xtickLabels = [ "Deadcode", "HConly", "HLonly", "PaMulonly", "Instanceonly", \
+					"HCdeadcode", "HLdeadcode", "PaMuldeadcode", "Instancedeadcode", \
+					"HCHL", "HCPaMul", "HCInstance", "HLPaMul", "HLInstance", "PaMulInstance", \
+					"HCHLPaMul", "HCHLInstance", "HCPaMulInstance", "HLPaMulInstance", "HCHLPaMulInstance" ]
+	
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
+
+	ax.set_title("Structuring Correspondence", fontsize=titleFont)
+	ax.bar([x for x in range(len(bars))], bars)
+	ax.set_ylabel("Count", fontsize=axisLabelFont)
+	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
+	ax.legend(frameon=False)
+	RD.PrintFigure(plt, "ConfusionBarChart")
+	plt.show()
 	
 
 loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
