@@ -40,51 +40,109 @@ def GenerateOverlapRegions(dataMap):
 	"""
 	# the confusion matrix codifies set intersections among the rows and columns
 	# for example, the entry at the HC row and the PaMul & !HL column represents the intersection of HC and PaMul blocks that are not structured by PaMul (pink region)
-	combinedMap = {}
-	for path in dataMap:
-		matchPath = "/".join(x for x in path.split("/")[:-1]) + path.split("/")[-1].split("_")[1].split(".")[0]
-		if combinedMap.get(matchPath) is None:
-			combinedMap[matchPath] = { "HC": {}, "HL": {}, "Instance": {} }
-		if "HotCode" in path:
-			combinedMap[matchPath]["HC"] = RD.Uniquify(path, dataMap[path]["Kernels"])
-		elif "HotLoop" in path:
-			combinedMap[matchPath]["HL"] = RD.Uniquify(path, dataMap[path]["Kernels"])
-		else:
-			combinedMap[matchPath]["Instance"] = RD.Uniquify(path, dataMap[path]["Kernels"])
-	HCset           = set()
-	HConly 		    = set()
-	HLset           = set()
-	HLonly 	        = set()
-	Instanceset     = set()
-	Instanceonly    = set()
-	HCHLset         = set()
-	HCInstanceset   = set()
-	HLInstanceset   = set()
-	HCHLInstanceset = set()
-    # john: do this in reverse order bc that saves work
+	
+	# overall
+	HCset                = set()
+	HLset                = set()
+	PaMulset             = set()
+	Instanceset          = set()
+	# singles
+	HConly 		         = set()
+	HLonly 	             = set()
+	PaMulonly            = set()
+	Instanceonly         = set()
+	# doubles
+	HCHLset              = set()
+	HCPaMulset           = set()
+	HCInstanceset        = set()
+	HLPaMulset           = set()
+	HLInstanceset        = set()
+	PaMulInstanceset     = set()
+	# triples
+	HCHLPaMulset         = set()
+	HCHLInstanceset      = set()
+	HCPaMulInstanceset   = set()
+	HLPaMulInstanceset   = set()
+	# quadruple
+	HCHLPaMulInstanceset = set()
 
-	for path in combinedMap:
-		HCset = HCset.union(combinedMap[path]["HC"])
-		HLset = HLset.union(combinedMap[path]["HL"])
-		Instanceset = Instanceset.union(combinedMap[path]["Instance"])
-		HCHLset = HCHLset.union(combinedMap[path]["HC"].intersection(combinedMap[path]["HL"]))
-		HCInstanceset = HCInstanceset.union(combinedMap[path]["HC"].intersection(combinedMap[path]["Instance"]))
-		HLInstanceset = HLInstanceset.union(combinedMap[path]["HL"].intersection(combinedMap[path]["Instance"]))
-		HCHLInstanceset = HCHLInstanceset.union(combinedMap[path]["HC"].intersection(combinedMap[path]["HL"]).intersection(combinedMap[path]["Instance"]))
-		HConly = HCset - HLset - Instanceset
-		HLonly = HLset - HCset - Instanceset
-		Instanceonly = Instanceset - HLset - HCset
+	for path in dataMap:
+		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["HotCode"], tn=False) )
+		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["HotLoop"], tn=False) )
+		PaMulset = PaMulset.union( RD.Uniquify(path, dataMap[path]["PaMul"], tn=False) )
+		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["Instance"], tn=False) )
+	# singles
+	HConly = HCset - HLset - PaMulset - Instanceset
+	HLonly = HLset - HCset - PaMulset - Instanceset
+	PaMulonly = PaMulset - HCset - HLset - Instanceset
+	Instanceonly = Instanceset - HCset - HLset - PaMulset
+	# doubles
+	HCHLset = HCset.intersection(HLset) - PaMulset - Instanceset
+	HCPaMulset = HCset.intersection(PaMulset) - HLset - Instanceset
+	HCInstanceset = HCset.intersection(Instanceset) - HLset - PaMulset
+	HLPaMulset    = HLset.intersection(PaMulset) - HCset - Instanceset
+	HLInstanceset = HLset.intersection(Instanceset) - HCset - PaMulset
+	PaMulInstanceset = PaMulset.intersection(Instanceset) - HCset - HLset
+	# triples
+	HCHLPaMulset = HCset.intersection(HLset).intersection(PaMulset) - Instanceset
+	HCHLInstanceset = HCset.intersection(HLset).intersection(Instanceset) - PaMulset
+	HCPaMulInstanceset = HCset.intersection(PaMulset).intersection(Instanceset) - HLset
+	HLPaMulInstanceset = HLset.intersection(PaMulset).intersection(Instanceset) - HCset
+	# quadruple
+	HCHLPaMulInstanceset = HCset.intersection(HLset).intersection(PaMulset).intersection(Instanceset)
+
+	# lastly, we have to generate the deadcode section, which should only overlap HLOnly
+	# to do this, we go through all hotloop blocks and see if they are in the corresponding profile data (if not they're dead)
+	deadCode = set()
+	for path in dataMap:
+		deadBlocks    = set()
+		profileBlocks = set()
+		#print(dataMap[path]["Profile"])
+		for entry in dataMap[path]["Profile"]:
+			profileBlocks.add(entry[0])
+			profileBlocks.add(entry[1])
+		for k in dataMap[path]["HotLoop"]:
+			for b in dataMap[path]["HotLoop"][k]:
+				if b not in profileBlocks:
+					deadBlocks.add(b)
+		deadCode = deadCode.union( RD.Uniquify( path, { "0": list(deadBlocks) }, tn=False ) )
+
+	# verification, the only set that should overlap with dead code is HL
+	HCdeadcode = HCset.intersection(deadCode)
+	HLdeadcode = HLset.intersection(deadCode)
+	PaMuldeadcode = PaMulset.intersection(deadCode)
+	Instancedeadcode = Instanceset.intersection(deadCode)
 
 	# output a csv of the table
-	csvString = "HCOnly,"+str(len(HConly))+"\n"
-	csvString += "HLOnly,"+str(0)+","+str(len(HLonly))+"\n"
+	# singles
+	csvString  = "DeadCode,"+str(len(deadCode))+"\n"
+	csvString += "HCOnly,"+str(len(HConly))+"\n"
+	csvString += "HLOnly,"+str(len(HLonly))+"\n"
+	csvString += "PaMulOnly,"+str(len(PaMulonly))+"\n"
 	csvString += "InstanceOnly,"+str(len(Instanceonly))+"\n"
+	# doubles
+	csvString += "HC & DeadCode,"+str(len(HCdeadcode))+"\n"
+	csvString += "HL & DeadCode,"+str(len(HLdeadcode))+"\n"
+	csvString += "PaMul & DeadCode,"+str(len(PaMuldeadcode))+"\n"
+	csvString += "Instance & DeadCode,"+str(len(Instancedeadcode))+"\n"
 	csvString += "HC & HL,"+str(len(HCHLset))+"\n"
+	csvString += "HC & PaMul ,"+str(len(HCPaMulset))+"\n"
 	csvString += "HC & Instance,"+str(len(HCInstanceset))+"\n"
+	csvString += "HL & PaMul,"+str(len(HLPaMulset))+"\n"
 	csvString += "HL & Instance,"+str(len(HLInstanceset))+"\n"
+	csvString += "PaMul & Instance,"+str(len(PaMulInstanceset))+"\n"
+	# triples
+	csvString += "HC & HL & PaMul,"+str(len(HCHLPaMulset))+"\n"
 	csvString += "HC & HL & Instance,"+str(len(HCHLInstanceset))+"\n"
-	with open("Data/InstanceConfusionMatrix_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
+	csvString += "HC & PaMul & Instance,"+str(len(HCPaMulInstanceset))+"\n"
+	csvString += "HL & PaMul & Instance,"+str(len(HLPaMulInstanceset))+"\n"
+	# quadruple
+	csvString += "HC & HL & PaMul & Instance,"+str(len(HCHLPaMulInstanceset))+"\n"
+	with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
 		f.write(csvString)
+
+	# generate bar chart
+	
 
 loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
 profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
@@ -92,9 +150,8 @@ kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDat
 instanceData = RD.retrieveInstanceData(RD.buildFolders, RD.CorpusFolder, instanceDataFileName, RD.readKernelFile)
 
 refinedLoopData     = RD.refineBlockData(loopData, loopFile=True)
-refinedProfileData  = RD.refineBlockData(profileData)
+refinedProfileData  = profileData#RD.refineBlockData(profileData)
 refinedKernelData   = RD.refineBlockData(kernelData)
 refinedInstanceData = RD.refineBlockData(instanceData)
 combined = RD.combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, instanceData = refinedInstanceData )
-matched = RD.matchData(refinedKernelData, instanceMap=refinedInstanceData, instance=True)
-GenerateOverlapRegions(matched)
+GenerateOverlapRegions(combined)

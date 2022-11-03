@@ -6,13 +6,13 @@ import os
 import struct
 ## input data
 # for testing
-#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
+CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
 #CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
@@ -103,14 +103,17 @@ def getTraceName(kfName, instance=False):
 # global parameters for Uniquify to remember its previous work
 UniqueIDMap = {}
 UniqueID = 0
-def Uniquify(project, kernels):
+def Uniquify(project, kernels, tn=True):
 	"""
 	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
 	"""
 	global UniqueID
 	global UniqueIDMap
 	# project processing, the project name will be the stuff between kernel_ and the first ., indicating the trace name
-	traceName = getTraceName(project)
+	if tn:
+		traceName = getTraceName(project)
+	else:
+		traceName = project
 	mappedBlocks = set()
 	if UniqueIDMap.get(traceName) is None:
 		UniqueIDMap[traceName] = {}
@@ -746,7 +749,7 @@ def neutralPath(path):
 	"""
 	return "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
 
-def combineData( loopData = {}, kernelData = {}, instanceData = {}, profileData = {} ):
+def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData = {} ):
 	"""
 	@brief Takes all maps, finds the common path between keys in each map and combines them into a single map
 	@param[in] kernelData 		Map of kernel data, which may contain hotcode and hotloop information. Each key should be an absolute path to a kernel file
@@ -755,9 +758,10 @@ def combineData( loopData = {}, kernelData = {}, instanceData = {}, profileData 
 	allData = {}
 	# add profile data
 	for path in profileData:
-		projectPath = getTraceName(path)
+		projectPath = "/".join( x for x in path.split("/")[:-1]) + "/" + path.split("/")[-1].split(".")[0]
 		if allData.get(projectPath) is None:
 			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+		allData[projectPath]["Profile"] = profileData[path]
 	# add kernel data
 	for path in kernelData:
 		#projectPath = "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
@@ -790,7 +794,6 @@ def combineData( loopData = {}, kernelData = {}, instanceData = {}, profileData 
 			for tracePath in allData:
 				if nativePath in tracePath:
 					allData[tracePath]["Loop"] = loopData[path]
-				
 	# remove all entries that do not have all types
 	projects = {}
 	i = 0
