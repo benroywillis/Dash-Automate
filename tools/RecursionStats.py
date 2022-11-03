@@ -168,7 +168,7 @@ def plotRecursionData_scatter(projectMap):
 
 	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["Live"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Live", color=colors[0], marker=markers[0] )
 	ax.scatter( xtickLabels, [projectMap[p]["Static"]["TFP"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Function Pointers", color=colors[1], marker=markers[1] )
-	#ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["DR"] / projectMap[p]["Dynamic"]["Live"] * 100 if projectMap[p]["Dynamic"]["Live"] > 0 else 0 for p in projectMap], label="Recursive", color=colors[2], marker=markers[2] )
+	ax.scatter( xtickLabels, [(projectMap[p]["Static"]["IDR"]+projectMap[p]["Static"]["DR"]) / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Recursive", color=colors[2], marker=markers[2] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["IDR"] / projectMap[p]["Dynamic"]["Live"] * 100 for p in projectMap], label="Indirect Recursive", color=colors[3], marker=markers[3] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Static"]["Total"] for p in projectMap], label="Static-Total", color=colors[0] )
 
@@ -181,7 +181,7 @@ def plotRecursionData_scatter(projectMap):
 		plt.axhline(i, linestyle="dashed", color="grey")
 	RD.PrintFigure(plt, "RecursionScatter")
 	plt.show()
-	
+
 dataMap = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, dataFileName, recursiveFunctionRegex)
 projectMap = getProjectData(dataMap)
 #plotRecursionData_bars(projectMap)
