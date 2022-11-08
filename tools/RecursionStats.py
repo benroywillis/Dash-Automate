@@ -163,22 +163,32 @@ def plotRecursionData_scatter(projectMap):
 	fig.set_facecolor("Black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
-	xtickLabels = list(projectMap.keys())
 	ax.set_title("Static Structure Ambiguity", fontsize=titleFont)
 
-	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["Live"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Live", color=colors[0], marker=markers[0] )
-	ax.scatter( xtickLabels, [projectMap[p]["Static"]["TFP"] / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Function Pointers", color=colors[1], marker=markers[1] )
-	ax.scatter( xtickLabels, [(projectMap[p]["Static"]["IDR"]+projectMap[p]["Static"]["DR"]) / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in projectMap], label="Recursive", color=colors[2], marker=markers[2] )
+	# sort projectMap by live functions from least to greatest
+	# this (generally) puts APIs on the left, benchmarks and handwritten stuff is on the right, and stuff that surprises you is mid
+	sortedKeys= list(sorted( projectMap, key = lambda item : projectMap[item]["Dynamic"]["Live"] / projectMap[item]["Static"]["Total"] ))
+
+	# for now take out total
+	for i in range(len(sortedKeys)):
+		if sortedKeys[i] == "Total":
+			del sortedKeys[i]
+			break
+	xtickLabels = list(sortedKeys)
+
+	ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["Live"] / projectMap[p]["Static"]["Total"] if projectMap[p]["Static"]["Total"] > 0 else 0 for p in sortedKeys], label="Live", color=colors[0], marker=markers[0] )
+	ax.scatter( xtickLabels, [projectMap[p]["Static"]["TFP"] / projectMap[p]["Static"]["Total"] if projectMap[p]["Static"]["Total"] > 0 else 0 for p in sortedKeys], label="Function Pointers", color=colors[1], marker=markers[1] )
+	ax.scatter( xtickLabels, [(projectMap[p]["Static"]["IDR"]+projectMap[p]["Static"]["DR"]) / projectMap[p]["Static"]["Total"] * 100 if projectMap[p]["Static"]["Total"] > 0 else 0 for p in sortedKeys], label="Recursive", color=colors[2], marker=markers[2] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Dynamic"]["IDR"] / projectMap[p]["Dynamic"]["Live"] * 100 for p in projectMap], label="Indirect Recursive", color=colors[3], marker=markers[3] )
 	#ax.scatter( xtickLabels, [projectMap[p]["Static"]["Total"] for p in projectMap], label="Static-Total", color=colors[0] )
 
 	ax.set_xlabel("Library", fontsize=axisFont)
 	ax.set_ylabel("Normalized Proportion (count/library static functions)", fontsize=axisFont)
-	ax.set_ylim([0, 100])
+	ax.set_ylim([0, 1])
 	ax.legend(frameon=False)
 	plt.xticks(fontsize=axisFont, rotation=xtickRotation)
-	for i in range(10, 110, 10):
-		plt.axhline(i, linestyle="dashed", color="grey")
+	#for i in range(10, 110, 10):
+	#	plt.axhline(i, linestyle="dashed", color="grey")
 	RD.PrintFigure(plt, "RecursionScatter")
 	plt.show()
 
