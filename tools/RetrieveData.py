@@ -103,7 +103,7 @@ def getTraceName(kfName, instance=False):
 # global parameters for Uniquify to remember its previous work
 UniqueIDMap = {}
 UniqueID = 0
-def Uniquify(project, kernels, tn=True):
+def Uniquify(project, kernels, tn=True, blocks = False):
 	"""
 	Uniquifies the basic block IDs such that no ID overlaps with another ID from another distict application
 	"""
@@ -117,8 +117,21 @@ def Uniquify(project, kernels, tn=True):
 	mappedBlocks = set()
 	if UniqueIDMap.get(traceName) is None:
 		UniqueIDMap[traceName] = {}
-	for k in kernels:
-		for block in [int(x) for x in kernels[k]]:
+	if not blocks:
+		for k in kernels:
+			for block in [int(x) for x in kernels[k]]:
+				mappedID = -1
+				if UniqueIDMap[traceName].get(block) is None:
+					UniqueIDMap[traceName][block] = UniqueID
+					mappedID = UniqueID
+					UniqueID += 1
+				else:
+					mappedID = UniqueIDMap[traceName][block]
+				if mappedID == -1:
+					raise Exception("Could not map the block ID for {},{}!".format(traceName,block))
+				mappedBlocks.add(mappedID)
+	else:
+		for block in [int(x) for x in kernels]:
 			mappedID = -1
 			if UniqueIDMap[traceName].get(block) is None:
 				UniqueIDMap[traceName][block] = UniqueID
@@ -250,6 +263,24 @@ def readKernelFile(kf, justBlocks=True):
 				returnDict["Kernels"][k] = list(hj["Kernels"][k]["Blocks"])
 			else:
 				returnDict["Kernels"][k] = hj["Kernels"][k]
+	return returnDict
+
+def readOverallCode(kf, profileInfo):
+	try:
+		hj = json.load( open(kf, "r") )
+	except Exception as e:
+		print("Could not open "+kf+": "+str(e))
+		return -1
+	if hj.get("Kernels") is None:
+		return -1 
+	if hj.get("ValidBlocks") is None:
+		return -1
+	Livecode = set()
+	for edge in profileInfo:
+		Livecode.add(edge[0])
+		Livecode.add(edge[1])
+	Deadcode = set(hj["ValidBlocks"]) - Livecode
+	returnDict = { "Deadcode": list(Deadcode), "Livecode": list(Livecode) }
 	return returnDict
 
 def readKernelGrammarFile(kgf):
@@ -457,6 +488,40 @@ def retrieveKernelData(buildFolders, CorpusFolder, dataFileName, KFReader):
 
 	return dataMap
 
+def retrieveDeadCode(buildFolders, CorpusFolder, dataFileName, profileInfo):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			dataMap = json.load(f)
+			return dataMap
+	except FileNotFoundError:
+		print("No pre-existing deadcode data file. Running collection algorithm...")
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to kernel file data
+	# abs path : kernel data
+	dataMap = {}
+	# determines if the data generation code needs to be run
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+	kernelTargets = getTargetFilePaths(directoryMap, CorpusFolder, prefix="kernel_", suffix=".json")
+	for k in kernelTargets:
+		# skip hotcode and hotloop files, that is redundant work (though they would yield the same answer)
+		if "HotCode" in k:
+			continue
+		elif "HotLoop" in k:
+			continue
+		# find its profile info and hand it to the deadcode reader
+		profileName = getTraceName(k)+".bin"
+		if profileInfo.get(profileName) is None:
+			print("Could not find profile info for {}! Skipping...".format(profileName))
+			continue
+		dataMap[k] = readOverallCode(k, profileInfo[profileName])
+
+	with open("Data/"+dataFileName,"w") as f:
+		json.dump(dataMap, f, indent=4)
+
+	return dataMap
+
 def retrieveInstanceData(buildFolders, CorpusFolder, dataFileName, KFReader):
 	try:
 		with open("Data/"+dataFileName, "r") as f:
@@ -585,14 +650,26 @@ def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
 
 	return dataMap
 
-def refineBlockData(dataMap, loopFile=False):
+def refineBlockData(dataMap, loopFile=False, deadCodeFile=False):
 	"""
 	@brief 	Finds all entries in the map that are not valid ie the entry is -1 and removes them
 	"""
 	i = 0
 	while( i < len(dataMap) ):
 		currentKey = list(dataMap.keys())[i]
-		if dataMap[currentKey] == -1:
+		if deadCodeFile:
+			if dataMap[currentKey] == -1 :
+				print("removing {}".format(currentKey))
+				del dataMap[currentKey]
+			elif dataMap[currentKey].get("Deadcode") is None:
+				print("removing {}".format(currentKey))
+				del dataMap[currentKey]
+			elif dataMap[currentKey].get("Livecode") is None:
+				print("removing {}".format(currentKey))
+				del dataMap[currentKey]
+			else:
+				i += 1
+		elif dataMap[currentKey] == -1:
 			print("removing {}".format(currentKey))
 			del dataMap[currentKey]
 		elif loopFile and (len(dataMap[currentKey]) == 0):
@@ -749,25 +826,33 @@ def neutralPath(path):
 	"""
 	return "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
 
-def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData = {} ):
+def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData = {}, deadBlocksData = {} ):
 	"""
 	@brief Takes all maps, finds the common path between keys in each map and combines them into a single map
 	@param[in] kernelData 		Map of kernel data, which may contain hotcode and hotloop information. Each key should be an absolute path to a kernel file
 	@param[in] instanceData 	Map of instance data, which should only contain instance data. Each key should be an absolute path to an instance file.
 	"""
 	allData = {}
+	# add deadcode data
+	for path in deadBlocksData:
+		projectPath = getTraceName(path)
+		print(projectPath)
+		if allData.get(projectPath) is None:
+			allData[projectPath] = { "LiveBlocks": {}, "DeadBlocks": {}, "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+		allData[projectPath]["LiveBlocks"] = deadBlocksData[path]["Livecode"]
+		allData[projectPath]["DeadBlocks"] = deadBlocksData[path]["Deadcode"]
 	# add profile data
 	for path in profileData:
 		projectPath = "/".join( x for x in path.split("/")[:-1]) + "/" + path.split("/")[-1].split(".")[0]
 		if allData.get(projectPath) is None:
-			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+			allData[projectPath] = { "LiveBlocks": {}, "DeadBlocks": {}, "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
 		allData[projectPath]["Profile"] = profileData[path]
 	# add kernel data
 	for path in kernelData:
 		#projectPath = "/".join( x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0].split("_")[1]
 		projectPath = getTraceName(path)
 		if allData.get(projectPath) is None:
-			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+			allData[projectPath] = { "LiveBlocks": {}, "DeadBlocks": {}, "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
 		if "HotCode" in path:
 			if isinstance( kernelData[path], dict ):
 				allData[projectPath]["HotCode"] = kernelData[path]["Kernels"]
@@ -781,7 +866,7 @@ def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData 
 	for path in instanceData:
 		projectPath = getTraceName(path)
 		if allData.get(projectPath) is None:
-			allData[projectPath] = { "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
+			allData[projectPath] = { "LiveBlocks": {}, "DeadBlocks": {}, "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
 		if isinstance( instanceData[path], dict ):
 			allData[projectPath]["Instance"] = instanceData[path]["Kernels"]
 	# add loop data
@@ -799,7 +884,11 @@ def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData 
 	i = 0
 	for project in allData:
 		if project not in set(projects.keys()):
-			projects[project] = { "Loop": False, "Profile": False, "HotCode": False, "HotLoop": False, "PaMul": False, "Instance": False }
+			projects[project] = { "LiveBlocks": False, "DeadBlocks": False, "Loop": False, "Profile": False, "HotCode": False, "HotLoop": False, "PaMul": False, "Instance": False }
+		if len(allData[project]["LiveBlocks"]):
+			projects[project]["LiveBlocks"] = True
+		if len(allData[project]["DeadBlocks"]):
+			projects[project]["DeadBlocks"] = True
 		if len(allData[project]["Loop"]):
 			projects[project]["Loop"] = True
 		if len(allData[project]["Profile"]):
@@ -815,6 +904,12 @@ def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData 
 	
 	while i < len(allData):
 		project = list(allData.keys())[i]
+		if len(deadBlocksData):
+			if (not projects[project]["LiveBlocks"]) or (not projects[project]["DeadBlocks"]):
+				del allData[project]
+				continue
+			else:
+				i += 1
 		if len(loopData) and len(kernelData) and len(instanceData) and len(profileData):
 			if 	projects[project]["Loop"]    and projects[project]["Profile"] and projects[project]["HotCode"] and \
 				projects[project]["HotLoop"] and projects[project]["PaMul"]   and projects[project]["Instance"]:

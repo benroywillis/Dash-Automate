@@ -9,6 +9,7 @@ loopDataFileName = "Loops_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(
 profileDataFileName = "Profiles_".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 kernelDataFileName= "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 instanceDataFileName = "Instance_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
+deadBlocksFileName = "DeadBlocks_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
 
 # set that selects projects we want to be included in the input data
 # if this set is empty we select all available projects
@@ -29,10 +30,76 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-def PrintProjectInstances(dataMap):
-	"""
-	@brief Prints a .json file of all applications, kernels and hot instances
-	"""
+def GenerateOverlapRegions_QPR(dataMap):
+	# John: TODO
+	# 1. find out how many dead blocks are in the entire corpus, not just the structured code
+	# 2. (DONE) We need multiple symbols in the confusion matrix to represent the "type" of bar being presented
+	#    - green check denotes an intersection with that structuring type
+	#    - red ex represents an exclusion of that structure from the bar (ie HC&!HL&PaMul&!Instance gets a green-red-green-red column)
+	# 3. the "zero" and "near-zero" columns are hard...
+	#   - idea: change plot to log-linear bar (cringey, but if anyone complains we can change it)
+	# 4. change "PaMul" to something else and change "Instance" to PaMul
+	#   - we should work through the granular difference of the cartographer analysis vs. the instance analysis in the paper
+	# 5. Categories for the QPR
+	# HConly - what is the "error" ie code that matters that is getting rejected for some reason
+	# HC & HL   - what is the worthless stuff that your HC static loop detector is finding
+	# HC & Instance  - here are the hot things that actually matter, after our analysis
+	# !HC & HL - loop components that are not hot (gigantic number because dead code is in here)
+	# !HC & HL & !Dead - after we get rid of the dead code we find that alive loop components are actually very small
+	# !HC & Inst - this is our answer to cold loop structures, and none of it is dead, and this category is small
+	# !HC & HL & Instance - this is the set that our tool agrees with SoA techniques
+	# HC & HL & Instance  - this is very close to the Intersectset size (because most of what Instance finds is important)
+	# Deadcode overall - number lying around for when somebody asks
+	# code overall - number lying around for when somebody asks
+
+	# overall
+	HCset       = set()
+	HLset       = set()
+	Instanceset = set()
+	Deadcodeset = set()
+	Livecodeset = set()
+	Overallset  = set()
+
+	for path in dataMap:
+		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["HotCode"], tn=False) )
+		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["HotLoop"], tn=False) )
+		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["Instance"], tn=False) )
+		Deadcodeset = Deadcodeset.union( RD.Uniquify(path, dataMap[path]["DeadBlocks"], tn=False, blocks=True) )
+		Livecodeset = Livecodeset.union( RD.Uniquify(path, dataMap[path]["LiveBlocks"], tn=False, blocks=True) )
+		Overallset  = Deadcodeset.union(Livecodeset)
+	
+	# QPR categories
+	HCHL = set()
+	HCInstance = set()
+	NotHCHL = set()
+	NotHCHLNotDead = set()
+	NotHCInstance = set()
+	NotHCHLInstance = set()
+	HCHLInstance = set()
+
+	HCHL            = HCset.union(HLset)
+	HCInstance      = HCset.union(Instanceset)
+	NotHCHL         = HLset - HCset
+	NotHCHLNotDead  = NotHCHL - Deadcodeset
+	NotHCInstance   = Instanceset - HCset
+	NotHCHLInstance = HLset.intersection(Instanceset) - HCset
+	HCHLInstance    = HCset.intersection(HLset).intersection(Instanceset)
+	
+	# dump
+	csvString  = "HCHL,"+str(len(HCHL))+"\n"
+	csvString += "HCInstance,"+str(len(HCInstance))+"\n"
+	csvString += "NotHCHL,"+str(len(NotHCHL))+"\n"
+	csvString += "NotHCHLNotDead,"+str(len(NotHCHLNotDead))+"\n"
+	csvString += "NotHCInstance,"+str(len(NotHCInstance))+"\n"
+	csvString += "NotHCHLInstance,"+str(len(NotHCHLInstance))+"\n"
+	csvString += "HCHLInstance,"+str(len(HCHLInstance))
+	with open("Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
+		f.write(csvString)
+	with open("Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".json", "w") as f:
+		outputDict = { "HCHL": len(HCHL), "HCInstance": len(HCInstance), "NotHCHL": len(NotHCHL), \
+					   "NotHCHLNotDead": len(NotHCHLNotDead), "NotHCInstance": len(NotHCInstance), \
+					   "NotHCHLInstance": len(NotHCHLInstance), "HCHLInstance": len(HCHLInstance) }
+		json.dump(outputDict, f, indent=4)
 
 def GenerateOverlapRegions(dataMap):
 	"""
@@ -90,6 +157,26 @@ def GenerateOverlapRegions(dataMap):
 	HLPaMulInstanceset = HLset.intersection(PaMulset).intersection(Instanceset) - HCset
 	# quadruple
 	HCHLPaMulInstanceset = HCset.intersection(HLset).intersection(PaMulset).intersection(Instanceset)
+
+	# John
+	# we believe we are finding the important things and ignoring the unimportant things
+	# Hotcode: clearly this stuff is important*
+	# * unless you are a high frequency shared task
+	#  - how much of the hotcode actually matters? 
+	#  - HC & HL -> hotcode comes from static loops
+	#  - HC & Instance -> hotcode comes from local hot loops
+	#    -- the big HC & HL category shows how much crap you acrue if you just look at hotcode within loops
+	#    -- the second smaller category HC & Instance is much more refined and to the point ie what should be optimized is this
+	# - kernels are not entirely hot, so how do you find these control structures that you need to add in?
+	#   -- HL & !HC & !Deadcode -> dump all the stuff that never ran... but that actually requires that you do that analysis at a finer grain than dead functions
+	#	  --- loop as an abstraction will not do a great job at finding non-hot stuff that matters
+	# - instance & !HC 
+	#  -- not only are we finding things that matter, we are also throwing away stuff that doesn't matter
+	#    --- two kinds of deadcode
+	#      ---- I actually needed that but it didn't execute
+	#      ---- error/exception handling, I/O, memory allocation/deallocation, logging
+	# - HC & HL & Instance and !HC & HL & Instance
+	#  -- we are hoping that Instanceset is close to HC & HL & Instance
 
 	# lastly, we have to generate the deadcode section, which should only overlap HLOnly
 	# to do this, we go through all hotloop blocks and see if they are in the corresponding profile data (if not they're dead)
@@ -155,7 +242,7 @@ def GenerateOverlapRegions(dataMap):
 	with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
 		f.write(csvString)
 	with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".json", "w") as f:
-		outputDict = { "HC": len(HConly), "HL": len(HLonly), "PaMul": len(Pamulonly), "Instance": len(Instanceonly), \
+		outputDict = { "HC": len(HConly), "HL": len(HLonly), "PaMul": len(PaMulonly), "Instance": len(Instanceonly), \
 					   "HCHL": len(HCHLset), "HCPaMul": len(HCPaMulset), "HCInstance": len(HCInstanceset), 
 					   "HLPaMul": len(HLPaMulset), "HLPaMul": len(HLPaMulset), "HLInstance": len(HLInstanceset), \
 					   "PaMulInstance": len(PaMulInstanceset), "HCHLPaMul": len(HCHLPaMulset), "HCHLInstance": len(HCHLInstanceset),\
@@ -164,7 +251,39 @@ def GenerateOverlapRegions(dataMap):
 					   "HLDead": len(HLdeadcode), "PaMulDead": len(PaMuldeadcode), "Instancedead": len(Instancedeadcode) }
 		json.dump(outputDict, f, indent=4)
 
-def plotBars():
+def plotBars_qpr():
+	try:
+		with open("Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".json", "r") as f:
+			dataMap = json.load(f)
+	except FileNotFoundError:
+		print("Could not find data file ./Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".json for plotting Confusion bars!")
+		return
+	# generate bar chart
+	HCHL = dataMap["HCHL"]
+	HCInstance = dataMap["HCInstance"]
+	NotHCHL = dataMap["NotHCHL"]
+	NotHCHLNotDead = dataMap["NotHCHLNotDead"]
+	NotHCInstance  = dataMap["NotHCInstance"]
+	NotHCHLInstance  = dataMap["NotHCHLInstance"]
+	HCHLInstance = dataMap["HCHLInstance"]
+	bars = [ HCHL, HCInstance, NotHCHL, NotHCHLNotDead, NotHCInstance, NotHCHLInstance, HCHLInstance ]
+	xtickLabels = [ "HCHL", "HCInstance", "NotHCHL", "NotHCHLNotDead", "NotHCInstance", "NotHCHLInstance", "HCHLInstance" ]
+	
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
+
+	ax.set_title("Structuring Correspondence", fontsize=titleFont)
+	ax.bar([x for x in range(len(bars))], bars)
+	ax.set_ylabel("Count", fontsize=axisLabelFont)
+	ax.set_ylim([1, 500000000])
+	ax.set_yscale("log")
+	plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
+	ax.legend(frameon=False)
+	RD.PrintFigure(plt, "ConfusionBarChart_qpr")
+	plt.show()
+
+def plotBars_paper():
 	try:
 		with open("Data/RegionOverlaps_"+str(list(RD.buildFolders)[0])+".json", "r") as f:
 			dataMap = json.load(f)
@@ -217,17 +336,22 @@ def plotBars():
 	
 
 
-
-"""loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
+"""
+loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
 profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
 kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDataFileName, RD.readKernelFile)
 instanceData = RD.retrieveInstanceData(RD.buildFolders, RD.CorpusFolder, instanceDataFileName, RD.readKernelFile)
+deadBlocks   = RD.retrieveDeadCode(RD.buildFolders, RD.CorpusFolder, deadBlocksFileName, profileData)
 
 refinedLoopData     = RD.refineBlockData(loopData, loopFile=True)
-refinedProfileData  = profileData#RD.refineBlockData(profileData)
+refinedProfileData  = profileData
+refinedDeadBlocks   = RD.refineBlockData(deadBlocks, deadCodeFile=True)
 refinedKernelData   = RD.refineBlockData(kernelData)
 refinedInstanceData = RD.refineBlockData(instanceData)
-combined = RD.combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, instanceData = refinedInstanceData )
+combined 			= RD.combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, instanceData = refinedInstanceData, deadBlocksData = refinedDeadBlocks )
+
+GenerateOverlapRegions_QPR(combined)
 GenerateOverlapRegions(combined)
 """
-plotBars()
+
+plotBars_qpr()
