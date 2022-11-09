@@ -69,6 +69,7 @@ def GenerateOverlapRegions_QPR(dataMap):
 		Overallset  = Deadcodeset.union(Livecodeset)
 	
 	# QPR categories
+	HC   = set()
 	HCHL = set()
 	HCInstance = set()
 	NotHCHL = set()
@@ -77,8 +78,9 @@ def GenerateOverlapRegions_QPR(dataMap):
 	NotHCHLInstance = set()
 	HCHLInstance = set()
 
-	HCHL            = HCset.union(HLset)
-	HCInstance      = HCset.union(Instanceset)
+	HC 				= HCset
+	HCHL            = HCset.intersection(HLset)
+	HCInstance      = HCset.intersection(Instanceset)
 	NotHCHL         = HLset - HCset
 	NotHCHLNotDead  = NotHCHL - Deadcodeset
 	NotHCInstance   = Instanceset - HCset
@@ -86,19 +88,24 @@ def GenerateOverlapRegions_QPR(dataMap):
 	HCHLInstance    = HCset.intersection(HLset).intersection(Instanceset)
 	
 	# dump
-	csvString  = "HCHL,"+str(len(HCHL))+"\n"
+	csvString  = "HC,"+str(len(HC))+"\n"
+	csvString += "HCHL,"+str(len(HCHL))+"\n"
 	csvString += "HCInstance,"+str(len(HCInstance))+"\n"
 	csvString += "NotHCHL,"+str(len(NotHCHL))+"\n"
 	csvString += "NotHCHLNotDead,"+str(len(NotHCHLNotDead))+"\n"
 	csvString += "NotHCInstance,"+str(len(NotHCInstance))+"\n"
 	csvString += "NotHCHLInstance,"+str(len(NotHCHLInstance))+"\n"
 	csvString += "HCHLInstance,"+str(len(HCHLInstance))
+	csvString += "TotalLive,"+str(len(Livecodeset))
+	csvString += "TotalDead,"+str(len(Deadcodeset))
+	csvString += "Overall,"+str(len(Overallset))
 	with open("Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".csv", "w") as f:
 		f.write(csvString)
 	with open("Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".json", "w") as f:
-		outputDict = { "HCHL": len(HCHL), "HCInstance": len(HCInstance), "NotHCHL": len(NotHCHL), \
-					   "NotHCHLNotDead": len(NotHCHLNotDead), "NotHCInstance": len(NotHCInstance), \
-					   "NotHCHLInstance": len(NotHCHLInstance), "HCHLInstance": len(HCHLInstance) }
+		outputDict = { "HC": len(HC), "HCHL": len(HCHL), "HCInstance": len(HCInstance), "HCHLInstance": len(HCHLInstance), \
+					   "NotHCHL": len(NotHCHL), "NotHCHLNotDead": len(NotHCHLNotDead), "NotHCInstance": len(NotHCInstance), \
+					   "NotHCHLInstance": len(NotHCHLInstance), "TotalLive": len(Livecodeset), "TotalDead": len(Deadcodeset), \
+					   "Overall": len(Overallset) }
 		json.dump(outputDict, f, indent=4)
 
 def GenerateOverlapRegions(dataMap):
@@ -259,6 +266,7 @@ def plotBars_qpr():
 		print("Could not find data file ./Data/RegionOverlaps_qpr_"+str(list(RD.buildFolders)[0])+".json for plotting Confusion bars!")
 		return
 	# generate bar chart
+	HC   = dataMap["HC"]
 	HCHL = dataMap["HCHL"]
 	HCInstance = dataMap["HCInstance"]
 	NotHCHL = dataMap["NotHCHL"]
@@ -266,15 +274,16 @@ def plotBars_qpr():
 	NotHCInstance  = dataMap["NotHCInstance"]
 	NotHCHLInstance  = dataMap["NotHCHLInstance"]
 	HCHLInstance = dataMap["HCHLInstance"]
-	bars = [ HCHL, HCInstance, NotHCHL, NotHCHLNotDead, NotHCInstance, NotHCHLInstance, HCHLInstance ]
-	xtickLabels = [ "HCHL", "HCInstance", "NotHCHL", "NotHCHLNotDead", "NotHCInstance", "NotHCHLInstance", "HCHLInstance" ]
+	bars = [ HC, HCHL, HCInstance, NotHCHL, NotHCHLNotDead, NotHCInstance, NotHCHLInstance, HCHLInstance ]
+	xtickLabels = [ "HC", "HCHL", "HCInstance", "HCHLInstance", "NotHCHL", "NotHCHLNotDead", "NotHCInstance", "NotHCHLInstance" ]
 	
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
 	ax.set_title("Structuring Correspondence", fontsize=titleFont)
-	ax.bar([x for x in range(len(bars))], bars)
+	#ax.bar([x for x in range(len(bars))], bars)
+	ax.scatter([x for x in range(len(bars))], bars)
 	ax.set_ylabel("Count", fontsize=axisLabelFont)
 	ax.set_ylim([1, 500000000])
 	ax.set_yscale("log")
@@ -334,9 +343,6 @@ def plotBars_paper():
 	RD.PrintFigure(plt, "ConfusionBarChart")
 	plt.show()
 	
-
-
-"""
 loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
 profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
 kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDataFileName, RD.readKernelFile)
@@ -352,6 +358,5 @@ combined 			= RD.combineData( loopData = refinedLoopData, profileData = refinedP
 
 GenerateOverlapRegions_QPR(combined)
 GenerateOverlapRegions(combined)
-"""
 
 plotBars_qpr()
