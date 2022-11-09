@@ -163,7 +163,7 @@ def plotRecursionData_scatter(projectMap):
 	fig.set_facecolor("Black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
-	ax.set_title("Static Structure Ambiguity", fontsize=titleFont)
+	ax.set_title("Control Structure Ambiguity", fontsize=titleFont)
 
 	# sort projectMap by live functions from least to greatest
 	# this (generally) puts APIs on the left, benchmarks and handwritten stuff is on the right, and stuff that surprises you is mid
