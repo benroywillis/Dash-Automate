@@ -274,7 +274,7 @@ def plotBars_qpr():
 	NotHCInstance  = dataMap["NotHCInstance"]
 	NotHCHLInstance  = dataMap["NotHCHLInstance"]
 	HCHLInstance = dataMap["HCHLInstance"]
-	bars = [ HC, HCHL, HCInstance, NotHCHL, NotHCHLNotDead, NotHCInstance, NotHCHLInstance, HCHLInstance ]
+	bars =        [ HC, HCHL, HCInstance, HCHLInstance, NotHCHL, NotHCHLNotDead, NotHCInstance, NotHCHLInstance ]
 	xtickLabels = [ "HC", "HCHL", "HCInstance", "HCHLInstance", "NotHCHL", "NotHCHLNotDead", "NotHCInstance", "NotHCHLInstance" ]
 	
 	fig = plt.figure(frameon=False)
@@ -343,6 +343,7 @@ def plotBars_paper():
 	RD.PrintFigure(plt, "ConfusionBarChart")
 	plt.show()
 	
+"""
 loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
 profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
 kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDataFileName, RD.readKernelFile)
@@ -358,5 +359,6 @@ combined 			= RD.combineData( loopData = refinedLoopData, profileData = refinedP
 
 GenerateOverlapRegions_QPR(combined)
 GenerateOverlapRegions(combined)
+"""
 
 plotBars_qpr()
