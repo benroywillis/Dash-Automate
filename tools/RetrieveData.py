@@ -836,7 +836,6 @@ def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData 
 	# add deadcode data
 	for path in deadBlocksData:
 		projectPath = getTraceName(path)
-		print(projectPath)
 		if allData.get(projectPath) is None:
 			allData[projectPath] = { "LiveBlocks": {}, "DeadBlocks": {}, "Loop": {}, "Profile": {}, "HotCode": {}, "HotLoop": {}, "PaMul": {}, "Instance": {} }
 		allData[projectPath]["LiveBlocks"] = deadBlocksData[path]["Livecode"]
