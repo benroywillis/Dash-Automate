@@ -41,8 +41,7 @@ def getLocalFiles(path, suffix="", prefix=""):
     """
     @function 	listJsons
     @author 	Ben Willis
-    @brief 	This function searches the directory specified by path for all files ending in 
-                suffix and returns a list.
+    @brief 	    This function searches the directory specified by path for all files ending in suffix and returns a list.
     @param[in] 	path 		Specifies the path from root to the local directory.
     @param[in]  prefix          File prefix used to search for files. Can be a string or list.
     @param[in]  suffix          File suffix used to search for files. Can be a string or list.
@@ -127,6 +126,7 @@ def argumentParse():
     # build flow configuration options and flags
     arg_parser.add_argument("-i", "--input-file", default="compile.json", help="Input JSON file name.")
     arg_parser.add_argument("-b", "--build", default="build", help="Specifiy build folder name.")
+    arg_parser.add_argument("-s", "--samples", default=1, help="Compile a timing version of the program, sample it SAMPLES number of times, and run markov profile, cartographer and memory profile SAMPLES number of times.")    
     #arg_parser.add_argument("-bo", "--bash-only", action="store_true", help="Use bash for the build flow.")
     arg_parser.add_argument("-ns", "--no-subdirectories", action="store_true", help="Ignore subdirectories specified in the .json.")
     arg_parser.add_argument("-nl", "--no-labeling", action="store_true", help="Turn off kernel labeling in the Cartographer.")
@@ -167,6 +167,8 @@ def argumentParse():
     # a nightly build AND only new build is not possible in one run
     if args.nightly_build and args.only_new:
         exit("A nightly build and only new build is not possible in a single run!")
+    # turn samples arg into an interger
+    args.samples = int(args.samples)
     return args
 
 def readJson(path, args, name=None, subD=False):

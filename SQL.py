@@ -397,7 +397,7 @@ class BitcodeSQL(SQLDataBase):
                             zlibVersion = -1
                             compressionLevel = self.args.trace_compression
                             traceSize = self.BCD[BC][NTV][TRC]["size"]
-                            traceTime = self.BCD[BC][NTV][TRC]["time"]
+                            traceTime = self.BCD[BC][NTV][TRC][0]["time"]
                             cartTime  = self.BCD[BC][NTV][TRC]["CAR"]["time"]
                             LFLAG     = self.BCD[BC][NTV]["LFLAG"]
                             RARG      = self.BCD[BC][NTV][TRC]["RARG"].strip("'")
