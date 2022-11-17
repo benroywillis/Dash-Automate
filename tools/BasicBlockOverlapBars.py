@@ -157,9 +157,9 @@ def PlotCoverageBars_paper(dataMap):
 	HCPaMul 	= [ overlapMap[entry]["HCInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
 	HCHL 		= [ -1*overlapMap[entry]["HCHL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
 
-	PaMul 		= [ overlapMap[entry]["Instance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
-	HLPaMul 	= [ overlapMap[entry]["HLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
-	HL 			= [ -1*overlapMap[entry]["HL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
+	PaMul 		= [ overlapMap[entry]["Instance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	HLPaMul 	= [ overlapMap[entry]["HLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	HL 			= [ -1*overlapMap[entry]["HL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
 
 	fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True, frameon=False)
 	fig.set_facecolor("black")
