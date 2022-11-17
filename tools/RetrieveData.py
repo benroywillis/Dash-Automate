@@ -6,13 +6,13 @@ import os
 import struct
 ## input data
 # for testing
-#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
+CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
 #CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
@@ -716,6 +716,26 @@ def matchData(dataMap, instanceMap=dict(), instance=False):
 			del dataMap[project]
 	return dataMap
 
+def getProjectAxisLabels(keys):
+	"""
+	@brief 		Generates a list of axis tick labels specifying the beginning of projects
+	@param[in] 	keys		Should be a list of file paths that contain a project name
+	@retval		axisLabels	List of tick labels. 
+							The labels are either a project name (denoting the start of a project's applications, from left to right)
+							Or they are an empty string
+	"""
+	axisLabels = []
+	projectNames = set()
+	for path in keys:
+		project = getProjectName(path, "Dash-Corpus")
+		newProject = False
+		if project not in projectNames:
+			axisLabels.append(project)
+			projectNames.add(project)
+		else:
+			axisLabels.append("")
+	return axisLabels
+
 def SortAndMap_App(dataMap, InterestingProjects):
 	"""
 	This function turns a map of kernel files into a map of application names (native name), values { HC: { KID: set(uniquified_blocks) }, .. }
@@ -972,3 +992,96 @@ def combineData( loopData = {}, profileData = {}, kernelData = {}, instanceData 
 				del allData[project]
 
 	return allData
+
+def RetrieveData(deadcode=False, livecode=False, loop=False, profile=False, hotcode=False, hotloop=False, pamul=False, instance=False, regenerate=False):
+	"""
+	@brief Retrieves data on a per-application basis where each application has the information selected from the input flags
+
+	All optional arguments match their corresponding keys in the return dictionary exactly
+	@param[in] deadcode 	Include deadcode code information
+	@param[in] livecode 	Include livecode code information
+	@param[in] loop 		Include static loop information
+	@param[in] profile		Include profile information
+	@param[in] hotcode		Include hotcode information
+	@param[in] hotloop		Include hotloop information
+	@param[in] pamul 		Include PaMul information
+	@param[in] instance		Include instance information
+	@retval    userData 	Maps an application path to its information
+							Kernel information (for hotcode, hotloop, pamul, instance) only includes block information
+	"""
+	# data file names to retrieve and write to
+	deadBlocksFileName = "DeadBlocks_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+".json"
+	loopDataFileName = "Loops_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+".json"
+	profileDataFileName = "Profiles_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+".json"
+	kernelDataFileName= "Kernels_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+".json"
+	instanceDataFileName = "Instances_"+"".join(x for x in CorpusFolder.split("/"))+list(buildFolders)[0]+".json"
+
+	# the allData file is named after the forpus folder + build folder it was retrieved from
+	allDataFileName = "allData_"+"".join( x for x in CorpusFolder.split("/") )+list(buildFolders)[0]+".json"
+
+	# check to see if we already printed that data for this run
+	# if we can't find the file we will automatically turn on all the flags, collect the data, then print the file
+	# afterward we will choose the data requested and return that
+	# else we just collect the data necessary and return that
+	allData = {}
+	try:
+		# if the user is asking to regenerate, make sure this fails
+		if regenerate:
+			allDataFileName = "apdofhewpjfnqpjrnv"
+		with open("Data/"+allDataFileName, "r") as f:
+			# collect the data we are looking for and return it
+			allData  = json.load(f)
+	except FileNotFoundError:
+		if regenerate:
+			print("Regenerating data file...")
+		else:
+			print("Could not find file ./Data/"+allDataFileName+". Generating file...")
+
+		loopData     = retrieveStaticLoopData(buildFolders, CorpusFolder, loopDataFileName, readLoopFile)
+		profileData  = retrieveProfiles(buildFolders, CorpusFolder, profileDataFileName)
+		kernelData   = retrieveKernelData(buildFolders, CorpusFolder, kernelDataFileName, readKernelFile)
+		instanceData = retrieveInstanceData(buildFolders, CorpusFolder, instanceDataFileName, readKernelFile)
+		deadBlocks   = retrieveDeadCode(buildFolders, CorpusFolder, deadBlocksFileName, profileData)
+
+		refinedLoopData     = refineBlockData(loopData, loopFile=True)
+		refinedProfileData  = profileData
+		refinedDeadBlocks   = refineBlockData(deadBlocks, deadCodeFile=True)
+		refinedKernelData   = refineBlockData(kernelData)
+		refinedInstanceData = refineBlockData(instanceData)
+
+		allData = combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, \
+						   instanceData = refinedInstanceData, deadBlocksData = refinedDeadBlocks )
+
+		with open("Data/"+allDataFileName, "w") as f:
+			# profile data needs to be formatted in a specific way to work
+			formatted = allData
+			for entry in allData:
+				# list of dictionaries, where each one is { "key": [srcID, snkID], "value": frequency }
+				profileEdges = []
+				for edge in allData[entry]["Profile"]:
+					profileEdges.append( { "key": [edge[0], edge[1]], "value": allData[entry]["Profile"][edge] } )
+				formatted[entry]["Profile"] = profileEdges
+			json.dump(allData, f, indent=2)
+
+	userData = {}
+	for entry in allData:
+		userData[entry] = {}
+		if deadcode:
+			userData[entry]["deadcode"] 	= allData[entry]["DeadBlocks"]
+		if livecode:
+			userData[entry]["livecode"] 	= allData[entry]["LiveBlocks"]
+		if loop:
+			userData[entry]["loop"] 		= allData[entry]["Loop"]
+		if profile:
+			userData[entry]["profile"] 		= allData[entry]["Profile"]
+		if hotcode:
+			userData[entry]["hotcode"] 		= allData[entry]["HotCode"]
+		if hotloop:
+			userData[entry]["hotloop"] 		= allData[entry]["HotLoop"]
+		if pamul:
+			userData[entry]["pamul"] 		= allData[entry]["PaMul"]
+		if instance:
+			userData[entry]["instance"] 	= allData[entry]["Instance"]
+
+	return userData
+

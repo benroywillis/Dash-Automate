@@ -61,11 +61,11 @@ def GenerateOverlapRegions_QPR(dataMap):
 	Overallset  = set()
 
 	for path in dataMap:
-		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["HotCode"], tn=False) )
-		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["HotLoop"], tn=False) )
-		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["Instance"], tn=False) )
-		Deadcodeset = Deadcodeset.union( RD.Uniquify(path, dataMap[path]["DeadBlocks"], tn=False, blocks=True) )
-		Livecodeset = Livecodeset.union( RD.Uniquify(path, dataMap[path]["LiveBlocks"], tn=False, blocks=True) )
+		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["hotcode"], tn=False) )
+		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["hotloop"], tn=False) )
+		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["instance"], tn=False) )
+		Deadcodeset = Deadcodeset.union( RD.Uniquify(path, dataMap[path]["deadcode"], tn=False, blocks=True) )
+		Livecodeset = Livecodeset.union( RD.Uniquify(path, dataMap[path]["livecode"], tn=False, blocks=True) )
 		Overallset  = Deadcodeset.union(Livecodeset)
 	
 	# QPR categories
@@ -141,10 +141,10 @@ def GenerateOverlapRegions(dataMap):
 	HCHLPaMulInstanceset = set()
 
 	for path in dataMap:
-		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["HotCode"], tn=False) )
-		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["HotLoop"], tn=False) )
-		PaMulset = PaMulset.union( RD.Uniquify(path, dataMap[path]["PaMul"], tn=False) )
-		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["Instance"], tn=False) )
+		HCset = HCset.union( RD.Uniquify(path, dataMap[path]["hotcode"], tn=False) )
+		HLset = HLset.union( RD.Uniquify(path, dataMap[path]["hotloop"], tn=False) )
+		PaMulset = PaMulset.union( RD.Uniquify(path, dataMap[path]["pamul"], tn=False) )
+		Instanceset = Instanceset.union( RD.Uniquify(path, dataMap[path]["instance"], tn=False) )
 	# singles
 	HConly = HCset - HLset - PaMulset - Instanceset
 	HLonly = HLset - HCset - PaMulset - Instanceset
@@ -184,34 +184,6 @@ def GenerateOverlapRegions(dataMap):
 	#      ---- error/exception handling, I/O, memory allocation/deallocation, logging
 	# - HC & HL & Instance and !HC & HL & Instance
 	#  -- we are hoping that Instanceset is close to HC & HL & Instance
-
-	# lastly, we have to generate the deadcode section, which should only overlap HLOnly
-	# to do this, we go through all hotloop blocks and see if they are in the corresponding profile data (if not they're dead)
-	deadCode = set()
-	for path in dataMap:
-		deadBlocks    = set()
-		profileBlocks = set()
-		#print(dataMap[path]["Profile"])
-		for entry in dataMap[path]["Profile"]:
-			profileBlocks.add(entry[0])
-			profileBlocks.add(entry[1])
-		for k in dataMap[path]["HotCode"]:
-			for b in dataMap[path]["HotCode"][k]:
-				if b not in profileBlocks:
-					deadBlocks.add(b)
-		for k in dataMap[path]["HotLoop"]:
-			for b in dataMap[path]["HotLoop"][k]:
-				if b not in profileBlocks:
-					deadBlocks.add(b)
-		for k in dataMap[path]["PaMul"]:
-			for b in dataMap[path]["PaMul"][k]:
-				if b not in profileBlocks:
-					deadBlocks.add(b)
-		for k in dataMap[path]["Instance"]:
-			for b in dataMap[path]["Instance"][k]:
-				if b not in profileBlocks:
-					deadBlocks.add(b)
-		deadCode = deadCode.union( RD.Uniquify( path, { "0": list(deadBlocks) }, tn=False ) )
 
 	# verification, the only set that should overlap with dead code is HL
 	HCdeadcode = HCset.intersection(deadCode)
@@ -342,23 +314,10 @@ def plotBars_paper():
 	ax.set_ylim([0, 500000])
 	RD.PrintFigure(plt, "ConfusionBarChart")
 	plt.show()
-	
-"""
-loopData     = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopDataFileName, RD.readLoopFile)
-profileData  = RD.retrieveProfiles(RD.buildFolders, RD.CorpusFolder, profileDataFileName)
-kernelData   = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, kernelDataFileName, RD.readKernelFile)
-instanceData = RD.retrieveInstanceData(RD.buildFolders, RD.CorpusFolder, instanceDataFileName, RD.readKernelFile)
-deadBlocks   = RD.retrieveDeadCode(RD.buildFolders, RD.CorpusFolder, deadBlocksFileName, profileData)
 
-refinedLoopData     = RD.refineBlockData(loopData, loopFile=True)
-refinedProfileData  = profileData
-refinedDeadBlocks   = RD.refineBlockData(deadBlocks, deadCodeFile=True)
-refinedKernelData   = RD.refineBlockData(kernelData)
-refinedInstanceData = RD.refineBlockData(instanceData)
-combined 			= RD.combineData( loopData = refinedLoopData, profileData = refinedProfileData, kernelData = refinedKernelData, instanceData = refinedInstanceData, deadBlocksData = refinedDeadBlocks )
+combined = RD.RetrieveData(deadcode=True, livecode=True, profile=True, hotcode=True, hotloop=True, pamul=True, instance=True)
 
 GenerateOverlapRegions_QPR(combined)
-GenerateOverlapRegions(combined)
-"""
+#GenerateOverlapRegions(combined)
 
 plotBars_qpr()

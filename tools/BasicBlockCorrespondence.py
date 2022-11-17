@@ -4,10 +4,6 @@ import matplotlib_venn   as pltv
 import venn
 import RetrieveData as RD
 
-# dataFileName defines the name of the file that will store the data specific to this script (once it is generated)
-dataFileName = "Kernels_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
-loopFileName = "Loops_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
-
 # set that selects projects we want to be included in the input data
 # if this set is empty we select all available projects
 InterestingProjects = {}
@@ -41,16 +37,9 @@ def PlotKernelCorrespondence(dataMap):
 	HL = set()
 	PaMul = set()
 	for file in dataMap:
-		if len(InterestingProjects):
-			if RD.getProjectName(file, "Dash-Corpus") not in InterestingProjects:
-				continue
-		if dataMap[file].get("Kernels"):
-			if "HotCode" in file:
-				HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
-			elif "HotLoop" in file:
-				HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
-			else:
-				PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+		HC = HC.union( RD.Uniquify(file, dataMap[file]["hotcode"], tn=False) )
+		HL = HL.union( RD.Uniquify(file, dataMap[file]["hotloop"], tn=False) )
+		PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["instance"], tn=False) )
 	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
 	v = pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
 	RD.PrintFigure(plt, "BasicBlockCorrespondence")
@@ -58,22 +47,9 @@ def PlotKernelCorrespondence(dataMap):
 
 def PlotKernelCorrespondence_Manual(dataMap):
 	zoneMags = { "HC": 0, "HL": 0, "PaMul": 0, "HCHL": 0, "HCPaMul": 0, "HLPaMul": 0, "HCHLPaMul": 0 }
-	combinedMap = {}
-	for path in dataMap:
-		matchPath = "/".join(x for x in path.split("/")[:-1]) + path.split("/")[-1].split(".")[0]
-		if combinedMap.get(matchPath) is None:
-			combinedMap[matchPath] = { "HC": {}, "HL": {}, "PaMul": {} }
-		if "HotCode" in path:
-			combinedMap[matchPath]["HC"] = dataMap[path]["Kernels"]
-		elif "HotLoop" in path:
-			combinedMap[matchPath]["HL"] = dataMap[path]["Kernels"]
-		else:
-			combinedMap[matchPath]["PaMul"] = dataMap[path]["Kernels"]
-
-	# record projects that have exclusive HC and HCHL blocks
 	exclusionRegions = { "HC": [], "HCHL": [] }
-	for path in combinedMap:
-		HC, HL, PaMul, HCHL, HCPaMul, HLPaMul, HCHLPaMul = RD.OverlapRegions(combinedMap[path]["HC"], combinedMap[path]["HL"], combinedMap[path]["PaMul"])
+	for path in dataMap:
+		HC, HL, PaMul, HCHL, HCPaMul, HLPaMul, HCHLPaMul = RD.OverlapRegions(dataMap[path]["HC"], dataMap[path]["HL"], dataMap[path]["PaMul"])
 		zoneMags["HC"] += len(HC)
 		if len(HC):
 			exclusionRegions["HC"].append( [path, list(HC)] )
@@ -136,14 +112,14 @@ def ExclusionZones(dataMap, loopMap):
 	Loops = set()
 	for file in dataMap:
 		if "HotCode" in file:
-			HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+			HC = HC.union( RD.Uniquify(file, dataMap[file]["Kernels"], tn=False) )
 		elif "HotLoop" in file:
-			HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+			HL = HL.union( RD.Uniquify(file, dataMap[file]["Kernels"], tn=False) )
 		else:
-			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"]) )
+			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["Kernels"], tn=False) )
 	# find files that contribute to the exclusion zones
 	for file in dataMap:
-		uniqueBlocks = RD.Uniquify(file, dataMap[file]["Kernels"])
+		uniqueBlocks = RD.Uniquify(file, dataMap[file]["Kernels"], tn=False)
 		if "HotCode" in file:
 			# overlap the blocks with the PaMul set and the hotloop set
 			intersect_p = uniqueBlocks.intersection(PaMul)
@@ -168,11 +144,6 @@ def ExclusionZones(dataMap, loopMap):
 	with open("Data/ExclusiveRegions.json", "w") as f:
 		json.dump(exclusions, f, indent=4)
 
-dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
-loopMap = RD.retrieveStaticLoopData(RD.buildFolders, RD.CorpusFolder, loopFileName, RD.readLoopFile)
-refined = RD.refineBlockData(dataMap)
-matched = RD.matchData(refined)
-PlotKernelCorrespondence_Manual(matched)
-PlotKernelCorrespondence(matched)
-#PlotKernelCorrespondence_static(matched, loopMap)
-#ExclusionZones(matched, loopMap)
+combined = RD.RetrieveData(loop=True, hotcode=True, hotloop=True, pamul=True, instance=True)
+#PlotKernelCorrespondence_Manual(combined)
+PlotKernelCorrespondence(combined)
