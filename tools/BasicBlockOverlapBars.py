@@ -64,7 +64,7 @@ def outputProblemProjects(setIntersections):
 	with open("Data/BadPaMulStructureProjects.json", "w") as f:
 		json.dump(sortedIntersections, f, indent=4)
 
-def PlotCoverageBars(setIntersections, xtickLabels):
+def PlotCoverageBars():
 	"""
 	@brief This function shows a per-application breakdown of what Hotcode, Hotloop and PaMul capture (in terms of basic blocks)
 	This figure should be used in conjunction with a Venn diagram showing the overall basic blocks captured by each strategy
@@ -72,6 +72,13 @@ def PlotCoverageBars(setIntersections, xtickLabels):
 	For places of overlap with PaMul, each strategy should be shown in stacked bars above the x-axis in least-greatest order
 	For BBs that do not overlap with PaMul, each strategy should be shown in stacked bars below the x-axis in least-greatest order
 	"""
+	dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
+	refined = RD.refineBlockData(dataMap)
+	matched = RD.matchData(refined)
+	appMap, xtickLabels = RD.SortAndMap_App(matched, InterestingProjects)
+	setIntersections = SetIntersections(appMap)
+	outputProblemProjects(setIntersections)
+
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
@@ -103,11 +110,77 @@ def PlotCoverageBars(setIntersections, xtickLabels):
 	RD.PrintFigure(plt, "BasicBlockOverlap")
 	plt.show()
 
-dataMap = RD.retrieveKernelData(RD.buildFolders, RD.CorpusFolder, dataFileName, RD.readKernelFile)
-refined = RD.refineBlockData(dataMap)
-matched = RD.matchData(refined)
-appMap, xaxis  = RD.SortAndMap_App(matched, InterestingProjects)
-setIntersections = SetIntersections(appMap)
-outputProblemProjects(setIntersections)
-PlotCoverageBars(setIntersections, xaxis)
+def PlotCoverageBars_paper(dataMap):
+	"""
+	"""
+	# maps each application to its overlap categories
+	xtickLabels = RD.getProjectAxisLabels(dataMap)
+	overlapMap = {}
+	for entry in sorted(dataMap):
+		overlapMap[entry] = { "HC": 0.0, "HL": 0.0, "Instance": 0.0, "HCHL": 0.0, "HCInstance": 0.0, "HLInstance": 0.0, "HCHLInstance": 0.0 }
+		HC    = RD.Uniquify( entry, dataMap[entry]["hotcode"], tn=False )
+		HL    = RD.Uniquify( entry, dataMap[entry]["hotloop"], tn=False )
+		PaMul = RD.Uniquify( entry, dataMap[entry]["instance"], tn=False )
+		Alive = RD.Uniquify( entry, dataMap[entry]["livecode"], tn=False, blocks=True )
+		Dead  = RD.Uniquify( entry, dataMap[entry]["deadcode"], tn=False, blocks=True )
+		
+		HConly    = HC - HL - PaMul
+		HLonly    = HL - HC - PaMul
+		PaMulonly = PaMul - HC - HL
+		HCHL = HC.intersection(HL) - PaMul
+		HCPaMul = HC.intersection(PaMul) - HL
+		HLPaMul = HL.intersection(PaMul) - HC
+		HCHLPaMul = HC.intersection(HL).intersection(PaMul)
 
+		NotHC = HL.union(PaMul) - HC
+		HLonlyalive = HL - HC - PaMul - Dead
+
+		# here we construct two datasets for two plots to be viewed in parallel
+		# 1. normalized to HC, fraction of HC covered by HL and PaMul, PaMul inclusive is positive, PaMul exclusive is negative
+		# +
+		overlapMap[entry]["HCHLInstance"] = float(len(HCHLPaMul)) / float(len(HC))
+		overlapMap[entry]["HCInstance"] = float(len(HCPaMul)) / float(len(HC))
+		# -
+		overlapMap[entry]["HCHL"] = float(len(HCHL)) / float(len(HC))
+		# 2. normalized to live code, non-hot code structured by pamul and HL, PaMul inclusive positive, PaMul exclusive negative
+		# +
+		overlapMap[entry]["Instance"] = float(len(PaMulonly)) / float(len(Alive))
+		overlapMap[entry]["HLInstance"] = float(len(HLPaMul)) / float(len(Alive))
+		# -
+		overlapMap[entry]["HL"] = float(len(HLonlyalive)) / float(len(Alive))
+
+	# these codes construct the lists of values for each bar
+	# they sort the y axis two ways from greatest to least:
+	# 1. by project (implicit in the overlap map)
+	# 2. within each project, by the objective function (PaMulinclusive0 + PaMulinclusive1) / (PaMulexclusive)
+	HCHLPaMul 	= [ overlapMap[entry]["HCHLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 ) ]
+	HCPaMul 	= [ overlapMap[entry]["HCInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	HCHL 		= [ -1*overlapMap[entry]["HCHL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+
+	PaMul 		= [ overlapMap[entry]["Instance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
+	HLPaMul 	= [ overlapMap[entry]["HLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
+	HL 			= [ -1*overlapMap[entry]["HL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["Instance"]+overlapMap[entry]["HLInstance"])/overlapMap[entry]["HL"] if overlapMap[entry]["HL"] > 0.0 else 100 )]
+
+	fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True, frameon=False)
+	fig.set_facecolor("black")
+	fig.suptitle("Correspondence of Structured Basic Blocks")
+	
+	ax0.barh( [x for x in range(len(xtickLabels))], HCHLPaMul, label="HC & HL & PaMul", color=colors[0] )
+	ax0.barh( [x for x in range(len(xtickLabels))], HCPaMul, left=HCHLPaMul, label="HC & PaMul", color=colors[1] )
+	ax0.barh( [x for x in range(len(xtickLabels))], HCHL, label="HC & HL", color=colors[2] )
+	ax0.set_xlabel("% (Normalized to hot code)")
+	ax0.set_ylabel("Application")
+	ax0.legend(frameon=False)
+
+	ax1.barh( [x for x in range(len(xtickLabels))], PaMul, label="PaMul", color=colors[3] )
+	ax1.barh( [x for x in range(len(xtickLabels))], HLPaMul, left=PaMul, label="HL & PaMul", color=colors[4] )
+	ax1.barh( [x for x in range(len(xtickLabels))], HL, label="HL", color=colors[5] )
+	ax1.set_xlabel("% (normalized to live code)")
+	ax1.legend(frameon=False)
+
+	plt.yticks(ticks=[x for x in range(len(xtickLabels))], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
+	RD.PrintFigure(plt, "BasicBlockOverlap_Horizontal")
+	plt.show()
+
+data = RD.RetrieveData(livecode=True, deadcode=True, hotcode=True, hotloop=True, instance=True)
+PlotCoverageBars_paper(data)
