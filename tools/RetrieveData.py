@@ -4,15 +4,17 @@ import json
 import os
 # for reading binary-encoded profiles
 import struct
+# for reading log file strings
+import re
 ## input data
 # for testing
-CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/GSL/"
 #CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/Artisan/"
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
-#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
+CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
@@ -209,6 +211,27 @@ def reverseUniquify(uniquified, file):
 	else:
 		return originalIDs
 
+def readTimingPassTime(line):
+	time = re.findall("NATIVETIME\:\s\d+\.\d+", line)
+	if len(time):
+		s = time[0].split(" ")[1]
+		return [float(s)]
+	return []
+
+def readMarkovPassTime(line):
+	time = re.findall("PROFILETIME\:\s\d+\.\d+", line)
+	if len(time):
+		s = time[0].split(" ")[1]
+		return [float(s)]
+	return []
+
+def readMemoryPassTime(line):
+	time = re.findall("MEMORYPROFILETIME\:\s\d+\.\d+", line)
+	if len(time):
+		s = time[0].split(" ")[1]
+		return [float(s)]
+	return []
+
 def readKernelFile_Coverage(kf):
 	# first open the log to verify that the step ran 
 	"""
@@ -345,8 +368,8 @@ def readLogFile(lf, regexf):
 			reg = regexf(line)
 			if len(reg):
 				regexStrings.append(reg)
-	except:
-		print("Could not read a line in log file "+lf)
+	except Exception as e:
+		print("Could not read a line in log file "+lf+": "+str(e))
 	return regexStrings
 
 def readProfile(f):
@@ -415,16 +438,18 @@ def recurseIntoFolder(path, BuildNames, basePath, folderMap):
 	currentFolder = path.split("/")[-1]
 	path += "/"
 	offset = findOffset(path, basePath)
+	
 	if currentFolder in BuildNames:
 		if folderMap.get(offset) is None:
 			folderMap[offset] = dict()
-	
 	directories = []
 	for f in os.scandir(path):
 		if f.is_dir():
 			directories.append(f)
+
 	for d in directories:
 		folderMap = recurseIntoFolder(d.path, BuildNames, basePath, folderMap)
+	
 	return folderMap
 
 def getTargetFilePaths(directoryMap, baseDir, offset = "", prefix = "", suffix = ""):
@@ -648,6 +673,85 @@ def retrieveProfiles(buildFolders, CorpusFolder, dataFileName):
 		# therefore we turn the map into a list of key-value pairs
 		json.dump( { p: [ { "key": k, "value": v } for k, v in dataMap[p].items() ] for p in dataMap }, f, indent=4)
 
+	return dataMap
+
+def retrieveTimingData(buildFolders, CorpusFolder, dataFileName):
+	try:
+		with open("Data/"+dataFileName, "r") as f:
+			return json.load(f)
+	except FileNotFoundError:
+		print("No pre-existing timing data file. Running collection algorithm...")
+	# timing data is contained within three types log files
+	# 1. timing pass
+	# 2. markov pass
+	# 3. memory pass
+	# each pass will have one or more samples and they all need to be collected
+	
+	# all file names have within them a trace name that will unify their key in the dataMap
+
+	# contains paths to all directories that contain files we seek 
+	# project path : build folder 
+	directoryMap = {}
+	# maps project paths to log file data
+	# abs path : kernel data
+	dataMap = {}
+	recurseIntoFolder(CorpusFolder, buildFolders, CorpusFolder, directoryMap)
+
+	# first, timing pass
+	profileTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="Timing_", suffix=".log")
+	for l in profileTargets:
+		tracePath = "/".join(x for x in l.split("/")[:-1])+"/"+"_".join( x for x in l.split("/")[-1].split(".")[0].split("_")[1:] )
+		if dataMap.get(tracePath) is None:
+			dataMap[tracePath] = { "Timing": {}, "Markov": {}, "Memory": {} }
+		t = readLogFile(l, readTimingPassTime)
+		if len(t):
+			# record the sample number and time
+			sampleS = re.findall("_sample\d+", l)
+			if len(sampleS):
+				sample = sampleS[0].split("sample")[1]
+				dataMap[tracePath]["Timing"][sample] = t[0][0]
+			else:
+				print("Could not find sample number for log "+l)
+		else:
+			print("Could not retrieve time stat for log file "+l)
+	
+	# second, markov pass
+	profileTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="makeTrace_", suffix=".log")
+	for l in profileTargets:
+		tracePath = "/".join(x for x in l.split("/")[:-1])+"/"+"_".join( x for x in l.split("/")[-1].split(".")[0].split("_")[1:] )
+		if dataMap.get(tracePath) is None:
+			print("found a file path when searching through markov not yet in datamap")
+			dataMap[tracePath] = { "Timing": {}, "Markov": {}, "Memory": {} }
+		t = readLogFile(l, readMarkovPassTime)
+		if len(t):
+			# record the sample number and time
+			sampleS = re.findall("_sample\d+", l)
+			if len(sampleS):
+				sample = sampleS[0].split("sample")[1]
+				dataMap[tracePath]["Markov"][sample] = t[0][0]
+			else:
+				print("Could not find sample number for log "+l)
+		else:
+			print("Could not retrieve time stat for log file "+l)
+
+	# third, memory pass
+	profileTargets = getTargetFilePaths(directoryMap, CorpusFolder, offset="logs/", prefix="MemoryPass_", suffix=".log")
+	for l in profileTargets:
+		tracePath = "/".join(x for x in l.split("/")[:-1])+"/"+"_".join( x for x in l.split("/")[-1].split(".")[0].split("_")[1:] )
+		if dataMap.get(tracePath) is None:
+			dataMap[tracePath] = { "Timing": {}, "Markov": {}, "Memory": {} }
+		t = readLogFile(l, readMemoryPassTime)
+		if len(t):
+			# record the sample number and time
+			sampleS = re.findall("_sample\d+", l)
+			if len(sampleS):
+				sample = sampleS[0].split("sample")[1]
+				dataMap[tracePath]["Memory"][sample] = t[0][0]
+			else:
+				print("Could not find sample number for log "+l)
+		else:
+			print("Could not retrieve time stat for log file "+l)
+	exit(dataMap)
 	return dataMap
 
 def refineBlockData(dataMap, loopFile=False, deadCodeFile=False):
