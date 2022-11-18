@@ -104,14 +104,14 @@ class BitCode:
             self.BCDict[BCpath][NTV]["TRAbuild"] = self.buildPath+NTVname+".markov.bc"
             self.BCDict[BCpath][NTV]["TRAtmp"] = tmpFolder+NTVname+".markov.bc"
             self.BCDict[BCpath][NTV]["LFLAG"] = LFLAGS[i]
-            self.BCDict[BCpath][NTV]["Script"] = self.buildPath + "scripts/makeNative"+NTVname+".sh"
-            self.BCDict[BCpath][NTV]["Log"] = self.buildPath+"logs/makeNative"+NTVname+".log"
+            self.BCDict[BCpath][NTV]["Script"] = self.buildPath + "scripts/makeNative_"+NTVname+".sh"
+            self.BCDict[BCpath][NTV]["Log"] = self.buildPath+"logs/makeNative_"+NTVname+".log"
             # Timing information
             self.BCDict[BCpath][NTV]["Timing"] = dict()
             self.BCDict[BCpath][NTV]["Timing"]["Name"] = NTVname+".timing.native"
             self.BCDict[BCpath][NTV]["Timing"]["BCtmpPath"] = tmpFolder+NTVname+".timing.bc"
-            self.BCDict[BCpath][NTV]["Timing"]["BCbuildPath"] = self.buildPath+NTVname+".timing.bc"
             self.BCDict[BCpath][NTV]["Timing"]["NTVtmpPath"] = tmpFolder+NTVname+".timing.native"
+            self.BCDict[BCpath][NTV]["Timing"]["BCbuildPath"] = self.buildPath+NTVname+".timing.bc"
             self.BCDict[BCpath][NTV]["Timing"]["NTVbuildPath"] = self.buildPath+NTVname+".timing.native"
             self.BCDict[BCpath][NTV]["Command"] = self.makeNativeCommand(BCpath, NTV)
             self.BCDict[BCpath][NTV]["SUCCESS"] = False
@@ -135,11 +135,22 @@ class BitCode:
                     self.BCDict[BCpath][NTV][TRCkey][k]["tmpPathBlockFile"]   = tmpFolder+     self.BCDict[BCpath][NTV][TRCkey]["BlockFileName"]
                     self.BCDict[BCpath][NTV][TRCkey]["RARG"] = RARGS[j]
                     self.BCDict[BCpath][NTV][TRCkey][k]["Command"] = self.makeTraceCommand(BCpath, NTV, TRCkey, k)
-                    self.BCDict[BCpath][NTV][TRCkey][k]["Script"] = self.buildPath+"scripts/makeTrace"+TRCname+"_sample"+str(k)+".sh"
-                    self.BCDict[BCpath][NTV][TRCkey][k]["Log"] = self.buildPath+"logs/makeTrace"+TRCname+"_sample"+str(k)+".log"
+                    self.BCDict[BCpath][NTV][TRCkey][k]["Script"] = self.buildPath+"scripts/makeTrace_"+TRCname+"."+"_sample"+str(k)+".sh"
+                    self.BCDict[BCpath][NTV][TRCkey][k]["Log"] = self.buildPath+"logs/makeTrace_"+TRCname+"."+"_sample"+str(k)+".log"
                     self.BCDict[BCpath][NTV][TRCkey][k]["time"] = -2
                     self.BCDict[BCpath][NTV][TRCkey][k]["size"] = -2
                     self.BCDict[BCpath][NTV][TRCkey][k]["SUCCESS"] = False
+                # uninstrumented executable timing information
+                self.BCDict[BCpath][NTV][TRCkey]["Timing"] = dict()
+                # Sampled timing information
+                for k in range(self.args.samples):
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k] = dict()
+                    tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV]["Timing"]["Name"].split(".")[0]+"_sample"+str(k)+"/"
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k]["tmpFolder"]  = tmpFolder
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k]["tmpPath"]  = tmpFolder+NTVname+".timing.native"
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k]["Script"]  = self.buildPath+"scripts/Timing_"+TRCname+"."+"_sample"+str(k)+".sh"
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k]["Log"]  = self.buildPath+"logs/Timing_"+TRCname+"."+"_sample"+str(k)+".log"
+                    self.BCDict[BCpath][NTV][TRCkey]["Timing"][k]["Command"]  = self.makeTimingCommand(BCpath, NTV, TRCkey, k)
                 # Cartographer information
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Name"] = "kernel_"+TRCname+".json"
@@ -196,8 +207,8 @@ class BitCode:
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instance_tmpPath"] = tmpFolder+"instance_"+TRCname+".json"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["TG_tmpPath"] = tmpFolder+"TaskGraph_"+TRCname+".dot"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["MF_tmpPath"] = tmpFolder+"MemoryFootprint_"+TRCname+".csv"
-                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Script"] = self.buildPath+"scripts/MemoryPass_"+TRCname+"_sample"+str(k)+".sh"
-                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Log"] = self.buildPath+"logs/MemoryPass_"+TRCname+"_sample"+str(k)+".log"
+                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Script"] = self.buildPath+"scripts/MemoryPass_"+TRCname+"."+"_sample"+str(k)+".sh"
+                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Log"] = self.buildPath+"logs/MemoryPass_"+TRCname+"."+"_sample"+str(k)+".log"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Command"] = self.makeMemoryPassCommand(BCpath, NTV, TRCkey, k)
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["SUCCESS"] = False
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["ERRORS"] = {}
@@ -333,18 +344,13 @@ class BitCode:
         else:
             optClangString = ""
         
-        if self.args.samples:
-            prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"], self.BCDict[BC][NTV]["LFtmpPath"], self.BCDict[BC][NTV]["Timing"]["BCtmpPath"], self.BCDict[BC][NTV]["Timing"]["NTVtmpPath"]] )
-        else:
-            prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"],self.BCDict[BC][NTV]["LFtmpPath"]] )
-        
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV]["tmpFolder"], prefixFiles=[self.BCDict[BC]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV]["tmpPath"], self.BCDict[BC][NTV]["TRAtmp"], self.BCDict[BC][NTV]["LFtmpPath"], self.BCDict[BC][NTV]["Timing"]["BCtmpPath"], self.BCDict[BC][NTV]["Timing"]["NTVtmpPath"]] )
+
         LOOP_FILE="LOOP_FILE="+self.BCDict[BC][NTV]["LoopFileName"]+" "
         optCommand = LOOP_FILE+self.OPT+" -load "+self.Tracer+" -Markov "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["TRAtmp"]+" "+optOptString
-        if self.args.samples:
-            optCommand += " ; "+self.OPT+" -load "+self.Tracer+" -Timing "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["Timing"]["BCtmpPath"]+" "+optOptString
+        optCommand += " ; "+self.OPT+" -load "+self.Tracer+" -Timing "+self.BCDict[BC]["tmpPath"]+" -o "+self.BCDict[BC][NTV]["Timing"]["BCtmpPath"]+" "+optOptString
         clangPPCommand = self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["TRAtmp"]+" -o "+self.BCDict[BC][NTV]["tmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
-        if self.args.samples:
-            clangPPCommand += " ; "+self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["Timing"]["BCtmpPath"]+" -o "+self.BCDict[BC][NTV]["Timing"]["NTVtmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
+        clangPPCommand += " ; "+self.CXX+" -lz -lpthread "+self.BCDict[BC][NTV]["Timing"]["BCtmpPath"]+" -o "+self.BCDict[BC][NTV]["Timing"]["NTVtmpPath"]+" "+self.BCDict[BC][NTV]["LFLAG"]+" "+self.Backend +" -fuse-ld="+self.LD+" "+optClangString
         #scopCommand = self.OPT+" -polly-canonicalize --basic-aa -polly-allow-nonaffine -polly-process-unprofitable -polly-use-llvm-names -polly-ast -polly-export-jscop "+self.BCDict[BC]["tmpPath"] + " -o "+self.BCDict[BC]["Name"]+"_polly"
         return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
         #return prefix+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], optCommand, "opt")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], scopCommand, "scop")+self.bashCommandWrapper(self.BCDict[BC][NTV]["tmpFolder"], clangPPCommand, "clang++")+suffix
@@ -354,15 +360,24 @@ class BitCode:
         @brief      Creates a bash-ready command that will run the given executable
         @retval     command     Bash-ready command for running the given NTV executable
         """
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC][sample]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"],self.BCDict[BC][NTV]["Timing"]["NTVbuildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC][sample]["tmpPath"],self.BCDict[BC][NTV][TRC][sample]["tmpPathBlockFile"]] )
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC][sample]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["buildPath"]], suffixFiles=[self.BCDict[BC][NTV][TRC][sample]["tmpPath"],self.BCDict[BC][NTV][TRC][sample]["tmpPathBlockFile"]] )
 
         envSet = "export LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ MARKOV_FILE="+self.BCDict[BC][NTV][TRC]["Name"] + " BLOCK_FILE="+self.BCDict[BC][NTV][TRC]["BlockFileName"] + " ; "
         NTVfile = self.BCDict[BC][NTV][TRC][sample]["tmpFolder"]+self.BCDict[BC][NTV]["Name"]
-        timingFile = self.BCDict[BC][NTV][TRC][sample]["tmpFolder"]+self.BCDict[BC][NTV]["Timing"]["Name"]
 
         trcCommand = NTVfile+" "+self.BCDict[BC][NTV][TRC]["RARG"]
+        return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC][sample]["tmpFolder"], trcCommand, "trace")+suffix
+
+    def makeTimingCommand(self, BC, NTV, TRC, sample):
+        """
+        """
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["Timing"][sample]["tmpFolder"], prefixFiles=[self.BCDict[BC][NTV]["Timing"]["NTVbuildPath"]] )
+
+        timingFile = self.BCDict[BC][NTV][TRC]["Timing"][sample]["tmpPath"]
+
+        envSet = "export LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ ; "
         timingCommand = timingFile + " " + self.BCDict[BC][NTV][TRC]["RARG"]
-        return prefix+envSet+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC][sample]["tmpFolder"], trcCommand, "trace")+self.bashCommandWrapper(self.BCDict[BC][NTV][TRC][sample]["tmpFolder"], timingCommand, "timing")+suffix
+        return prefix + envSet + self.bashCommandWrapper(self.BCDict[BC][NTV][TRC]["Timing"][sample]["tmpFolder"], timingCommand, "timing") + suffix
 
     def makeCartographerCommand(self, BC, NTV, TRC):
         """
@@ -540,12 +555,14 @@ class BitCode:
                     for TRC in self.BCDict[BC][NTV]:
                         if TRC.startswith("TRC"):
                             runQueue[i][j].append([])
-                            # make Profiles tied to their native scripts
+                            # make Profiles and timing runs tied to their native scripts
                             TRCdict = self.BCDict[BC][NTV][TRC]
                             sampleList = []
                             for l in range( self.args.samples ):
                                 sampleList.append( self.Command.constructBashFile(TRCdict[l]["Script"], TRCdict[l]["Command"], TRCdict[l]["Log"], environment=Util.SourceScript) )
-                            runQueue[i][j][k].append( tuple( sampleList) )
+                            for l in range( self.args.samples ):
+                                sampleList.append( self.Command.constructBashFile(TRCdict["Timing"][l]["Script"], TRCdict["Timing"][l]["Command"], TRCdict["Timing"][l]["Log"], environment=Util.SourceScript) )
+                            runQueue[i][j][k].append( tuple(sampleList) )
                             # make cartographers tied to their trace scripts
                             CARdict = TRCdict["CAR"]
                             runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
