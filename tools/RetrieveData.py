@@ -751,7 +751,57 @@ def retrieveTimingData(buildFolders, CorpusFolder, dataFileName):
 				print("Could not find sample number for log "+l)
 		else:
 			print("Could not retrieve time stat for log file "+l)
-	exit(dataMap)
+
+	# finally, make all projects match in their samples (if possible) and get rid of projects that cannot have matched data
+	i = 0
+	while i < len(dataMap):
+		currentKey = list(dataMap.keys())[i]
+		if (dataMap[currentKey].get("Timing") is not None) and \
+		   (dataMap[currentKey].get("Markov") is not None) and \
+		   (dataMap[currentKey].get("Memory") is not None):
+			if (len(dataMap[currentKey]["Timing"]) == len(dataMap[currentKey]["Markov"])) and \
+			   (len(dataMap[currentKey]["Timing"]) == len(dataMap[currentKey]["Memory"])):
+				i += 1
+				continue
+			else:
+				# first find the category with the fewest samples
+				min = 10000
+				minKey = ""
+				lT = len(dataMap[currentKey]["Timing"])
+				mT = len(dataMap[currentKey]["Markov"])
+				MT = len(dataMap[currentKey]["Memory"])
+				if (lT <= mT) and (lT <= MT):
+					min = lT
+					minKey = "Timing"
+				elif (mT <= lT) and (mT <= MT):
+					min = mT
+					minKey = "Markov"
+				elif (MT <= lT) and (MT <= mT):
+					min = MT
+					minKey = "Memory"
+				# second, if the minimum is 0, we have to throw this one out bc it is impossible to match
+				if min == 0:
+					print("In the timing map, key {} category {} had 0 samples. Deleting...".format(currentKey, minKey))
+					del dataMap[currentKey]
+					continue
+				else:
+					print("In the timing map, key {} category {} had partial samples. Fixing...".format(currentKey, minKey))
+					# keep the samples that belong to the minimum and get rid of the rest
+					minSamples = set()
+					for sample in dataMap[minKey]:
+						minSamples.add(sample)
+					for key in dataMap:
+						if key == minKey:
+							continue
+						for sample in dataMap[key]:
+							if sample not in minSamples:
+								del dataMap[key][sample]
+			i += 1
+		else:
+			# we didn't have all three keys, delete this entry
+			print("In the timing map, key {} did not have all 3 categories! Deleting...".format(currentKey))
+			del dataMap[currentKey]
+
 	return dataMap
 
 def refineBlockData(dataMap, loopFile=False, deadCodeFile=False):
