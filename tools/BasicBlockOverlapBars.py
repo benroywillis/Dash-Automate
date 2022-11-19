@@ -138,16 +138,16 @@ def PlotCoverageBars_paper(dataMap):
 		# here we construct two datasets for two plots to be viewed in parallel
 		# 1. normalized to HC, fraction of HC covered by HL and PaMul, PaMul inclusive is positive, PaMul exclusive is negative
 		# +
-		overlapMap[entry]["HCHLInstance"] = float(len(HCHLPaMul)) / float(len(HC))
-		overlapMap[entry]["HCInstance"] = float(len(HCPaMul)) / float(len(HC))
+		overlapMap[entry]["HCHLInstance"] = float(len(HCHLPaMul)) / float(len(HC)) if len(HC) > 0 else 0.0
+		overlapMap[entry]["HCInstance"] = float(len(HCPaMul)) / float(len(HC)) if len(HC) > 0 else 0.0
 		# -
-		overlapMap[entry]["HCHL"] = float(len(HCHL)) / float(len(HC))
+		overlapMap[entry]["HCHL"] = float(len(HCHL)) / float(len(HC)) if len(HC) > 0 else 0.0
 		# 2. normalized to live code, non-hot code structured by pamul and HL, PaMul inclusive positive, PaMul exclusive negative
 		# +
-		overlapMap[entry]["Instance"] = float(len(PaMulonly)) / float(len(Alive))
-		overlapMap[entry]["HLInstance"] = float(len(HLPaMul)) / float(len(Alive))
+		overlapMap[entry]["Instance"] = float(len(PaMulonly)) / float(len(Alive)) if len(Alive) > 0 else 0.0
+		overlapMap[entry]["HLInstance"] = float(len(HLPaMul)) / float(len(Alive)) if len(Alive) > 0 else 0.0
 		# -
-		overlapMap[entry]["HL"] = float(len(HLonlyalive)) / float(len(Alive))
+		overlapMap[entry]["HL"] = float(len(HLonlyalive)) / float(len(Alive)) if len(Alive) > 0 else 0.0
 
 	# these codes construct the lists of values for each bar
 	# they sort the y axis two ways from greatest to least:
