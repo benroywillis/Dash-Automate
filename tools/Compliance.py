@@ -164,23 +164,38 @@ def sortAutomationLogData(dataMap, type="Cartographer"):
 
 	return results
 
-def plotCartographerCompliance(results):
+def plotCartographerCompliance(results, paper=False):
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 
 	# x axis labels
 	xtickLabels = []
-	for p in results:
-		if p != "Ignore":
-			xtickLabels.append(p)
+	if paper:
+		projectNames = set()
+		for p in results:
+			if p != "Ignore":
+				projectNames.add(RD.mapProjectName(p, general=True))
+		for p in projectNames:
+			xtickLabels.append(RD.mapProjectName(p, general=True))
+	else:
+		for p in results:
+			if p != "Ignore":
+				xtickLabels.append(p)
 
 	mappedResults = {}
 	for p in results:
 		if p != "Ignore":
-			mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "In Progress": 0, "Unknown": 0 }
+			if paper:
+				if mappedResults.get(RD.mapProjectName(p, general=True)) is None:
+					mappedResults[RD.mapProjectName(p, general=True)] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "In Progress": 0, "Unknown": 0 }
+			else:
+				mappedResults[p] = { "Compliant": 0, "Inlining Schedule": 0, "Static Information Injection": 0, "Evaluation Time Too Long": 0, "Call-Return Mapping": 0, "Profile Read Error": 0, "Function Subgraph": 0, "Transform Error": 0, "In Progress": 0, "Unknown": 0 }
 			for e in results[p]:
-				mappedResults[p][mapCartographerErrorMessage(e)] += results[p][e]
+				if paper:
+					mappedResults[RD.mapProjectName(p, general=True)][mapCartographerErrorMessage(e)] += results[p][e]
+				else:
+					mappedResults[p][mapCartographerErrorMessage(e)] += results[p][e]
 	compliant      = [mappedResults[p]["Compliant"] for p in mappedResults]
 	inlineSchedule = [mappedResults[p]["Inlining Schedule"] for p in mappedResults]
 	sii            = [mappedResults[p]["Static Information Injection"] for p in mappedResults]
@@ -192,6 +207,31 @@ def plotCartographerCompliance(results):
 	inProgress     = [mappedResults[p]["In Progress"] for p in mappedResults]
 	unknown        = [mappedResults[p]["Unknown"] for p in mappedResults]
 
+	if paper:
+		print(mappedResults)
+		# map the error types down to more general things, or get rid of them because we don't care
+		for i in range( len(sii) ):
+			sii[i] += callReturnMap[i]
+		for i in range( len(transform) ):
+			transform[i] += inlineSchedule[i] + ettl[i] + subgraph[i]
+
+		ax.set_title("Compliance", fontsize=titleFont)
+		ax.bar([x for x in range(len(compliant))], compliant, label="Compliant", color=colors[0])
+		ax.bar([x for x in range(len(transform))], transform, bottom=compliant, label="Transform Error", color=colors[1])
+		ax.bar([x for x in range(len(sii))], sii, bottom=[compliant[i]+transform[i] for i in range(len(compliant))], \
+			   label="Incomplete Application", color=colors[2])
+		ax.bar([x for x in range(len(unknown))], unknown, bottom=[compliant[i]+transform[i]+sii[i] for i in range(len(compliant))], \
+			   label="Unknown", color=colors[3])
+		ax.set_title("Dash-Corpus Compliance")
+		ax.set_ylabel("Count", fontsize=axisLabelFont)
+		ax.set_xlabel("Application", fontsize=axisLabelFont)
+		plt.xticks(ticks=[x for x in range( len(xtickLabels) )], labels=xtickLabels, fontsize=axisFont, rotation=xtickRotation)
+		ax.legend(frameon=False)
+		RD.PrintFigure(plt, "Compliance_Cartographer_paper")
+		plt.show()
+		return
+
+		
 	ax.set_title("Compliance", fontsize=titleFont)
 	ax.bar([x for x in range(len(compliant))], compliant, label="Compliant", color=colors[0])
 	ax.bar([x for x in range(len(inlineSchedule))], inlineSchedule, bottom=compliant, label="Inlining Schedule", color=colors[1])
@@ -258,5 +298,5 @@ cartographerMap = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, cartograp
 memoryPassMap   = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, memoryPassFileName, readMemoryPassLog, Prefix="MemoryPass_")
 cartographerResults = sortAutomationLogData(cartographerMap)
 memoryPassResults   = sortAutomationLogData(memoryPassMap, type="MemoryPass")
-plotCartographerCompliance(cartographerResults)
+plotCartographerCompliance(cartographerResults, paper=True)
 plotMemoryPassCompliance(memoryPassResults)
