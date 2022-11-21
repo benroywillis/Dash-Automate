@@ -114,7 +114,6 @@ def PlotCoverageBars_paper(dataMap):
 	"""
 	"""
 	# maps each application to its overlap categories
-	xtickLabels = RD.getProjectAxisLabels(dataMap)
 	overlapMap = {}
 	for entry in sorted(dataMap):
 		overlapMap[entry] = { "HC": 0.0, "HL": 0.0, "Instance": 0.0, "HCHL": 0.0, "HCInstance": 0.0, "HLInstance": 0.0, "HCHLInstance": 0.0 }
@@ -152,16 +151,24 @@ def PlotCoverageBars_paper(dataMap):
 	# now categorize each entry in the overlap map by its project
 	projectMap = {}
 	for entry in overlapMap:
-		project = RD.getProjectName(entry, baseName="GSL")
-		if projectMap.get(project) is None:
-			projectMap[project] = {}
-		projectMap[project][entry] = overlapMap[entry]
+		project = RD.getProjectName(entry, baseName="Dash-Corpus")
+		mappedName = RD.mapProjectName(project, general=True)
+		if projectMap.get(mappedName) is None:
+			projectMap[mappedName] = {}
+		projectMap[mappedName][entry] = overlapMap[entry]
 	
 	# then, for a given project, sort each entry by the objective function (PaMulinclusive0 + PaMulinclusive1) / (PaMulexclusive)
 	for p in projectMap:
 		entries = projectMap[p]
 		projectMap[p] = { k: v for k, v in sorted( entries.items(), key = lambda item: \
 					    ( item[1]["HCHLInstance"]+item[1]["HCInstance"])/item[1]["HCHL"] if item[1]["HCHL"] > 0.0 else 1.0 ) }
+
+	# x axis labels
+	xtickLabels = []
+	for p in projectMap:
+		xtickLabels.append(p)
+		for i in range(len(projectMap[p])-1):
+			xtickLabels.append("")
 	
 	# these codes construct the lists of values for each bar
 	# they sort the y axis two ways from greatest to least:
