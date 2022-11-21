@@ -3,6 +3,9 @@ import matplotlib.pyplot as plt
 import RetrieveData as RD
 import statistics
 
+# timing file name
+timingDataFile = "Timings_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json"
+
 # plot parameters
 axisFont  = 10
 axisLabelFont  = 10
@@ -38,6 +41,7 @@ def plotTimeDilations(dataMap):
 		appSamples["Markov"].append(dilations[entry]["Markov"])
 		appSamples["Memory"].append(dilations[entry]["Memory"])
 	dilations["Total"] = { "Markov": statistics.median(appSamples["Markov"]), "Memory": statistics.median(appSamples["Memory"]) }
+	print("Overall dilations: "+str(dilations["Total"]))
 
 	# scatter them
 	fig = plt.figure(frameon=False)
@@ -53,11 +57,12 @@ def plotTimeDilations(dataMap):
 			   label="Memory", color=colors[1], marker=markers[1])
 	ax.set_ylabel("Dilation", fontsize=axisLabelFont)
 	ax.set_xlabel("Application", fontsize=axisLabelFont)
+	plt.tick_params(axis="x", which="both", bottom=False, top=False, labelbottom=False)
 	ax.legend(frameon=False)
 	RD.PrintFigure(plt, "TimeDilations")
 	plt.show()
 
 
-timingMap = RD.retrieveTimingData({"build"}, "/mnt/heorot-01/bwilli46/Dash/Dash-Automate/test/", "Timings.json")
+timingMap = RD.retrieveTimingData( RD.buildFolders, RD.CorpusFolder, timingDataFile )
 plotTimeDilations(timingMap)
 

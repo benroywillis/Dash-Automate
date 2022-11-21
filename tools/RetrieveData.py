@@ -49,10 +49,109 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build9-22-22" }
 #buildFolders = { "build9-30-22" }
 #buildFolders = { "build10-05-22" }
-buildFolders = { "build10-22-22" }
+#buildFolders = { "build10-22-22" }
+buildFolders = { "build11-18-22" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
+
+def mapProjectName(name, general=False):
+	"""
+	@brief 	Maps a project name to a hierarchical name
+
+	For example, FFTV -> artisan (with general=False)
+	Another example, Armadillo -> Linear Algebra (with general=True)
+	@param[in] 	name		Project name. Used as key into the mappings. If no matching key is found, name is returned
+	@param[in] 	general		Select local mappings or global mappings. 
+							Local mappings "clean up" the project names (like combining artisan interpretations into a general project name, for example FFTV -> artisan.
+							Global mappings map a project to a mathematical motif name, for example FFTW -> signal processing
+	@retval 	mappedName 	Mapped project name, if no project name could be found, the input arg name is returned as it was passed
+	"""
+	# local mappings
+	# directory map to group like libraries together
+	localMap = {
+    	"GSL_projects_M"		: "GSL",
+    	"GSL_projects_L"		: "GSL",
+    	"GSL_examples"			: "GSL",
+    	#"MiBench"				: "Benchmarks",
+    	#"PERFECT"				: "Benchmarks",
+    	#"Dhry_and_whetstone"	: "Benchmarks",
+    	#"streamit_benchmarks"	: "Benchmarks",
+    	"Misc_Benchmarks"		: "Benchmarks",
+    	"CortexSuite_cortex"	: "CortexSuite",
+    	"CortexSuite_vision"	: "CortexSuite",
+    	"Unittests"				: "Artisan",
+    	"vdwarfs"				: "Artisan",
+    	"Dwarfs"				: "Artisan",
+    	"Raytracer"				: "Artisan",
+    	"FFTV"					: "Artisan",
+    	"MatrixOps"				: "Artisan",
+    	"Armadillo_Kernels"		: "Armadillo",
+    	"mbed_tls"				: "mbed_TLS",
+    	"opencv_projects"		: "OpenCV",
+    	"eigen_automate"		: "Eigen",
+    	"fec"					: "FEC",
+    	"ffmpeg"				: "FFmpeg"
+	}
+	globalMap = {
+		"Armadillo_Kernels"		: "Linear Algebra",
+		"Armadillo"				: "Linear Algebra",
+		"Artisan"  				: "Benchmarks",
+		"CortexSuite_cortex"  	: "Benchmarks",
+		"CortexSuite_vision" 	: "Benchmarks",
+		"CortexSuite"  			: "Benchmarks",
+		"Dash-RadioCorpus" 		: "Signal Processing",
+		"Dhry_and_whetstone" 	: "Benchmarks",
+    	"Dwarfs"				: "Benchmarks",
+		"Whetstone"  			: "Benchmarks",
+		"eigen_automate"  		: "Linear Algebra",
+		"Eigen"  				: "Linear Algebra",
+		"fec"  					: "Signal Processing",
+		"FEC"  					: "Signal Processing",
+		"FFTV"  				: "Signal Processing",
+		"FFTW"  				: "Signal Processing",
+		"ffmpeg"  				: "Signal Processing",
+		"FFmpeg"  				: "Signal Processing",
+	   	"GSL"					: "Signal Processing",
+	   	"GSL_projects_M"		: "Signal Processing",
+    	"GSL_projects_L"		: "Signal Processing",
+    	"GSL_examples"			: "Signal Processing",
+		"Halide"				: "Image Signal Processing",
+		"Kestrel"				: "Signal Processing",
+		"liquidsdr"				: "Signal Processing",
+		"LiquidSDR"				: "Signal Processing",
+		"MatrixOps"				: "Linear Algebra",
+		"mbed_tls" 				: "Signal Processing",
+		"Mbed_TLS" 				: "Signal Processing",
+		"mibench" 				: "Benchmarks",
+		"MiBench" 				: "Benchmarks",
+		"Misc_Benchmarks" 		: "Benchmarks",
+		"opencv_projects" 		: "Image Signal Processing",
+		"OpenCV" 				: "Image Signal Processing",
+		"PERFECT" 				: "Benchmarks",
+		"raytracer" 			: "Benchmarks",
+		"RayTracer" 			: "Benchmarks",
+		"SHOC" 					: "Benchmarks",
+		"SPUCE" 				: "Benchmarks",
+		"streamit_benchmarks" 	: "Benchmarks",
+		"streamit" 				: "Benchmarks",
+		"Streamit" 				: "Benchmarks",
+    	"Unittests"				: "Benchmarks",
+    	"Volk"					: "Signal Processing",
+    	"vdwarfs"				: "Benchmarks"
+ 	}
+
+	if general:
+		if globalMap.find(name):
+			return globalMap[name]
+		print("Could not map project name {}".format(name))
+		return name
+	
+	if localMap.find(name):
+		return localMap[name]
+	print("Could not map project name {}".format(name))
+	return name
+}	
 
 def PrintFigure(plt, name, buildTag=True):
 	if buildTag:
@@ -761,11 +860,16 @@ def retrieveTimingData(buildFolders, CorpusFolder, dataFileName):
 		   (dataMap[currentKey].get("Memory") is not None):
 			if (len(dataMap[currentKey]["Timing"]) == len(dataMap[currentKey]["Markov"])) and \
 			   (len(dataMap[currentKey]["Timing"]) == len(dataMap[currentKey]["Memory"])):
+				# verify that we have at least one sample
+				if len(dataMap[currentKey]["Timing"]) == 0:
+					print("In the timing map, key {} category {} had 0 samples. Deleting...".format(currentKey, minKey))
+					del dataMap[currentKey]
+					continue
 				i += 1
 				continue
 			else:
 				# first find the category with the fewest samples
-				min = 10000
+				min = 0
 				minKey = ""
 				lT = len(dataMap[currentKey]["Timing"])
 				mT = len(dataMap[currentKey]["Markov"])
@@ -786,21 +890,29 @@ def retrieveTimingData(buildFolders, CorpusFolder, dataFileName):
 					continue
 				else:
 					print("In the timing map, key {} category {} had partial samples. Fixing...".format(currentKey, minKey))
-					# keep the samples that belong to the minimum and get rid of the rest
-					minSamples = set()
-					for sample in dataMap[minKey]:
-						minSamples.add(sample)
-					for key in dataMap:
-						if key == minKey:
-							continue
-						for sample in dataMap[key]:
-							if sample not in minSamples:
-								del dataMap[key][sample]
+					# find the set of samples that everyone has in common and get rid of the samples that are not in common
+					commonSamples = set()
+					for sample in dataMap[currentKey]["Timing"]:
+						if (dataMap[currentKey]["Markov"].get(sample) is not None) and \
+						   (dataMap[currentKey]["Memory"].get(sample) is not None):
+							commonSamples.add(sample)
+					for key in dataMap[currentKey]:
+						# eliminate all samples that are not common among all categories
+						keysToRemove = len(dataMap[currentKey][key].keys())-len(commonSamples)
+						for i in range(keysToRemove):
+							for sample in dataMap[currentKey][key]:
+								if sample not in commonSamples:
+									del dataMap[currentKey][key][sample]
+									break
 			i += 1
 		else:
 			# we didn't have all three keys, delete this entry
 			print("In the timing map, key {} did not have all 3 categories! Deleting...".format(currentKey))
 			del dataMap[currentKey]
+
+	# dump
+	with open("Data/"+dataFileName, "w") as f:
+		json.dump(dataMap, f, indent=2)
 
 	return dataMap
 
