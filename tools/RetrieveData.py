@@ -91,7 +91,8 @@ def mapProjectName(name, general=False):
     	"opencv_projects"		: "OpenCV",
     	"eigen_automate"		: "Eigen",
     	"fec"					: "FEC",
-    	"ffmpeg"				: "FFmpeg"
+    	"ffmpeg"				: "FFmpeg",
+		"Total"					: "Total"
 	}
 	globalMap = {
 		"Armadillo_Kernels"		: "Linear Algebra",
@@ -130,28 +131,29 @@ def mapProjectName(name, general=False):
 		"OpenCV" 				: "Image Signal Processing",
 		"PERFECT" 				: "Benchmarks",
 		"raytracer" 			: "Benchmarks",
-		"RayTracer" 			: "Benchmarks",
+		"Raytracer" 			: "Benchmarks",
+		"SigPack"				: "Signal Processing",
 		"SHOC" 					: "Benchmarks",
 		"SPUCE" 				: "Benchmarks",
 		"streamit_benchmarks" 	: "Benchmarks",
 		"streamit" 				: "Benchmarks",
 		"Streamit" 				: "Benchmarks",
+		"Total"					: "Total",
     	"Unittests"				: "Benchmarks",
-    	"Volk"					: "Signal Processing",
+    	"VOLK"					: "Signal Processing",
     	"vdwarfs"				: "Benchmarks"
  	}
 
 	if general:
-		if globalMap.find(name):
+		if globalMap.get(name):
 			return globalMap[name]
 		print("Could not map project name {}".format(name))
 		return name
 	
-	if localMap.find(name):
+	if localMap.get(name):
 		return localMap[name]
 	print("Could not map project name {}".format(name))
 	return name
-}	
 
 def PrintFigure(plt, name, buildTag=True):
 	if buildTag:
