@@ -149,17 +149,50 @@ def PlotCoverageBars_paper(dataMap):
 		# -
 		overlapMap[entry]["HL"] = float(len(HLonlyalive)) / float(len(Alive)) if len(Alive) > 0 else 0.0
 
+	# now categorize each entry in the overlap map by its project
+	projectMap = {}
+	for entry in overlapMap:
+		project = RD.getProjectName(entry, baseName="GSL")
+		if projectMap.get(project) is None:
+			projectMap[project] = {}
+		projectMap[project][entry] = overlapMap[entry]
+	
+	# then, for a given project, sort each entry by the objective function (PaMulinclusive0 + PaMulinclusive1) / (PaMulexclusive)
+	for p in projectMap:
+		entries = projectMap[p]
+		projectMap[p] = { k: v for k, v in sorted( entries.items(), key = lambda item: \
+					    ( item[1]["HCHLInstance"]+item[1]["HCInstance"])/item[1]["HCHL"] if item[1]["HCHL"] > 0.0 else 1.0 ) }
+	
 	# these codes construct the lists of values for each bar
 	# they sort the y axis two ways from greatest to least:
 	# 1. by project (implicit in the overlap map)
-	# 2. within each project, by the objective function (PaMulinclusive0 + PaMulinclusive1) / (PaMulexclusive)
-	HCHLPaMul 	= [ overlapMap[entry]["HCHLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 ) ]
-	HCPaMul 	= [ overlapMap[entry]["HCInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
-	HCHL 		= [ -1*overlapMap[entry]["HCHL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	# 2. within each project, 
+	HCHLPaMul 	= [ value for sublist in \
+				  [ [projectMap[p][app]["HCHLInstance"]*100 for app in projectMap[p]] for p in projectMap ] \
+					for value in sublist ]
+	HCPaMul 	= [ value for sublist in \
+				  [ [projectMap[p][app]["HCInstance"]*100 for app in projectMap[p]] for p in projectMap ]
+					for value in sublist ]
+	HCHL 		= [ -1*value for sublist in \
+				  [ [projectMap[p][app]["HCHL"]*100 for app in projectMap[p]] for p in projectMap]
+					for value in sublist ]
 
-	PaMul 		= [ overlapMap[entry]["Instance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
-	HLPaMul 	= [ overlapMap[entry]["HLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
-	HL 			= [ -1*overlapMap[entry]["HL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	PaMul 		= [ value for sublist in \
+				  [ [projectMap[p][app]["Instance"]*100 for app in projectMap[p]] for p in projectMap]
+					for value in sublist ]
+	HLPaMul 	= [ value for sublist in \
+				  [ [projectMap[p][app]["HLInstance"]*100 for app in projectMap[p]] for p in projectMap]
+					for value in sublist ]
+	HL 			= [ -1*value for sublist in \
+				  [ [projectMap[p][app]["HL"]*100 for app in projectMap[p]] for p in projectMap]
+					for value in sublist ]
+	#HCHLPaMul 	= [ overlapMap[entry]["HCHLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 ) ]
+	#HCPaMul 	= [ overlapMap[entry]["HCInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	#HCHL 		= [ -1*overlapMap[entry]["HCHL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+
+	#PaMul 		= [ overlapMap[entry]["Instance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	#HLPaMul 	= [ overlapMap[entry]["HLInstance"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
+	#HL 			= [ -1*overlapMap[entry]["HL"]*100 for entry in sorted( overlapMap, key=lambda entry : (overlapMap[entry]["HCHLInstance"]+overlapMap[entry]["HCInstance"])/overlapMap[entry]["HCHL"] if overlapMap[entry]["HCHL"] > 0.0 else 100 )]
 
 	fig, (ax0, ax1) = plt.subplots(1, 2, sharex=True, sharey=True, frameon=False)
 	fig.set_facecolor("black")
