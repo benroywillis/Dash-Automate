@@ -161,7 +161,7 @@ def PlotCoverageBars_paper(dataMap):
 	for p in projectMap:
 		entries = projectMap[p]
 		projectMap[p] = { k: v for k, v in sorted( entries.items(), key = lambda item: \
-					    ( item[1]["HCHLInstance"]+item[1]["HCInstance"])/item[1]["HCHL"] if item[1]["HCHL"] > 0.0 else 1.0 ) }
+					    ( item[1]["HCHLInstance"]+item[1]["HCInstance"])/(item[1]["HCHL"]+0.01) ) }
 
 	# x axis labels
 	xtickLabels = []
