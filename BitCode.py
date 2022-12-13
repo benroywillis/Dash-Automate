@@ -176,18 +176,6 @@ class BitCode:
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["Kernels"] = []
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["SUCCESS"] = False
                 self.BCDict[BCpath][NTV][TRCkey]["CAR"]["ERRORS"] = {}
-                # kernel grammar information
-                self.BCDict[BCpath][NTV][TRCkey]["KG"] = dict()
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Name"] = "KG_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["buildPath"] = self.buildPath+"KG_"+TRCname+".json"
-                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["KG"]["Name"]+"/"
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["tmpFolder"] = tmpFolder 
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["tmpPath"] = tmpFolder+"KG_"+TRCname+".json"
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Script"] = self.buildPath+"scripts/KG_"+TRCname+".sh"
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Log"] = self.buildPath+"logs/KG_"+TRCname+".log"
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Command"] = self.makeKernelGrammarCommand(BCpath, NTV, TRCkey)
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["SUCCESS"] = False
-                self.BCDict[BCpath][NTV][TRCkey]["KG"]["ERRORS"] = {}
                 # memory pass
                 self.BCDict[BCpath][NTV][TRCkey]["Mem"] = dict()
                 for k in range(self.args.samples):
@@ -196,8 +184,9 @@ class BitCode:
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["NTVName"] = NTVname+".memory.native"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["buildPath"] = self.buildPath+NTVname+".memory.native"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["TG_buildPath"] = self.buildPath+"TaskGraph_"+TRCname+".dot"
-                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instancedot_buildPath"] = self.buildPath+"Instance_"+TRCname+".dot"
-                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instance_buildPath"] = self.buildPath+"Instance_"+TRCname+".json"
+                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instanceJson"] = "instance_"+TRCname+".json"
+                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instancedot_buildPath"] = self.buildPath+"instance_"+TRCname+".dot"
+                    self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["instance_buildPath"] = self.buildPath+"instance_"+TRCname+".json"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["MF_buildPath"] = self.buildPath+"TaskGraph_"+TRCname+".csv"
                     tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["NTVName"]+"_sample"+str(k)+"/"
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["tmpFolder"] = tmpFolder 
@@ -212,6 +201,18 @@ class BitCode:
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["Command"] = self.makeMemoryPassCommand(BCpath, NTV, TRCkey, k)
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["SUCCESS"] = False
                     self.BCDict[BCpath][NTV][TRCkey]["Mem"][k]["ERRORS"] = {}
+                # kernel grammar information
+                self.BCDict[BCpath][NTV][TRCkey]["KG"] = dict()
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Name"] = "KG_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["buildPath"] = self.buildPath+"KG_"+TRCname+".json"
+                tmpFolder = self.tmpPath[:-1]+self.BCDict[BCpath][NTV][TRCkey]["KG"]["Name"]+"/"
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["tmpFolder"] = tmpFolder 
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["tmpPath"] = tmpFolder+"KG_"+TRCname+".json"
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Script"] = self.buildPath+"scripts/KG_"+TRCname+".sh"
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Log"] = self.buildPath+"logs/KG_"+TRCname+".log"
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["Command"] = self.makeKernelGrammarCommand(BCpath, NTV, TRCkey)
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["SUCCESS"] = False
+                self.BCDict[BCpath][NTV][TRCkey]["KG"]["ERRORS"] = {}
                 # tik information
                 self.BCDict[BCpath][NTV][TRCkey]["tik"] = dict()
                 self.BCDict[BCpath][NTV][TRCkey]["tik"]["Name"] = "tik_"+TRCname+".ll"
@@ -413,7 +414,8 @@ class BitCode:
         profile    = self.BCDict[BC][NTV][TRC]["buildPath"]
         bitcode    = self.BCDict[BC]["buildPath"]
         blockfile  = self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]
-        kernelfile = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
+        #kernelfile = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
+        kernelfile = self.BCDict[BC][NTV][TRC]["Mem"][0]["instance_buildPath"]
         output     = self.BCDict[BC][NTV][TRC]["KG"]["tmpPath"]
         
         prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"], prefixFiles=[bitcode, profile, blockfile, kernelfile], suffixFiles=[output])
@@ -421,7 +423,8 @@ class BitCode:
         profile    = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
         bitcode    = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC]["Name"]
         blockfile  = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
-        kernelfile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
+        #kernelfile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
+        kernelfile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Mem"][0]["instanceJson"]
         
         command = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ "+self.KernelGrammar+" -k "+kernelfile+" -b "+bitcode+" -bi "+blockfile+" -p "+profile+" -o "+output
 
@@ -566,11 +569,20 @@ class BitCode:
                             # make cartographers tied to their trace scripts
                             CARdict = TRCdict["CAR"]
                             runQueue[i][j][k].append( self.Command.constructBashFile(CARdict["Script"], CARdict["Command"], CARdict["Log"], environment=Util.SourceScript) )
-                            # kernel grammar tool and memory pass are independent, so we put them in a tuple to instruct the SLURM scheduler to make no dependency on them
+                            """ This works if you put the kernel file into the kernel grammar tool, however as of 12/13/22 we put the instance file into the kernel grammar tool, so this schedule is no longer valid
+                            # kernel grammar tool follows memory pass, so we append them in order to the schedule
                             sampleList = [self.Command.constructBashFile( TRCdict["KG"]["Script"], TRCdict["KG"]["Command"], TRCdict["KG"]["Log"] )]
                             for l in range( self.args.samples ):
                                 sampleList.append( self.Command.constructBashFile( TRCdict["Mem"][l]["Script"], TRCdict["Mem"][l]["Command"], TRCdict["Mem"][l]["Log"] ) )
                             ExtraTuple = tuple(sampleList)
+                            runQueue[i][j][k].append(ExtraTuple)
+                            """
+                            # kernel grammar tool is fed by the memory pass, so we push them to the schedule in order
+                            sampleList = []
+                            for l in range( self.args.samples ):
+                                sampleList.append( self.Command.constructBashFile( TRCdict["Mem"][l]["Script"], TRCdict["Mem"][l]["Command"], TRCdict["Mem"][l]["Log"] ) )
+                            runQueue[i][j][k].append( tuple(sampleList) )
+                            runQueue[i][j][k].append( self.Command.constructBashFile( TRCdict["KG"]["Script"], TRCdict["KG"]["Command"], TRCdict["KG"]["Log"] ) )
                             # tikSwap is tied to tik, therefore it immediately follows tik within brackets
                             # tik, DE, func, WS, KH all tied to the cartographer script
                             #ExtraTuple = (  self.Command.constructBashFile(TRCdict["tik"]["Script"], TRCdict["tik"]["Command"], TRCdict["tik"]["Log"], timeLimit=10 ), \
@@ -579,7 +591,7 @@ class BitCode:
                                             #self.Command.constructBashFile(TRCdict["function"]["Script"], TRCdict["function"]["Command"], TRCdict["function"]["Log"] ),\
                                             #self.Command.constructBashFile(TRCdict["WS"]["Script"], TRCdict["WS"]["Command"], TRCdict["WS"]["Log"] ), \
                                             #self.Command.constructBashFile(TRCdict["KH"]["Script"], TRCdict["KH"]["Command"], TRCdict["KH"]["Log"]) )
-                            runQueue[i][j][k].append(ExtraTuple)
+                            #runQueue[i][j][k].append(ExtraTuple)
                             k += 1 # increment TRC counter
                     j += 1 # increment NTV counter
             i += 1 # increment BC counter
