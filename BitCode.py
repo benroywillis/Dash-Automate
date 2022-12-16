@@ -717,7 +717,8 @@ class BitCode:
                             reportDict[BC][NTV][TRC]["Cartographer Kernels"] = self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"]
                             reportDict["Total"]["Cartographer Kernels"] += reportDict[BC][NTV][TRC]["Cartographer Kernels"]
                             if self.BCDict[BC][NTV][TRC]["CAR"]["Kernels"] <= 0:
-                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC]["Log"]+" -> 0 Kernels")
+								# right now we just put sample 0 log in here, all samples will be exactly the same
+                                reportDict["Errors"].append(self.BCDict[BC][NTV][TRC][0]["Log"]+" -> 0 Kernels")
                             else:
                                 nonzeroProfiles += 1
                             """
