@@ -411,22 +411,23 @@ class BitCode:
         """
         """
         # files copied from build folder that are required as input
-        profile    = self.BCDict[BC][NTV][TRC]["buildPath"]
-        bitcode    = self.BCDict[BC]["buildPath"]
-        blockfile  = self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]
-        #kernelfile = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
-        kernelfile = self.BCDict[BC][NTV][TRC]["Mem"][0]["instance_buildPath"]
-        output     = self.BCDict[BC][NTV][TRC]["KG"]["tmpPath"]
+        profile      = self.BCDict[BC][NTV][TRC]["buildPath"]
+        bitcode      = self.BCDict[BC]["buildPath"]
+        blockfile    = self.BCDict[BC][NTV][TRC]["buildPathBlockFile"]
+        kernelfile   = self.BCDict[BC][NTV][TRC]["CAR"]["buildPath"]
+        instancefile = self.BCDict[BC][NTV][TRC]["Mem"][0]["instance_buildPath"]
+		# files to export to the build folder when the task completes
+        output       = self.BCDict[BC][NTV][TRC]["KG"]["tmpPath"]
         
-        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"], prefixFiles=[bitcode, profile, blockfile, kernelfile], suffixFiles=[output])
+        prefix, suffix = self.tmpFileFacility( self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"], prefixFiles=[bitcode, profile, blockfile, instancefile, kernelfile], suffixFiles=[output])
 
-        profile    = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
-        bitcode    = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC]["Name"]
-        blockfile  = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
-        #kernelfile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
-        kernelfile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Mem"][0]["instanceJson"]
+        profile      = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Name"]
+        bitcode      = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC]["Name"]
+        blockfile    = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["BlockFileName"]
+        kernelfile   = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["CAR"]["Name"]
+        instancefile = self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"]+self.BCDict[BC][NTV][TRC]["Mem"][0]["instanceJson"]
         
-        command = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ "+self.KernelGrammar+" -k "+kernelfile+" -b "+bitcode+" -bi "+blockfile+" -p "+profile+" -o "+output
+        command = "LD_LIBRARY_PATH="+self.args.toolchain_prefix+"lib/ "+self.KernelGrammar+" -i "+instancefile+" -k "+kernelfile+" -b "+bitcode+" -bi "+blockfile+" -p "+profile+" -o "+output
 
         return prefix + self.bashCommandWrapper( self.BCDict[BC][NTV][TRC]["KG"]["tmpFolder"], command, "KernelGrammar" ) + suffix
 
