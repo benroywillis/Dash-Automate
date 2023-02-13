@@ -49,8 +49,13 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build9-22-22" }
 #buildFolders = { "build9-30-22" }
 #buildFolders = { "build10-05-22" }
+# this folder was used to generate all the results for the Cyclebyte paper
 buildFolders = { "build10-22-22" }
 #buildFolders = { "build11-18-22" }
+#buildFolders = { "build12-13-22" }
+#buildFolders = { "build12-16-22" }
+#buildFolders = { "build12-19-22" }
+#buildFolders = { "build1-17-23" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
