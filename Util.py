@@ -14,17 +14,20 @@ globLog = logging.getLogger("Util")
     #"DASH_ROOT='/home/bwilli46/DashLibraries/debug/' " +\
     #"LD_LIBRARY_PATH='/mnt/heorot-10/bwilli46/Installs/TraceAtlas/devb_relwithdebinfo/lib/' " +\
 ### Global Definitions
+# these paths will be install specific - define them how you need
+LLVM_ROOT="/mnt/heorot-10/bwilli46/Installs/LLVM9/release/"
+CYCLEBYTE_ROOT="/mnt/heorot-10/bwilli46/Installs/TraceAtlas/relwithdebinfo/"
 SourceScript = "export " +\
-    "CC='clang-9 -flto -DENABLE_TRACING -g3 -O0' " +\
-    "CXX='clang++-9 -flto -DENABLE_TRACING -g3 -O0' " +\
+    f"CC='{LLVM_ROOT}bin/clang -flto -DENABLE_TRACING -g3 -O0' " +\
+    f"CXX='{LLVM_ROOT}bin/clang++ -flto -DENABLE_TRACING -g3 -O0' " +\
     "DASH_DATA='/mnt/nobackup-09/Dash/Data/' " +\
     "DASH_ROOT='/mnt/nobackup-09/Dash/Sources/' " +\
-    "LDFLAGS='-fuse-ld=lld-9 -Wl,-plugin-opt=emit-llvm' " +\
+    f"LDFLAGS='-fuse-ld={LLVM_ROOT}bin/ld.lld -Wl,-plugin-opt=emit-llvm' " +\
     "LIBRARY_PATH='/mnt/nobackup-09/Dash/Sources/lib/' " +\
-    "AR='llvm-ar-9' " +\
-    "NM='llvm-nm-9' " +\
+    f"AR='{LLVM_ROOT}bin/llvm-ar' " +\
+    f"NM='{LLVM_ROOT}bin/llvm-nm' " +\
     "RANLIB='/bin/true' " +\
-    "READELF='llvm-readelf-9' ; "
+    f"READELF='{LLVM_ROOT}bin/llvm-readelf' ; "
     
 ### General Utilities
 def flatten(input):
