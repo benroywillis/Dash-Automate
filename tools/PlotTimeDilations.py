@@ -21,9 +21,7 @@ colors = [ ( 50./255 , 162./255, 81./255 , 100./255 ), # leaf green
            ( 198./255, 195./255, 71./255 , 255./255 ) ]# mustard yellow
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-def plotTimeDilations(dataMap):
-	
-	# calculate dilations for each project
+def getProjectDilations(dataMap):
 	dilations = {}
 	for entry in dataMap:
 		dilations[entry] = { "Markov": 0.0, "Memory": 0.0 }
@@ -42,7 +40,11 @@ def plotTimeDilations(dataMap):
 		appSamples["Memory"].append(dilations[entry]["Memory"])
 	dilations["Total"] = { "Markov": statistics.median(appSamples["Markov"]), "Memory": statistics.median(appSamples["Memory"]) }
 	print("Overall dilations: "+str(dilations["Total"]))
+	return dilations
 
+def plotTimeDilations(dataMap):
+	# calculate dilations for each project
+	dilations = getProjectDilations(dataMap)
 	# scatter them
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("black")
@@ -62,7 +64,58 @@ def plotTimeDilations(dataMap):
 	RD.PrintFigure(plt, "TimeDilations")
 	plt.show()
 
+def binIt(entry, bins):
+	for bin in bins:
+		if entry >= bin[0] and entry <= bin[1]:
+			bins[bin].append(entry)
+
+def plotTimeDilationHistogram(dataMap):
+	# count of the number of histogram bins we want
+	bins = 20
+	# maps a given application to its markov and memory dilations
+	dilations = getProjectDilations(dataMap)
+	# histogram each dilation factor within pre-defined bins
+	# break up the data to bin within 10 categories
+	markovMin = 1000
+	markovMax = 0
+	memoryMin = 1000
+	memoryMax = 0
+	for p in dilations:
+		if dilations[p]["Markov"] < markovMin:
+			markovMin = dilations[p]["Markov"]
+		if dilations[p]["Markov"] > markovMax:
+			markovMax = dilations[p]["Markov"]
+		if dilations[p]["Memory"] < memoryMin:
+			memoryMin = dilations[p]["Memory"]
+		if dilations[p]["Memory"] > memoryMax:
+			memoryMax = dilations[p]["Memory"]
+	markovBins = {}
+	memoryBins = {}
+	difference = markovMax - markovMin
+	for i in range(bins):
+		markovBins[ (markovMin+i*difference/bins, markovMin+(i+1)*difference/bins) ] = []
+	difference = memoryMax - memoryMin
+	for i in range(bins):
+		memoryBins[ (memoryMin+i*difference/bins, memoryMin+(i+1)*difference/bins) ] = []
+	for p in dilations:
+		binIt(dilations[p]["Markov"], markovBins)
+		binIt(dilations[p]["Memory"], memoryBins)
+	
+	# bar chart
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
+	
+	ax.bar([x for x in range(bins)], [len(markovBins[p]) for p in markovBins])
+	ax.set_title("Dynamic Time Dilation Is Manageable", fontsize=titleFont)
+	ax.set_ylabel("Application Count", fontsize=axisLabelFont)
+	ax.set_xlabel("Dilation", fontsize=axisLabelFont)
+	plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(markovBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	ax.legend(frameon=False)
+	RD.PrintFigure(plt, "TimeDilationHistogram")
+	plt.show()
 
 timingMap = RD.retrieveTimingData( RD.buildFolders, RD.CorpusFolder, timingDataFile )
-plotTimeDilations(timingMap)
+#plotTimeDilations(timingMap)
+plotTimeDilationHistogram(timingMap)
 
