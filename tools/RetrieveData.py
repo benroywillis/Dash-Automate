@@ -13,7 +13,7 @@ import re
 #buildFolders = { "build_noHLconstraints_hc98" }
 
 # most recent build
-#CorpusFolder = "/mnt/heorot-10/Dash/Dash-Corpus/"
+#CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/"
 CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 # used for generating results from the saved run that was used to make the figures in the 2022-TComp-Cyclebyte publication
 #CorpusFolder = "/mnt/heorot-10/bwilli46/Data_TComp_Cyclebyte/mnt/heorot-03/bwilli46/Dash-Corpus/"
@@ -53,12 +53,14 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build10-05-22" }
 # this folder was used to generate all the results for the 2022-TComp-Cyclebyte paper
 #buildFolders = { "build10-22-22" }
-#buildFolders = { "build11-18-22" }
+# used to generate all timing results for the 2022-TComp-Cyclebyte paper
+buildFolders = { "build11-18-22" }
 #buildFolders = { "build12-13-22" }
 #buildFolders = { "build12-16-22" }
 #buildFolders = { "build12-19-22" }
 #buildFolders = { "build1-17-23" }
 #buildFolders = { "build2023-02-13" }
+#buildFolders = { "build2023-03-07" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
