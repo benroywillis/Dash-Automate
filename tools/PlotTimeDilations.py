@@ -10,7 +10,7 @@ timingDataFile = "Timings_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(
 axisFont  = 10
 axisLabelFont  = 10
 titleFont = 16
-xtickRotation = 90
+xtickRotation = 45
 colors = [ ( 50./255 , 162./255, 81./255 , 100./255 ), # leaf green
            ( 255./255, 127./255, 15./255 , 100./255 ), # crimson red
        	   ( 214./255, 39./255 , 40./255 , 255./255 ), # orange
@@ -20,6 +20,18 @@ colors = [ ( 50./255 , 162./255, 81./255 , 100./255 ), # leaf green
            ( 255./255, 10./255 , 140./255, 255./255 ), # hot pink
            ( 198./255, 195./255, 71./255 , 255./255 ) ]# mustard yellow
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
+
+def NormalizeAndFilter(dataMap):
+	filtered = {}
+	for k, v in dataMap.items():
+		markovMedian = statistics.median([v["Markov"][s]/v["Timing"][s] for s in v["Markov"]])
+		memoryMedian = statistics.median([v["Memory"][s]/v["Timing"][s] for s in v["Memory"]])
+		if markovMedian < 1.0:
+			continue
+		if memoryMedian < 1.0:
+			continue
+		filtered[k] = { "Markov": markovMedian, "Memory": memoryMedian }
+	return filtered
 
 def getProjectDilations(dataMap):
 	dilations = {}
@@ -69,11 +81,9 @@ def binIt(entry, bins):
 		if entry >= bin[0] and entry <= bin[1]:
 			bins[bin].append(entry)
 
-def plotTimeDilationHistogram(dataMap):
+def plotTimeDilationHistogram(dilations):
 	# count of the number of histogram bins we want
 	bins = 20
-	# maps a given application to its markov and memory dilations
-	dilations = getProjectDilations(dataMap)
 	# histogram each dilation factor within pre-defined bins
 	# break up the data to bin within 10 categories
 	markovMin = 1000
@@ -101,21 +111,33 @@ def plotTimeDilationHistogram(dataMap):
 		binIt(dilations[p]["Markov"], markovBins)
 		binIt(dilations[p]["Memory"], memoryBins)
 	
-	# bar chart
+	# markov histogram
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
-	
 	ax.bar([x for x in range(bins)], [len(markovBins[p]) for p in markovBins])
-	ax.set_title("Dynamic Time Dilation Is Manageable", fontsize=titleFont)
+	ax.set_title("Markov", fontsize=titleFont)
 	ax.set_ylabel("Application Count", fontsize=axisLabelFont)
-	ax.set_xlabel("Dilation", fontsize=axisLabelFont)
+	ax.set_xlabel("Profile Dilation", fontsize=axisLabelFont)
 	plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(markovBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	RD.PrintFigure(plt, "TimeDilationHistogram_Markov")
+
+	# memory histogram
+	fig = plt.figure(frameon=False)
+	fig.set_facecolor("black")
+	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
+	ax.bar([x for x in range(bins)], [len(memoryBins[p]) for p in memoryBins])
+	ax.set_title("Memory", fontsize=titleFont)
+	ax.set_xlabel("Profile Dilation", fontsize=axisLabelFont)
+	plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(memoryBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+
 	ax.legend(frameon=False)
-	RD.PrintFigure(plt, "TimeDilationHistogram")
+	RD.PrintFigure(plt, "TimeDilationHistogram_Memory")
 	plt.show()
 
 timingMap = RD.retrieveTimingData( RD.buildFolders, RD.CorpusFolder, timingDataFile )
+# filter nonsensical answers
+dilations = NormalizeAndFilter(timingMap)
 #plotTimeDilations(timingMap)
-plotTimeDilationHistogram(timingMap)
+plotTimeDilationHistogram(dilations)
 
