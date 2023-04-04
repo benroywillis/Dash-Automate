@@ -145,7 +145,7 @@ def sortAutomationLogData(dataMap, type="Cartographer"):
 				results[projectName][dataMap[entry][0]] = 1
 			else:
 				results[projectName][dataMap[entry][0]] += 1
-
+	
 	results["Total"] = { "success": 0 }
 	for entry in results:
 		if entry != "Total":
@@ -158,7 +158,10 @@ def sortAutomationLogData(dataMap, type="Cartographer"):
 	results["Ignore"]["Total"] = sum([results["Total"][x] for x in results["Total"]])
 	results["Ignore"]["Errors"] = results["Ignore"]["Total"] - results["Total"]["success"] - results["Total"].get("In Progress", 0)
 	results["Ignore"]["In Progress"] = results["Total"].get("In Progress", 0)
-	results["Ignore"]["Compliance"] = results["Total"]["success"] / ( results["Ignore"]["Total"] - results["Ignore"].get("In Progress", 0) )
+	try:
+		results["Ignore"]["Compliance"] = results["Total"]["success"] / ( results["Ignore"]["Total"] - results["Ignore"].get("In Progress", 0) ) 
+	except ZeroDivisionError: 
+		results["Ignore"]["Compliance"] = 0.0
 	with open("Data/Results_Compliance_"+type+"_"+"".join(x for x in RD.CorpusFolder.split("/"))+list(RD.buildFolders)[0]+".json", "w") as f:
 		json.dump(results, f, indent=4)
 
@@ -294,8 +297,8 @@ def plotMemoryPassCompliance(results):
 	RD.PrintFigure(plt, "Compliance_MemoryPass")
 	plt.show()
 
-cartographerMap = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, cartographerFileName, readCartographerLog)
-memoryPassMap   = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, memoryPassFileName, readMemoryPassLog, Prefix="MemoryPass_")
+cartographerMap     = RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, cartographerFileName, readCartographerLog)
+memoryPassMap   	= RD.retrieveLogData(RD.buildFolders, RD.CorpusFolder, memoryPassFileName, readMemoryPassLog, Prefix="MemoryPass_")
 cartographerResults = sortAutomationLogData(cartographerMap)
 memoryPassResults   = sortAutomationLogData(memoryPassMap, type="MemoryPass")
 plotCartographerCompliance(cartographerResults, paper=True)
