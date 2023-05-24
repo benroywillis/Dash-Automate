@@ -32,9 +32,6 @@ def plotHistogram(input, args):
 	for task in input:
 		fig = plt.figure(frameon=False)
 		ax = fig.add_subplot(1, 1, 1, frameon=False)
-		print(maxExp)
-		print([x for x in range(maxExp+1)])
-		print(input[task])
 		ax.bar([x for x in range(maxExp+1)], input[task])
 		ax.set_title("Dynamic Range For Task {}".format(task))
 		ax.set_ylabel("Frequency")
