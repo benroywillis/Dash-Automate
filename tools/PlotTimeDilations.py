@@ -83,7 +83,7 @@ def binIt(entry, bins):
 
 def plotTimeDilationHistogram(dilations):
 	# count of the number of histogram bins we want
-	bins = 20
+	bins = 15
 	# histogram each dilation factor within pre-defined bins
 	# break up the data to bin within 10 categories
 	markovMin = 1000
@@ -116,10 +116,10 @@ def plotTimeDilationHistogram(dilations):
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 	ax.bar([x for x in range(bins)], [len(markovBins[p]) for p in markovBins])
-	ax.set_title("Markov", fontsize=titleFont)
 	ax.set_ylabel("Application Count", fontsize=axisLabelFont)
 	ax.set_xlabel("Profile Dilation", fontsize=axisLabelFont)
-	plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(markovBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	#plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(markovBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	plt.xticks(ticks=[x for x in range(bins)], labels=[str( int(x[0] + (x[0]+x[1])/20) ) for x in list(markovBins.keys())], fontsize=axisFont, rotation=xtickRotation)
 	RD.PrintFigure(plt, "TimeDilationHistogram_Markov")
 
 	# memory histogram
@@ -127,9 +127,9 @@ def plotTimeDilationHistogram(dilations):
 	fig.set_facecolor("black")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="black")
 	ax.bar([x for x in range(bins)], [len(memoryBins[p]) for p in memoryBins])
-	ax.set_title("Memory", fontsize=titleFont)
 	ax.set_xlabel("Profile Dilation", fontsize=axisLabelFont)
-	plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(memoryBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	#plt.xticks(ticks=[x for x in range(bins)], labels=["{:4.1f}-{:4.1f}".format(x[0],x[1]) for x in list(memoryBins.keys())], fontsize=axisFont, rotation=xtickRotation)
+	plt.xticks(ticks=[x for x in range(bins)], labels=[str( int(x[0] + (x[0]+x[1])/20) ) for x in list(memoryBins.keys())], fontsize=axisFont, rotation=xtickRotation)
 
 	ax.legend(frameon=False)
 	RD.PrintFigure(plt, "TimeDilationHistogram_Memory")
