@@ -23,7 +23,7 @@ colors = [ ( 50./255 , 162./255, 81./255 , 127./255 ),
            ( 0.0     , 0.0     , 0.0     , 127./255 ),]
 markers = [ 'o', '^', '1', 's', '*', 'd', 'X', '>']
 
-def PlotKernelCorrespondence(dataMap):
+def PlotKernelCorrespondence(dataMap, exclusions={}):
 	fig = plt.figure(frameon=False)
 	fig.set_facecolor("white")
 	ax = fig.add_subplot(1, 1, 1, frameon=False, fc="white")
@@ -36,12 +36,15 @@ def PlotKernelCorrespondence(dataMap):
 	HC = set()
 	HL = set()
 	PaMul = set()
-	for file in dataMap:
-		HC = HC.union( RD.Uniquify(file, dataMap[file]["hotcode"], tn=False) )
-		HL = HL.union( RD.Uniquify(file, dataMap[file]["hotloop"], tn=False) )
-		PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["instance"], tn=False) )
-	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
-	v = pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
+	if len(exclusions):
+		v = pltv.venn3([exclusions["HC"],exclusions["HL"],exclusions["HCHL"],exclusions["Cb"],exclusions["HCCb"],exclusions["HLCb"],exclusions["HCHLCb"]], ("HC", "HL", "Cb"))
+	else:
+		for file in dataMap:
+			HC = HC.union( RD.Uniquify(file, dataMap[file]["hotcode"], tn=False) )
+			HL = HL.union( RD.Uniquify(file, dataMap[file]["hotloop"], tn=False) )
+			PaMul = PaMul.union( RD.Uniquify(file, dataMap[file]["instance"], tn=False) )
+		print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
+		v = pltv.venn3([HC, HL, PaMul], ("HC", "HL", "PaMul"))
 	RD.PrintFigure(plt, "BasicBlockCorrespondence")
 	plt.show()
 
@@ -101,26 +104,39 @@ def ExclusionZones(dataMap):
 	exclusions = {}
 	HC = set()
 	HL = set()
-	Cyclebite = set()
+	Cb = set()
 	Loops = set()
 	for file in dataMap:
-		HC = HC.union( RD.Uniquify(file, dataMap[file]["hotcode"], tn=False) )
-		HL = HL.union( RD.Uniquify(file, dataMap[file]["hotloop"], tn=False) )
-		Cyclebite = Cyclebite.union( RD.Uniquify(file, dataMap[file]["pamul"], tn=False) )
+		fileHC = RD.Uniquify(file, dataMap[file]["hotcode"], tn=False)
+		fileHL = RD.Uniquify(file, dataMap[file]["hotloop"], tn=False)
+		fileCb = RD.Uniquify(file, dataMap[file]["pamul"], tn=False)
+		HC = HC.union(fileHC)
+		HL = HL.union(fileHL)
+		Cb = Cb.union(fileCb)
 	
-		exclusions[file] = { "HC": 0, "HL": 0, "Cyclebite": 0, "HCHL": 0, "HCCyclebite": 0, "HLCyclebite": 0, "HCHLCyclebite": 0, "Total": 0 }
-		exclusions[file]["HC"] = len( HC - HL - Cyclebite )
-		exclusions[file]["HL"] = len( HL - HC - Cyclebite )
-		exclusions[file]["Cyclebite"] = len( Cyclebite - HC - HL )
-		exclusions[file]["HCHL"] = len( HC.intersection(HL) - Cyclebite )
-		exclusions[file]["HCCyclebite"] = len( HC.intersection(Cyclebite) - HL )
-		exclusions[file]["HLCyclebite"] = len( HL.intersection(Cyclebite) - HC )
-		exclusions[file]["HCHLCyclebite"] = len( HC.intersection(HL).intersection(Cyclebite) )
-		exclusions[file]["Total"] = len( HC.union(HL).union(Cyclebite) )
+		exclusions[file] = { "HC": 0, "HL": 0, "Cb": 0, "HCHL": 0, "HCCb": 0, "HLCb": 0, "HCHLCb": 0, "Total": 0 }
+		exclusions[file]["HC"] = len( fileHC - fileHL - fileCb )
+		exclusions[file]["HL"] = len( fileHL - fileHC - fileCb )
+		exclusions[file]["Cb"] = len( fileCb - fileHC - fileHL )
+		exclusions[file]["HCHL"] = len( fileHC.intersection(fileHL) - fileCb )
+		exclusions[file]["HCCb"] = len( fileHC.intersection(fileCb) - fileHL )
+		exclusions[file]["HLCb"] = len( fileHL.intersection(fileCb) - fileHC )
+		exclusions[file]["HCHLCb"] = len( fileHC.intersection(fileHL).intersection(fileCb) )
+		exclusions[file]["Total"] = len( fileHC.union(fileHL).union(fileCb) )
 
-	RD.DumpData(exclusions, "ExclusiveRegions")		
+	exclusions["HC"] = len(HC - HL - Cb)
+	exclusions["HL"] = len(HL - HC - Cb)
+	exclusions["Cb"] = len(Cb - HC - HL)
+	exclusions["HCHL"] = len(HC.intersection(HL) - Cb)
+	exclusions["HCCb"] = len(HC.intersection(Cb) - HL)
+	exclusions["HLCb"] = len(HL.intersection(Cb) - HC)
+	exclusions["HCHLCb"] = len(HC.intersection(HL).intersection(Cb))
+
+	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
+	RD.DumpData(exclusions, "ExclusiveRegions")
+	return exclusions
 
 combined = RD.RetrieveData(loop=True, hotcode=True, hotloop=True, pamul=True, instance=True)
 #PlotKernelCorrespondence_Manual(combined)
-ExclusionZones(combined)
-PlotKernelCorrespondence(combined)
+exclusions = ExclusionZones(combined)
+PlotKernelCorrespondence(combined, exclusions)
