@@ -36,7 +36,10 @@ def plotHistogram(input, args):
 		ax.set_title("Dynamic Range For Task {}".format(task))
 		ax.set_ylabel("Frequency")
 		ax.set_xlabel("Magnitude (base 2)")
-		RD.PrintFigure(plt, "DynamicRangeHistogram_Task{}".format(task))
+		appName = args.input_file
+		while "/" in appName:
+			appName = appName.replace("/","")
+		RD.PrintFigure(plt, "DynamicRangeHistogram_Task{}_{}".format(task, appName))
 	plt.show()
 
 args = parse_args()
