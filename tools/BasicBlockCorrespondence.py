@@ -33,12 +33,12 @@ def PlotKernelCorrespondence(dataMap, exclusions={}):
 	# 2. categorize the hotcode blocks, hot loop blocks and pamul blocks
 	# 3. throw these sets into the venn3 call and see what happens
 
-	HC = set()
-	HL = set()
-	PaMul = set()
 	if len(exclusions):
 		v = pltv.venn3([exclusions["HC"],exclusions["HL"],exclusions["HCHL"],exclusions["Cb"],exclusions["HCCb"],exclusions["HLCb"],exclusions["HCHLCb"]], ("HC", "HL", "Cb"))
 	else:
+		HC = set()
+		HL = set()
+		PaMul = set()
 		for file in dataMap:
 			HC = HC.union( RD.Uniquify(file, dataMap[file]["hotcode"], tn=False) )
 			HL = HL.union( RD.Uniquify(file, dataMap[file]["hotloop"], tn=False) )
@@ -109,7 +109,7 @@ def ExclusionZones(dataMap):
 	for file in dataMap:
 		fileHC = RD.Uniquify(file, dataMap[file]["hotcode"], tn=False)
 		fileHL = RD.Uniquify(file, dataMap[file]["hotloop"], tn=False)
-		fileCb = RD.Uniquify(file, dataMap[file]["pamul"], tn=False)
+		fileCb = RD.Uniquify(file, dataMap[file]["instance"], tn=False)
 		HC = HC.union(fileHC)
 		HL = HL.union(fileHL)
 		Cb = Cb.union(fileCb)
@@ -140,3 +140,4 @@ combined = RD.RetrieveData(loop=True, hotcode=True, hotloop=True, pamul=True, in
 #PlotKernelCorrespondence_Manual(combined)
 exclusions = ExclusionZones(combined)
 PlotKernelCorrespondence(combined, exclusions)
+#PlotKernelCorrespondence(combined)
