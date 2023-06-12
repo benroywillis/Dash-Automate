@@ -67,8 +67,9 @@ buildFolders = { "build10-22-22" }
 
 # for project-specific builds
 #CorpusFolder = "/home/bwilli46/Algorithms/StencilChain/"
+CorpusFolder = "/home/bwilli46/Algorithms/SIFT/"
 #buildFolders = { "Naive" }
-#buildFolders = { "API" }
+buildFolders = { "API" }
 
 def mapProjectName(name, general=False):
 	"""
@@ -181,10 +182,10 @@ def PrintFigure(plt, name, buildTag=True):
 
 def DumpData(data, name, buildTag=True, suffix=".json"):
 	if suffix == ".json":
-		with open("Data/name"+list(RD.buildFolders)[0]+".json", "w") as f:
+		with open("Data/"+name+"_"+list(buildFolders)[0]+".json", "w") as f:
 			json.dump(data, f, indent=2)
 	else:
-		with open("Data/name"+list(RD.buildFolders)[0]+suffix, "w") as f:
+		with open("Data/"+name+"_"+list(buildFolders)[0]+suffix, "w") as f:
 			f.write(data)
 
 def getProjectName(kfPath, baseName):

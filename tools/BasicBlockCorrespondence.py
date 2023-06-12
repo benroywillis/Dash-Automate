@@ -132,7 +132,7 @@ def ExclusionZones(dataMap):
 	exclusions["HLCb"] = len(HL.intersection(Cb) - HC)
 	exclusions["HCHLCb"] = len(HC.intersection(HL).intersection(Cb))
 
-	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(PaMul)))
+	print(" HC: {}, HL: {}, PaMul: {} ".format(len(HC), len(HL), len(Cb)))
 	RD.DumpData(exclusions, "ExclusiveRegions")
 	return exclusions
 
