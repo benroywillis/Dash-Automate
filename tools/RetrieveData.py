@@ -66,8 +66,8 @@ buildFolders = { "build10-22-22" }
 #buildFolders = { "STL_Test" }
 
 # for project-specific builds
-#CorpusFolder = "/home/bwilli46/Algorithms/StencilChain/"
-CorpusFolder = "/home/bwilli46/Algorithms/SIFT/"
+CorpusFolder = "/home/bwilli46/Algorithms/StencilChain/"
+#CorpusFolder = "/home/bwilli46/Algorithms/SIFT/"
 #buildFolders = { "Naive" }
 buildFolders = { "API" }
 
@@ -181,11 +181,18 @@ def PrintFigure(plt, name, buildTag=True):
 	plt.savefig(figureName+".png",format="png")
 
 def DumpData(data, name, buildTag=True, suffix=".json"):
+	if buildTag:
+		rootName = CorpusFolder
+		while "/" in rootName:
+			rootName = rootName.replace("/","")
+		fileName = name+"_"+rootName+list(buildFolders)[0]
+	else:
+		fileName = name
 	if suffix == ".json":
-		with open("Data/"+name+"_"+list(buildFolders)[0]+".json", "w") as f:
+		with open("Data/"+fileName+".json", "w") as f:
 			json.dump(data, f, indent=2)
 	else:
-		with open("Data/"+name+"_"+list(buildFolders)[0]+suffix, "w") as f:
+		with open("Data/"+fileName+suffix, "w") as f:
 			f.write(data)
 
 def getProjectName(kfPath, baseName):
