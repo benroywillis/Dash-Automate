@@ -14,9 +14,9 @@ import re
 
 # most recent build
 #CorpusFolder = "/mnt/heorot-10/bwilli46/Dash-Corpus/"
-CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
+#CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 # used for generating results from the saved run that was used to make the figures in the 2022-TComp-Cyclebyte publication
-#CorpusFolder = "/mnt/heorot-10/bwilli46/Data_TComp_Cyclebyte/mnt/heorot-03/bwilli46/Dash-Corpus/"
+CorpusFolder = "/mnt/heorot-10/bwilli46/tmp/Data_TComp_Cyclebyte/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #CorpusFolder = "/home/bwilli46/Algorithms/BilateralFilter/API/tests/"
 #CorpusFolder = "/home/bwilli46/TraceAtlas/build/Tests/"
 #buildFolders = { "build1-30-2022_noHLconstraints" }
@@ -52,9 +52,9 @@ CorpusFolder = "/mnt/heorot-03/bwilli46/Dash-Corpus/"
 #buildFolders = { "build9-30-22" }
 #buildFolders = { "build10-05-22" }
 # this folder was used to generate all the results for the 2022-TComp-Cyclebyte paper
-#buildFolders = { "build10-22-22" }
+buildFolders = { "build10-22-22" }
 # used to generate all timing results for the 2022-TComp-Cyclebyte paper
-buildFolders = { "build11-18-22" }
+#buildFolders = { "build11-18-22" }
 #buildFolders = { "build12-13-22" }
 #buildFolders = { "build12-16-22" }
 #buildFolders = { "build12-19-22" }
@@ -64,6 +64,11 @@ buildFolders = { "build11-18-22" }
 #buildFolders = { "build_OPENCV_test" }
 #buildFolders = { "OldBuild" }
 #buildFolders = { "STL_Test" }
+
+# for project-specific builds
+#CorpusFolder = "/home/bwilli46/Algorithms/StencilChain/"
+#buildFolders = { "Naive" }
+#buildFolders = { "API" }
 
 def mapProjectName(name, general=False):
 	"""
@@ -173,6 +178,14 @@ def PrintFigure(plt, name, buildTag=True):
 	plt.savefig(figureName+".svg",format="svg")
 	plt.savefig(figureName+".eps",format="eps")
 	plt.savefig(figureName+".png",format="png")
+
+def DumpData(data, name, buildTag=True, suffix=".json"):
+	if suffix == ".json":
+		with open("Data/name"+list(RD.buildFolders)[0]+".json", "w") as f:
+			json.dump(data, f, indent=2)
+	else:
+		with open("Data/name"+list(RD.buildFolders)[0]+suffix, "w") as f:
+			f.write(data)
 
 def getProjectName(kfPath, baseName):
 	while "//" in kfPath:
